@@ -24,6 +24,7 @@ import { AuditService, AuditLogEntry } from '../../core/services/audit.service';
 import { User } from '../../core/models/user.model';
 import { Entity, EntityTreeNode } from '../../core/models/entity.model';
 import { ROLE_MAP } from '../../core/constants/roles';
+import { translateAction, actionCategory } from '../../core/constants/audit-actions';
 
 type UserStatus = 'ACTIVO' | 'INACTIVO' | 'BLOQUEADO';
 
@@ -277,6 +278,9 @@ export class Usuarios implements OnInit {
     if (u.is_blocked) return 'pill--bad';
     return 'pill--ok';
   }
+
+  translateAction = translateAction;
+  actionCategory = actionCategory;
 
   formatDate(dateStr: string): string {
     if (!dateStr) return '';
