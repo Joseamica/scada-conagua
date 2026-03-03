@@ -1,0 +1,45 @@
+name: CI — Build & Test
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Proyecto SCADA/scada-front/scada-front
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Proyecto SCADA/scada-front/scada-front/package-lock.json
+
+      - run: npm ci
+      - run: npm run build
+
+  build-query-api:
+    name: Build Query API
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Proyecto SCADA/scada-query-api/scada-query-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Proyecto SCADA/scada-query-api/scada-query-api/package-lock.json
+
+      - run: npm ci
+      - run: npm run build --if-present
+      - run: npm test

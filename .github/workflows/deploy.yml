@@ -1,0 +1,48 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-frontend:
+    name: Build & Deploy Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Proyecto SCADA/scada-front/scada-front
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Proyecto SCADA/scada-front/scada-front/package-lock.json
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Deploy to Oracle Cloud
+        env:
+          SSH_KEY: ${{ secrets.OCI_WEBSERVER_SSH_KEY }}
+          HOST: 159.54.157.79
+          USER: opc
+          DEPLOY_PATH: /usr/share/nginx/html/SCADA
+        run: |
+          # Setup SSH key
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null
+
+          # Backup current version on server
+          ssh -i ~/.ssh/deploy_key $USER@$HOST "sudo cp -r $DEPLOY_PATH /tmp/scada-backup-\$(date +%Y%m%d%H%M%S)" || true
+
+          # Upload new build
+          scp -i ~/.ssh/deploy_key -r dist/scada-front/browser/* $USER@$HOST:/tmp/scada-deploy/
+
+          # Swap files
+          ssh -i ~/.ssh/deploy_key $USER@$HOST "sudo rm -rf $DEPLOY_PATH/* && sudo cp -r /tmp/scada-deploy/* $DEPLOY_PATH/ && rm -rf /tmp/scada-deploy"
+
+          echo "Frontend deployed successfully"
