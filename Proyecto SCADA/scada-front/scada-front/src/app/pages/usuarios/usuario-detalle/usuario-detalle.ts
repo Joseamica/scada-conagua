@@ -55,6 +55,7 @@ export class UsuarioDetalle implements OnInit {
 
   estadoActual = signal<EstadoValue | null>(null);
   nivelActual = signal<string>('');
+  private pendingEditEntityId?: number;
 
   // OCAVM opera exclusivamente en Estado de Mexico
   estados: EstadoValue[] = ['ESTADO DE MEXICO'];
@@ -135,7 +136,11 @@ export class UsuarioDetalle implements OnInit {
     }, { validators: passwordMatchValidator });
 
     this.entityService.getAll().subscribe({
-      next: (data) => this.entities.set(data),
+      next: (data) => {
+        this.entities.set(data);
+        // Resolve municipio for Municipal edit mode once entities are loaded
+        this.resolveEditMunicipio(data);
+      },
       error: (err) => console.error('Error loading entities:', err)
     });
 
@@ -165,11 +170,9 @@ export class UsuarioDetalle implements OnInit {
         estadoCtrl?.disable({ emitEvent: false });
         this.estadoActual.set('ESTADO DE MEXICO');
         municipioCtrl?.setValidators(Validators.required);
+        municipioCtrl?.setValue('', { emitEvent: false });
+        municipioCtrl?.disable({ emitEvent: false });
         municipioCtrl?.updateValueAndValidity({ emitEvent: false });
-        queueMicrotask(() => {
-          municipioCtrl?.enable({ emitEvent: false });
-          municipioCtrl?.setValue('', { emitEvent: false });
-        });
       } else {
         estadoCtrl?.setValue('', { emitEvent: false });
         estadoCtrl?.disable({ emitEvent: false });
@@ -178,6 +181,18 @@ export class UsuarioDetalle implements OnInit {
         municipioCtrl?.setValue('', { emitEvent: false });
         municipioCtrl?.disable({ emitEvent: false });
         entityCtrl?.disable({ emitEvent: false });
+      }
+    });
+
+    // Dependencia change: auto-set municipio for Municipal level
+    entityCtrl?.valueChanges.subscribe((entityId: string) => {
+      if (this.nivelActual() !== 'Municipal' || !entityId) return;
+      const entity = this.entities().find(e => e.id === Number(entityId));
+      if (entity?.municipio_id) {
+        const municipioNombre = this.getMunicipioNameById(entity.municipio_id);
+        if (municipioNombre) {
+          municipioCtrl?.setValue(municipioNombre, { emitEvent: false });
+        }
       }
     });
 
@@ -210,12 +225,12 @@ export class UsuarioDetalle implements OnInit {
         entity_id: usuario.entity_id || ''
       });
 
-      // Set municipio by name from scope_id
-      if (nivel === 'Municipal' && usuario.scope_id) {
-        const nombreMuni = this.getMunicipioNameById(usuario.scope_id);
-        queueMicrotask(() => {
-          this.form.get('municipio')?.setValue(nombreMuni, { emitEvent: false });
-        });
+      // Municipal: municipio is derived from entity — keep disabled
+      // Non-Municipal: set Todos and disable
+      if (nivel === 'Municipal') {
+        this.pendingEditEntityId = usuario.entity_id;
+        municipioCtrl?.disable({ emitEvent: false });
+        // Will be resolved when entities load via resolveEditMunicipio()
       } else {
         this.form.get('municipio')?.setValue('Todos', { emitEvent: false });
         municipioCtrl?.disable({ emitEvent: false });
@@ -248,6 +263,16 @@ export class UsuarioDetalle implements OnInit {
   private getMunicipioNameById(id: number | string): string {
     const municipiosEdomex = (estadosJson as any)["15"].municipios;
     return municipiosEdomex[id.toString()] || '';
+  }
+
+  private resolveEditMunicipio(entities: Entity[]) {
+    if (this.mode !== 'edit' || this.nivelActual() !== 'Municipal' || !this.pendingEditEntityId) return;
+    const entity = entities.find(e => e.id === Number(this.pendingEditEntityId));
+    if (entity?.municipio_id) {
+      const nombreMuni = this.getMunicipioNameById(entity.municipio_id);
+      this.form.get('municipio')?.setValue(nombreMuni, { emitEvent: false });
+    }
+    this.pendingEditEntityId = undefined;
   }
 
   private getRoleNameById(id: number): string {

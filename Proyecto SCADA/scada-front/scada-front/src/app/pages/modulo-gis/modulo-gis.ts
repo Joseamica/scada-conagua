@@ -421,7 +421,7 @@ export class ModuloGis implements OnInit {
     `;
   }
 
-  private loadSitiosKml(path: string) {
+  private loadSitiosKml(path: string, onReady?: (bounds: L.LatLngBounds) => void) {
     fetch(path)
       .then(res => res.text())
       .then(kmlText => {
@@ -529,9 +529,14 @@ export class ModuloGis implements OnInit {
             });
           });
 
-          // 🔎 IMPORTANTE: NO hacemos fitBounds por cada KML nuevo
-          // (si lo haces, el mapa brinca por cada archivo).
-          // Dejamos tu comportamiento global igual (sin romper UX).
+          // Notify caller with the bounds of this KML for auto-zoom
+          if (onReady) {
+            const bounds = L.latLngBounds([]);
+            kmlLayer.eachLayer((l: any) => {
+              if (l.getLatLng) bounds.extend(l.getLatLng());
+            });
+            onReady(bounds);
+          }
 
           URL.revokeObjectURL(url);
 
@@ -868,6 +873,13 @@ export class ModuloGis implements OnInit {
   // ─────────────────────────────
   ngOnInit(): void {
 
+    // Fix Leaflet default icon path (prevents 404 on marker-shadow.png)
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconUrl: 'assets/icons/map/well.svg',
+      shadowUrl: '',
+    });
+
     // 1) Mapa base
     this.map = L.map('map').setView([19.3, -99.6], 8);
 
@@ -912,11 +924,28 @@ export class ModuloGis implements OnInit {
   { collapsed: false }
 ).addTo(this.map);
 
-    // 4) GeoJSON / overlays async
-    this.buildGastoByMunicipio();
+    // ─────────────────────────────────────────────────────────────────────────
+    // 1) OBTENER IDENTIDAD Y ALCANCE (GEOGRAPHIC SCOPE) — before loading assets
+    // ─────────────────────────────────────────────────────────────────────────
+    const userData = localStorage.getItem('scada_user_data');
+    const user = userData ? JSON.parse(userData) : null;
+    const isMunicipal = user?.scope === 'Municipal';
+
+    console.group('>>> [SCADA DEBUG] GIS Hierarchical Filter');
+    console.log('User Identity:', user?.full_name);
+    console.log('User Scope:', user?.scope);
+    console.log('State ID (estado_id):', user?.estado_id);
+    console.log('Target ID (scope_id):', user?.scope_id);
+    console.groupEnd();
+
+    // 4) GeoJSON / overlays — conditional loading based on scope
     this.loadMunicipios();
-    this.loadRedPrimaria();
-    this.loadRedSecundaria();
+    if (!isMunicipal) {
+      // State-level overlays: skip for Municipal users (saves ~4MB + 60s)
+      this.buildGastoByMunicipio();
+      this.loadRedPrimaria();
+      this.loadRedSecundaria();
+    }
 
     // Mantener pozos al frente si prenden municipios
     this.map.on('overlayadd', (e: any) => {
@@ -929,20 +958,6 @@ export class ModuloGis implements OnInit {
           });
       }
     });
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // 1) OBTENER IDENTIDAD Y ALCANCE (GEOGRAPHIC SCOPE)
-    // ─────────────────────────────────────────────────────────────────────────
-    const userData = localStorage.getItem('scada_user_data');
-    const user = userData ? JSON.parse(userData) : null;
-
-    // 🧪 MECANISMO DE DEBUGGING (Frontend Pro)
-    console.group('>>> [SCADA DEBUG] GIS Hierarchical Filter');
-    console.log('User Identity:', user?.full_name);
-    console.log('User Role:', user?.role);        
-    console.log('State ID (estado_id):', user?.estado_id);
-    console.log('Target ID (scope_id):', user?.scope_id);
-    console.groupEnd();
 
     // ─────────────────────────────────────────────────────────────────────────
     // 2) LÓGICA DE FILTRADO JERÁRQUICO
@@ -970,20 +985,34 @@ export class ModuloGis implements OnInit {
     // ─────────────────────────────────────────────────────────────────────────
     // 3) EJECUCIÓN DE CARGA Y AUTO-ZOOM
     // ─────────────────────────────────────────────────────────────────────────
-    filteredSources.forEach(src => this.loadSitiosKml(src.path));
 
-    // Auto-zoom inteligente basado en el nivel
-    //if (user?.scope === 'Municipal' && user?.scope_id === 34) {
-      // Zoom específico para Ecatepec
-      //this.map.setView([19.60, -99.03], 12); 
-      //} else if (user?.scope === 'Estatal') {
-        // Vista general del Estado de México
-      //  this.map.setView([19.35, -99.30], 9);
-    //}
+    // Immediate zoom to approximate scope while KMLs load
+    if (user?.scope === 'Municipal') {
+      this.map.setView([19.40, -98.95], 12);
+    } else if (user?.scope === 'Estatal') {
+      this.map.setView([19.35, -99.05], 10);
+    }
+    // Federal keeps default view ([19.3, -99.6], 8)
+
+    // Load KMLs and fitBounds once all are ready
+    let loadedCount = 0;
+    const totalSources = filteredSources.length;
+    const allBounds = L.latLngBounds([]);
+
+    filteredSources.forEach(src => {
+      this.loadSitiosKml(src.path, (layerBounds) => {
+        if (layerBounds?.isValid()) allBounds.extend(layerBounds);
+        loadedCount++;
+        if (loadedCount === totalSources && allBounds.isValid()) {
+          this.map.fitBounds(allBounds, { padding: [40, 40], maxZoom: 14 });
+        }
+      });
+    });
 
     // ─────────────────────────────
-    // 🟦 KML DE CAPAS (fragmentado)
+    // 🟦 KML DE CAPAS (skip for Municipal — state-level infrastructure)
     // ─────────────────────────────
+    if (isMunicipal) return; // Municipal users only need their KML + municipio border
     fetch('assets/mapas/4PT/capas.kml')
       .then(res => res.text())
       .then(kmlText => {

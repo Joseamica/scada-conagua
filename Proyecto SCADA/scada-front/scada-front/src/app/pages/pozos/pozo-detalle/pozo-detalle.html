@@ -177,7 +177,7 @@
               </div>
             </div>
 
-            <div class="control-actions">
+            <div class="control-actions" *ngIf="canControlPump()">
               <button class="btn-scada btn-start"
                 [disabled]="!canStart()"
                 (click)="abrirConfirmacion('start')">
@@ -189,6 +189,7 @@
                 PARAR
               </button>
             </div>
+            <p class="field-hint" *ngIf="!canControlPump()">Solo supervisores pueden controlar la bomba</p>
           </div>
         </div>
 

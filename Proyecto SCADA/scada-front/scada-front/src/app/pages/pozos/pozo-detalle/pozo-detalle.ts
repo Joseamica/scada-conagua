@@ -108,6 +108,14 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   private destroyRef = inject(DestroyRef);
   public liveStatus = signal<LiveStatusResponse | null>(null);
 
+  // Role-based control: only Admin (1) and Supervisor (2) can operate pumps
+  public canControlPump = computed(() => {
+    const userData = localStorage.getItem('scada_user_data');
+    if (!userData) return false;
+    const user = JSON.parse(userData);
+    return user.role_id <= 2;
+  });
+
   private resizeHandler = () => { this.mainChart?.resize(); this.totalizerChart?.resize(); };
 
   // 1. Estado para evitar el efecto del refresh de 60s
@@ -380,7 +388,13 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   confirmarAccion() {
     const action = this.accionPendiente();
     
-    // 🛡️ Seguridad: No procedemos si no hay acción o si los controles están bloqueados (CFE/Fallo)
+    // Role check: only Admin/Supervisor can control pumps
+    if (!this.canControlPump()) {
+      console.warn('Acción de control denegada: rol insuficiente.');
+      return;
+    }
+
+    // Seguridad: No procedemos si no hay acción o si los controles están bloqueados (CFE/Fallo)
     if (!action || this.controlsDisabled()) {
       console.warn('Acción de control abortada por interbloqueo de seguridad.');
       return;
