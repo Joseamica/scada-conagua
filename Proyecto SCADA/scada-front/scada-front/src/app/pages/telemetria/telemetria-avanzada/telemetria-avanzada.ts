@@ -86,11 +86,12 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
   private resizeHandler = () => { this.chart?.resize(); this.radarChart?.resize(); };
 
   private themeEffect = effect(() => {
-    const theme = this.themeService.resolved();
-    if (this.chart) {
-      const c = getEChartsColors(theme);
-      this.chart.setOption({ backgroundColor: c.backgroundColor }, true);
-      this.chart.resize();
+    this.themeService.resolved(); // track theme changes
+    if (Object.keys(this.lastChartData).length === 0) return;
+    if (this.chartType() === 'radar') {
+      this.renderRadar();
+    } else {
+      this.renderChart();
     }
   });
 
