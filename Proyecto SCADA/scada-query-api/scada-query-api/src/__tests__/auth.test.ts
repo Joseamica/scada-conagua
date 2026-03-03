@@ -18,6 +18,19 @@ vi.mock('../services/control-service', () => ({
     sendSCADACommand: vi.fn().mockResolvedValue(true),
 }));
 
+vi.mock('../services/permission-service', () => ({
+    getPermissions: vi.fn().mockImplementation((userId: number) => {
+        // Ejecutivo (rol 4, id=4 in test tokens) cannot operate
+        const canOperate = userId !== 4;
+        return Promise.resolve({
+            can_view: true,
+            can_export: true,
+            can_operate: canOperate,
+            can_edit_synoptics: false,
+        });
+    }),
+}));
+
 // ─── Generación de tokens por rol ────────────────────────────────────────────
 // Usa el JWT_SECRET del vitest.config.ts: 'test_secret_scada_vitest'
 const TEST_SECRET = 'test_secret_scada_vitest';
@@ -78,9 +91,9 @@ describe('Token inválido — debe rechazar con 403', () => {
     });
 });
 
-// ─── Governance: POST /control (isOperator — roles 1, 2, 3 pueden; 4 no) ────
+// ─── Governance: POST /control (can_operate permission) ────
 describe('Governance: POST /api/v1/control', () => {
-    it('Admin (rol 1) puede enviar comando → 202', async () => {
+    it('Admin (rol 1) con can_operate puede enviar comando → 202', async () => {
         const res = await request(app)
             .post('/api/v1/control')
             .set('Authorization', TOKEN.admin)

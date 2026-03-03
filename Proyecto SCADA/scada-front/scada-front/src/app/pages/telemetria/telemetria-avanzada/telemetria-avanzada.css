@@ -1,6 +1,6 @@
 /* ===== SHELL ===== */
-.shell { min-height: 100vh; padding-bottom: 74px; display: flex; flex-direction: column; }
-.page { padding: 18px 18px 0; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.shell { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+.page { padding: 10px 14px 0; display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
 
 /* ===== PAGE BAR — single unified row ===== */
 .page-bar {
@@ -108,9 +108,10 @@
 .main-grid {
   display: grid;
   grid-template-columns: 240px 1fr;
-  gap: 14px;
+  gap: 10px;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 /* ===== SIDEBAR ===== */
@@ -330,10 +331,32 @@
 .chart-fullscreen {
   position: fixed;
   inset: 0;
-  z-index: 999;
+  z-index: 1300;
   border-radius: 0;
   padding: 18px;
   overflow-y: auto;
+}
+
+.fs-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.fs-close:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
 }
 
 /* ===== CHART TOOLBAR ===== */
@@ -444,7 +467,7 @@
 .chart-wrapper {
   position: relative;
   flex: 1;
-  min-height: 300px;
+  min-height: 0;
 }
 
 .chart-canvas {
@@ -527,6 +550,93 @@
   font-size: 10px;
   color: var(--text-secondary);
   margin-left: 2px;
+}
+
+/* ===== CHART HIDDEN (radar/main toggle) ===== */
+.chart-hidden {
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ===== TOOL DISABLED (brush/crosshair in radar mode) ===== */
+.tool-disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* ===== Y-AXIS RANGE STRIP ===== */
+.y-range-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 6px 0 8px;
+  border-bottom: 1px solid var(--border-default);
+  margin-bottom: 8px;
+}
+
+.y-range-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.y-range-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.y-range-label {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-right: 2px;
+}
+
+.y-range-lbl {
+  font-weight: 500;
+  opacity: 0.6;
+}
+
+.y-range-input {
+  width: 64px;
+  padding: 3px 6px;
+  border: 1px solid var(--border-default);
+  border-radius: 5px;
+  background: var(--table-header-bg);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-family: inherit;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.y-range-input:focus {
+  border-color: var(--accent);
+}
+
+.y-range-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+.y-range-sep {
+  color: var(--text-secondary);
+  opacity: 0.4;
+  font-size: 10px;
+}
+
+.y-range-unit {
+  font-size: 10px;
+  color: var(--text-secondary);
+  opacity: 0.6;
 }
 
 /* ===== RESPONSIVE ===== */

@@ -284,7 +284,7 @@
                   <tr *ngFor="let l of logs(); let odd = odd" [class.row-alt]="odd">
                     <td class="cell-name-sm">{{ l.full_name || l.email }}</td>
                     <td>
-                      <span class="action-tag">{{ l.action }}</span>
+                      <span class="action-badge" [attr.data-cat]="actionCategory(l.action)">{{ translateAction(l.action) }}</span>
                     </td>
                     <td class="mono">{{ l.ip_address }}</td>
                     <td class="mono col-date">{{ formatDate(l.created_at) }}</td>

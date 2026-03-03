@@ -66,6 +66,11 @@
       <!-- CHART AREA -->
       <section class="chart-card" [class.chart-fullscreen]="isFullscreen()">
 
+        <!-- FULLSCREEN CLOSE -->
+        <button class="fs-close" *ngIf="isFullscreen()" (click)="toggleFullscreen()" title="Cerrar (Esc)">
+          <ng-icon name="heroXMark" size="18"></ng-icon>
+        </button>
+
         <!-- CHART TOOLBAR -->
         <div class="chart-toolbar">
           <div class="toolbar-left">
@@ -92,13 +97,13 @@
             </div>
           </div>
           <div class="toolbar-right">
-            <div class="tool-group">
+            <div class="tool-group" [class.tool-disabled]="chartType() === 'radar'">
               <button class="tool-btn has-tooltip" [class.active]="crosshairEnabled()" (click)="toggleCrosshair()"
                       data-tooltip="Crosshair: muestra valores exactos en ambos ejes">
                 <ng-icon name="heroCursorArrowRays" size="15"></ng-icon>
               </button>
             </div>
-            <div class="tool-group">
+            <div class="tool-group" [class.tool-disabled]="chartType() === 'radar'">
               <button class="tool-btn has-tooltip" [class.active]="activeBrushType() === 'lineX'" (click)="setBrushType('lineX')"
                       data-tooltip="Zoom horizontal: arrastra para hacer zoom a un rango de tiempo">
                 <ng-icon name="heroMagnifyingGlassPlus" size="15"></ng-icon>
@@ -135,9 +140,31 @@
           </div>
         </div>
 
+        <!-- Y-AXIS RANGE -->
+        <div class="y-range-strip" *ngIf="chartType() !== 'radar'">
+          @for (v of chartVariables; track v.key) {
+            @if (isVarSelected(v.key)) {
+              <div class="y-range-item">
+                <span class="y-range-dot" [style.background]="v.color"></span>
+                <span class="y-range-label">{{ v.label }}</span>
+                <span class="y-range-lbl">Y:</span>
+                <input type="number" placeholder="auto" class="y-range-input"
+                       [value]="getYMin(v.key)"
+                       (change)="setYRange(v.key, 'min', $any($event.target).value)">
+                <span class="y-range-sep">—</span>
+                <input type="number" placeholder="auto" class="y-range-input"
+                       [value]="getYMax(v.key)"
+                       (change)="setYRange(v.key, 'max', $any($event.target).value)">
+                <span class="y-range-unit">{{ v.unit }}</span>
+              </div>
+            }
+          }
+        </div>
+
         <!-- CHART -->
         <div class="chart-wrapper">
-          <div #chart class="chart-canvas"></div>
+          <div #chart class="chart-canvas" [class.chart-hidden]="chartType() === 'radar'"></div>
+          <div #radarChart class="chart-canvas" [class.chart-hidden]="chartType() !== 'radar'"></div>
           <div class="loading-overlay" *ngIf="loading()">
             <div class="spinner"></div>
           </div>

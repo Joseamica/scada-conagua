@@ -48,12 +48,13 @@ const SITE_COLORS = [
   '#ec4899', '#84cc16', '#f97316', '#6366f1', '#22d3ee',
 ];
 
-type ChartType = 'line' | 'bar' | 'area';
+type ChartType = 'line' | 'bar' | 'area' | 'radar';
 
 const CHART_TYPE_OPTIONS: { key: ChartType; label: string; icon: string }[] = [
   { key: 'line',  label: 'Línea',  icon: 'heroPresentationChartLine' },
   { key: 'bar',   label: 'Barras', icon: 'heroChartBar' },
   { key: 'area',  label: 'Área',   icon: 'heroChartBarSquare' },
+  { key: 'radar', label: 'Radar',  icon: 'heroChartPie' },
 ];
 
 @Component({
@@ -75,12 +76,14 @@ const CHART_TYPE_OPTIONS: { key: ChartType; label: string; icon: string }[] = [
 export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
 
   @ViewChild('chart', { static: false }) chartRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('radarChart', { static: false }) radarRef!: ElementRef<HTMLDivElement>;
   @ViewChild('datePicker') datePickerRef!: DateRangePickerComponent;
   chart!: echarts.ECharts;
+  radarChart!: echarts.ECharts;
 
   private authService = inject(AuthService);
   private themeService = inject(ThemeService);
-  private resizeHandler = () => this.chart?.resize();
+  private resizeHandler = () => { this.chart?.resize(); this.radarChart?.resize(); };
 
   private themeEffect = effect(() => {
     const theme = this.themeService.resolved();
@@ -165,6 +168,9 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
   isFullscreen = signal(false);
   loading = signal(false);
 
+  // Custom Y-axis ranges per variable
+  yRanges = signal<Record<string, { min?: number; max?: number }>>({});
+
   // Data storage
   private lastChartData: Record<string, Record<string, [number, number | null][]>> = {};
   variableStats = signal<Record<string, { min: number; max: number; avg: number; current: number }>>({});
@@ -172,7 +178,8 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
   private escHandler = (e: KeyboardEvent) => {
     if (e.key === 'Escape' && this.isFullscreen()) {
       this.isFullscreen.set(false);
-      setTimeout(() => this.chart?.resize(), 50);
+      const c = this.chartType() === 'radar' ? this.radarChart : this.chart;
+      setTimeout(() => c?.resize(), 50);
     }
   };
 
@@ -228,12 +235,17 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
       this.activeBrushType.set('none');
     });
 
+    if (this.radarRef?.nativeElement) {
+      this.radarChart = echarts.init(this.radarRef.nativeElement);
+    }
+
     this.loadCharts();
     window.addEventListener('resize', this.resizeHandler);
   }
 
   ngOnDestroy(): void {
     if (this.chart) this.chart.dispose();
+    if (this.radarChart) this.radarChart.dispose();
     window.removeEventListener('resize', this.resizeHandler);
     document.removeEventListener('keydown', this.escHandler);
   }
@@ -333,10 +345,39 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
     return this.selectedVars().has(key);
   }
 
-  setChartType(t: ChartType) {
-    this.chartType.set(t);
+  getYMin(key: string): string {
+    const r = this.yRanges()[key];
+    return r?.min != null ? String(r.min) : '';
+  }
+
+  getYMax(key: string): string {
+    const r = this.yRanges()[key];
+    return r?.max != null ? String(r.max) : '';
+  }
+
+  setYRange(key: string, bound: 'min' | 'max', value: string): void {
+    const current = { ...this.yRanges() };
+    const entry = { ...(current[key] || {}) };
+    const num = value.trim() === '' ? undefined : Number(value);
+    entry[bound] = num;
+    if (entry.min == null && entry.max == null) {
+      delete current[key];
+    } else {
+      current[key] = entry;
+    }
+    this.yRanges.set(current);
     if (Object.keys(this.lastChartData).length > 0) {
       this.renderChart();
+    }
+  }
+
+  setChartType(t: ChartType) {
+    this.chartType.set(t);
+    if (Object.keys(this.lastChartData).length === 0) return;
+    if (t === 'radar') {
+      setTimeout(() => { this.radarChart?.resize(); this.renderRadar(); }, 50);
+    } else {
+      setTimeout(() => { this.chart?.resize(); this.renderChart(); }, 50);
     }
   }
 
@@ -372,7 +413,10 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.loading.set(true);
-    const selected = this.selectedVars();
+    // Radar always fetches ALL variables to form a proper polygon
+    const selected = this.chartType() === 'radar'
+      ? new Set(this.chartVariables.map(v => v.key))
+      : this.selectedVars();
 
     const requests = activeSites.map(devEUI => {
       const varRequests: Record<string, any> = {};
@@ -409,7 +453,11 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
         });
 
         this.computeVariableStats();
-        this.renderChart();
+        if (this.chartType() === 'radar') {
+          this.renderRadar();
+        } else {
+          this.renderChart();
+        }
         this.loading.set(false);
       },
       error: (err) => {
@@ -447,6 +495,9 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
         nameTextStyle: { color: v.color },
         splitLine: { show: idx === 0, lineStyle: { color: themeColors.splitLine, type: 'dashed' } }
       };
+      const yRange = this.yRanges()[v.key];
+      if (yRange?.min != null) { axis.min = yRange.min; axis.scale = false; }
+      if (yRange?.max != null) { axis.max = yRange.max; axis.scale = false; }
       if (!isLeft && rightOffset > 0) axis.offset = rightOffset;
       if (!isLeft) rightOffset += 60;
       yAxis.push(axis);
@@ -617,12 +668,14 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
     } else {
       document.removeEventListener('keydown', this.escHandler);
     }
-    setTimeout(() => this.chart?.resize(), 50);
+    const active = this.chartType() === 'radar' ? this.radarChart : this.chart;
+    setTimeout(() => active?.resize(), 50);
   }
 
   downloadChartPng() {
-    if (!this.chart) return;
-    const url = this.chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
+    const active = this.chartType() === 'radar' ? this.radarChart : this.chart;
+    if (!active) return;
+    const url = active.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
     const a = document.createElement('a');
     a.href = url;
     a.download = `telemetria_avanzada_${new Date().toISOString().slice(0,10)}.png`;
@@ -693,8 +746,9 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
 
   private computeVariableStats() {
     const stats: Record<string, { min: number; max: number; avg: number; current: number }> = {};
+    const isRadar = this.chartType() === 'radar';
     for (const v of this.chartVariables) {
-      if (!this.selectedVars().has(v.key)) continue;
+      if (!isRadar && !this.selectedVars().has(v.key)) continue;
       const allValues: number[] = [];
       let lastValue = 0;
       for (const site of this.selectedSites()) {
@@ -713,6 +767,99 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
       };
     }
     this.variableStats.set(stats);
+  }
+
+  private renderRadar(): void {
+    if (!this.radarChart) {
+      if (this.radarRef?.nativeElement) {
+        this.radarChart = echarts.init(this.radarRef.nativeElement);
+      } else {
+        return;
+      }
+    }
+
+    const stats = this.variableStats();
+    // Radar always uses ALL variables that have data
+    const activeVars = this.chartVariables.filter(v => stats[v.key]);
+    const activeSites = this.selectedSites();
+    const themeColors = getEChartsColors(this.themeService.resolved());
+
+    if (activeVars.length < 3 || activeSites.length === 0) {
+      this.radarChart.setOption({ radar: { indicator: [] }, series: [] }, true);
+      return;
+    }
+
+    // Per-site current values for multi-site mode
+    const perSite: Record<string, Record<string, number>> = {};
+    for (const site of activeSites) {
+      perSite[site] = {};
+      for (const v of activeVars) {
+        const data = this.lastChartData[site]?.[v.key];
+        if (!data) continue;
+        const vals = data.map(d => d[1]).filter((x): x is number => x !== null);
+        if (vals.length > 0) perSite[site][v.key] = vals[vals.length - 1];
+      }
+    }
+
+    const indicator = activeVars.map(v => ({
+      name: `${v.label}\n(${v.unit})`,
+      max: Math.round((stats[v.key].max * 1.2 || 1) * 100) / 100
+    }));
+
+    let seriesData: any[];
+    if (activeSites.length === 1) {
+      seriesData = [
+        {
+          name: 'Actual',
+          value: activeVars.map(v => Math.round((stats[v.key]?.current ?? 0) * 100) / 100),
+          lineStyle: { width: 2 },
+          itemStyle: { color: '#007bff' },
+          areaStyle: { color: 'rgba(0, 123, 255, 0.15)' }
+        },
+        {
+          name: 'Promedio',
+          value: activeVars.map(v => Math.round((stats[v.key]?.avg ?? 0) * 100) / 100),
+          lineStyle: { width: 1.5, type: 'dashed' },
+          itemStyle: { color: '#28a745' },
+          areaStyle: { color: 'rgba(40, 167, 69, 0.08)' }
+        }
+      ];
+    } else {
+      seriesData = activeSites.map((site, i) => {
+        const color = SITE_COLORS[i % SITE_COLORS.length];
+        return {
+          name: this.getSiteName(site),
+          value: activeVars.map(v => Math.round((perSite[site]?.[v.key] ?? 0) * 100) / 100),
+          lineStyle: { width: 2, color },
+          itemStyle: { color },
+          areaStyle: { color: color + '20' }
+        };
+      });
+    }
+
+    this.radarChart.setOption({
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: 'rgba(15,23,42,0.92)',
+        borderColor: 'rgba(255,255,255,0.08)',
+        textStyle: { color: '#e2e8f0', fontSize: 12 }
+      },
+      legend: {
+        bottom: 0,
+        textStyle: { color: themeColors.textColor, fontSize: 11 }
+      },
+      radar: {
+        indicator,
+        shape: 'polygon',
+        radius: '65%',
+        splitNumber: 5,
+        axisName: { color: themeColors.textColor, fontSize: 11 },
+        splitLine: { lineStyle: { color: themeColors.splitLine } },
+        splitArea: { areaStyle: { color: ['transparent', 'rgba(148,163,184,0.03)'] } },
+        axisLine: { lineStyle: { color: themeColors.splitLine } }
+      },
+      series: [{ type: 'radar', data: seriesData, symbol: 'circle', symbolSize: 5 }]
+    }, true);
   }
 
   goBack(): void {

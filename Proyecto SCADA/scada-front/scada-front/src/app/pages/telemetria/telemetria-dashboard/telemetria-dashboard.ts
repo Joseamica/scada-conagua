@@ -212,6 +212,8 @@ export class TelemetriaDashboard implements OnInit {
             value: flow != null ? flow.toFixed(2) : 'N/A',
             unit: 'L/s',
             status,
+            rssi: s.rssi ?? null,
+            signalPct: this.rssiToPercent(s.rssi),
             timestamp: hasTelemetry ? this.formatTimestamp(s.last_updated_at!) : 'Esperando primera lectura',
           };
         });
@@ -256,6 +258,20 @@ export class TelemetriaDashboard implements OnInit {
 
   countByMunicipio(municipio: string): number {
     return this.sites().filter(s => s.municipio === municipio).length;
+  }
+
+  /** Convert RSSI (dBm) to 0–100 % (LoRaWAN typical range: -120 dBm = 0%, -30 dBm = 100%) */
+  private rssiToPercent(rssi: number | null | undefined): number | null {
+    if (rssi == null) return null;
+    const clamped = Math.max(-120, Math.min(-30, rssi));
+    return Math.round(((clamped + 120) / 90) * 100);
+  }
+
+  signalLevel(pct: number | null): string {
+    if (pct == null) return 'none';
+    if (pct >= 60) return 'good';
+    if (pct >= 30) return 'fair';
+    return 'poor';
   }
 
   // =========================

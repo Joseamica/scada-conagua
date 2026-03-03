@@ -253,6 +253,7 @@
                     <th scope="col" class="col-numeric">Valor</th>
                     <th scope="col">Unidad</th>
                     <th scope="col">Status</th>
+                    <th scope="col" class="col-signal">Señal</th>
                     <th scope="col" class="col-date">Última lectura</th>
                     <th scope="col" class="col-actions">Acciones</th>
                   </tr>
@@ -289,6 +290,27 @@
                         {{ site.status === 'ok' ? 'Con gasto' : site.status === 'pending' ? 'Pendiente' : 'Sin señal' }}
                       </span>
                     </td>
+                    <td class="col-signal">
+                      <div class="signal-cell" *ngIf="site.signalPct != null; else noSignal">
+                        <div class="signal-bar-track">
+                          <div class="signal-bar-fill"
+                            [style.width.%]="site.signalPct"
+                            [class.signal--good]="signalLevel(site.signalPct) === 'good'"
+                            [class.signal--fair]="signalLevel(site.signalPct) === 'fair'"
+                            [class.signal--poor]="signalLevel(site.signalPct) === 'poor'">
+                          </div>
+                        </div>
+                        <span class="signal-pct"
+                          [class.signal--good]="signalLevel(site.signalPct) === 'good'"
+                          [class.signal--fair]="signalLevel(site.signalPct) === 'fair'"
+                          [class.signal--poor]="signalLevel(site.signalPct) === 'poor'">
+                          {{ site.signalPct }}%
+                        </span>
+                      </div>
+                      <ng-template #noSignal>
+                        <span class="signal-na">—</span>
+                      </ng-template>
+                    </td>
                     <td class="mono cell-date">{{ site.timestamp }}</td>
                     <td>
                       <div class="col-actions-cell">
@@ -312,7 +334,7 @@
                   </tr>
 
                   <tr *ngIf="sitesFiltrados().length === 0">
-                    <td colspan="8" class="empty">
+                    <td colspan="9" class="empty">
                       <div class="empty-state">
                         <ng-icon name="heroMagnifyingGlass" size="32"></ng-icon>
                         <p class="empty-title">Sin resultados</p>
