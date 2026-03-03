@@ -189,7 +189,10 @@
                 PARAR
               </button>
             </div>
-            <p class="field-hint" *ngIf="!canControlPump()">Solo supervisores pueden controlar la bomba</p>
+            <div class="control-readonly-banner" *ngIf="!canControlPump()">
+              <ng-icon name="heroLockClosed" size="16"></ng-icon>
+              <span>Control restringido a supervisores</span>
+            </div>
           </div>
         </div>
 

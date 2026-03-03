@@ -280,7 +280,7 @@
 
 .iso-canvas {
   position: relative;
-  padding: 50px 0 0;
+  padding: 50px 0 20px;
 }
 
 .iso-render {
@@ -421,19 +421,21 @@
 }
 
 .meter-screen {
-  width: 40px;
-  height: 20px;
+  width: 50px;
   background: #2bcf52;
   border-radius: 6px;
-  padding: 8px 10px;
+  padding: 4px 6px;
   font-family: 'Courier New', monospace;
   color: #041b0d;
   border: 2px solid #0f5f26;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.flow-main { display: flex; align-items: center; gap: 2px; }
-.flow-value { font-size: 15px; font-weight: 700; color: #041b0d; line-height: 0; margin-left: -10px; letter-spacing: -2.2px; }
-.flow-unit { font-size: 12px; font-weight: 600; margin-bottom: 4px; letter-spacing: -2.2px; }
+.flow-main { display: flex; align-items: baseline; gap: 1px; }
+.flow-value { font-size: 13px; font-weight: 700; color: #041b0d; line-height: 1; letter-spacing: -1px; }
+.flow-unit { font-size: 8px; font-weight: 600; letter-spacing: -0.5px; }
 
 /* ===== CONTROL PANEL ===== */
 
@@ -527,6 +529,21 @@
   background: #d1d5db;
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.control-readonly-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
 }
 
 /* ===== STATISTICS / READINGS ===== */

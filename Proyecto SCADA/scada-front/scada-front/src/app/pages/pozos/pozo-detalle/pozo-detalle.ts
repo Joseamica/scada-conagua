@@ -17,7 +17,8 @@ import * as echarts from 'echarts';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
 import {
   heroChartBarSquare, heroBolt, heroBeaker, heroChartBar,
-  heroSignal, heroCog6Tooth, heroPresentationChartLine, heroExclamationTriangle
+  heroSignal, heroCog6Tooth, heroPresentationChartLine, heroExclamationTriangle,
+  heroLockClosed
 } from '@ng-icons/heroicons/outline';
 import { bootstrapBatteryFull, bootstrapBatteryHalf, bootstrapBatteryLow } from '@ng-icons/bootstrap-icons';
 import { DateRangePickerComponent, DateRangeOutput } from '../../../shared/date-range-picker/date-range-picker';
@@ -94,7 +95,7 @@ const CHART_TYPE_OPTIONS: { key: ChartType; label: string }[] = [
     provideIcons({
       heroChartBarSquare, heroBolt, heroBeaker, heroChartBar,
       heroSignal, heroCog6Tooth, heroPresentationChartLine, heroExclamationTriangle,
-      bootstrapBatteryFull, bootstrapBatteryHalf, bootstrapBatteryLow
+      heroLockClosed, bootstrapBatteryFull, bootstrapBatteryHalf, bootstrapBatteryLow
     })
   ],
   templateUrl: './pozo-detalle.html',
