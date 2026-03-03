@@ -1,19 +1,19 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
-import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
+import { OtpInput } from '../../../shared/otp-input/otp-input';
 
 @Component({
   selector: 'token',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, OtpInput],
   templateUrl: './token.html',
   styleUrl: './token.css',
 })
-
 export class Token implements OnInit {
-  tokenValue: string = '';
+  @ViewChild(OtpInput) otpInput!: OtpInput;
+
   errorMsg: string = '';
   method: 'totp' | 'email' = 'email';
 
@@ -23,20 +23,15 @@ export class Token implements OnInit {
     this.method = (sessionStorage.getItem('2fa_method') as 'totp' | 'email') || 'email';
   }
 
-  verificarToken() {
-    if (this.tokenValue.length < 6) {
-      this.errorMsg = 'El codigo debe ser de 6 digitos.';
-      return;
-    }
-
+  onCodeCompleted(code: string) {
     if (this.method === 'totp') {
-      this.verificarTOTP();
+      this.verificarTOTP(code);
     } else {
-      this.verificarEmail();
+      this.verificarEmail(code);
     }
   }
 
-  private verificarTOTP() {
+  private verificarTOTP(code: string) {
     const tempToken = sessionStorage.getItem('2fa_temp_token');
 
     if (!tempToken) {
@@ -44,18 +39,19 @@ export class Token implements OnInit {
       return;
     }
 
-    this.authService.verifyTOTP(tempToken, this.tokenValue).subscribe({
+    this.authService.verifyTOTP(tempToken, code).subscribe({
       next: () => {
         this.limpiarSession();
         this.router.navigate(['/dashboard']);
       },
       error: (err) => {
         this.errorMsg = err.error?.error || 'Codigo TOTP invalido o expirado';
-      }
+        this.otpInput?.reset();
+      },
     });
   }
 
-  private verificarEmail() {
+  private verificarEmail(code: string) {
     const email = sessionStorage.getItem('pending_email');
 
     if (!email) {
@@ -63,14 +59,20 @@ export class Token implements OnInit {
       return;
     }
 
-    this.authService.verify2FA(email, this.tokenValue).subscribe({
-      next: () => {
+    this.authService.verify2FA(email, code).subscribe({
+      next: (res) => {
         this.limpiarSession();
-        this.router.navigate(['/dashboard']);
+        // Check if TOTP setup is needed
+        if (res.user && res.user.is_2fa_enabled && !res.user.totp_enabled) {
+          this.router.navigate(['/auth/setup-totp']);
+        } else {
+          this.router.navigate(['/dashboard']);
+        }
       },
       error: (err) => {
         this.errorMsg = err.error?.error || 'Codigo invalido o expirado';
-      }
+        this.otpInput?.reset();
+      },
     });
   }
 
@@ -88,7 +90,7 @@ export class Token implements OnInit {
       },
       error: (err) => {
         this.errorMsg = err.error?.error || 'No se pudo reenviar el codigo.';
-      }
+      },
     });
   }
 

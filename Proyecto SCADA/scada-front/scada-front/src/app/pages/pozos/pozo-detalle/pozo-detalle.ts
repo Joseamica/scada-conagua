@@ -58,8 +58,33 @@ export interface TelemetryHistoryResponse {
 interface TelemetryReading {
   flow: number;     // Lt/s
   pressure: number; // bar
-  timestamp: Date;  
+  timestamp: Date;
 }
+
+export interface ChartVariable {
+  key: string;
+  label: string;
+  unit: string;
+  color: string;
+  position: 'left' | 'right';
+  defaultOn: boolean;
+}
+
+const CHART_VARIABLES: ChartVariable[] = [
+  { key: 'caudal_lts',  label: 'Caudal',    unit: 'Lt/s',   color: '#007bff', position: 'left',  defaultOn: true },
+  { key: 'presion_kg',  label: 'Presión',   unit: 'Kg/cm²', color: '#28a745', position: 'right', defaultOn: true },
+  { key: 'rssi',        label: 'Señal LTE', unit: 'dBm',    color: '#ffc107', position: 'right', defaultOn: false },
+  { key: 'snr',         label: 'SNR',       unit: 'dB',     color: '#9333ea', position: 'right', defaultOn: false },
+];
+
+type ChartType = 'line' | 'bar' | 'area' | 'gauge';
+
+const CHART_TYPE_OPTIONS: { key: ChartType; label: string }[] = [
+  { key: 'line',    label: 'Línea' },
+  { key: 'bar',     label: 'Barras' },
+  { key: 'area',    label: 'Área' },
+  { key: 'gauge',   label: 'Gauge' },
+];
 
 @Component({
   selector: 'app-pozo-detalle',
@@ -207,7 +232,14 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   lat = signal<number>(0);
   lng = signal<number>(0);
 
-  showSignal = signal(false);
+  // Variable selector for chart
+  chartVariables = CHART_VARIABLES;
+  selectedVars = signal<Set<string>>(new Set(['caudal_lts', 'presion_kg']));
+
+  // Chart type selector
+  chartTypeOptions = CHART_TYPE_OPTIONS;
+  chartType = signal<ChartType>('line');
+  private lastChartData: Record<string, [number, number | null][]> = {};
 
   layout = signal<any>(null);
   datos = signal<any>({
@@ -279,6 +311,13 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
     return 'battery--critical';
   });
 
+  signalPercent = computed(() => {
+    const rssi = this.commStats().lteRssi;
+    // -30 dBm = 100%, -120 dBm = 0%
+    const pct = Math.round(((rssi + 120) / 90) * 100);
+    return Math.max(0, Math.min(100, pct));
+  });
+
   // ✅ Resuelve: Property 'commQualityLabel' does not exist
   commQualityLabel = computed(() => {
     const rssi = this.commStats().lteRssi;
@@ -312,6 +351,10 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   // CONFIRMACIÓN
   // =========================
   accionPendiente = signal<'start' | 'stop' | null>(null);
+  confirmInput = signal('');
+  readonly stopConfirmValid = computed(() =>
+    this.confirmInput().trim().toLowerCase() === this.pozoNombre().trim().toLowerCase()
+  );
 
   abrirConfirmacion(a: 'start' | 'stop') {
     // Validación de seguridad antes de abrir el modal
@@ -319,16 +362,18 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
       console.warn('Acción bloqueada: Condiciones inseguras para arranque.');
       return;
     }
-  
+
     if (a === 'stop' && !this.canStop()) {
       console.warn('Acción bloqueada: Condiciones inseguras para paro.');
       return;
     }
 
+    this.confirmInput.set('');
     this.accionPendiente.set(a);
   }
 
   cancelarAccion() {
+    this.confirmInput.set('');
     this.accionPendiente.set(null);
   }
 
@@ -451,7 +496,8 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
         this.liveTotalFlow.set(Number(data.last_total_flow) || 0);
         this.estadoBomba.set(flowVal > 0 ? 'on' : 'off');
         this.estadoEnergia.set(data.is_cfe_on ? 'on' : 'off');
-        this.commStats.set({ lteRssi: Number(data.rssi), snr: Number(data.snr) });
+        const rawRssi = Number(data.rssi);
+        this.commStats.set({ lteRssi: rawRssi > 0 ? -rawRssi : rawRssi, snr: Number(data.snr) });
 
         // ✅ 2. Actualizamos 'datos' para que el HTML encuentre los valores
         this.datos.set({
@@ -482,12 +528,26 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.loading.set(true);
 
-    forkJoin({
-      flow:       this.telemetryService.getHistory(devEUI, 'caudal_lts', rangeStr, options),
-      pressure:   this.telemetryService.getHistory(devEUI, 'presion_kg', rangeStr, options),
-      rssi:       this.telemetryService.getHistory(devEUI, 'rssi',       rangeStr, options),
-      totalFlow:  this.telemetryService.getHistory(devEUI, 'last_total_flow', rangeStr, options)
-    }).subscribe({
+    const selected = this.selectedVars();
+    const requests: Record<string, any> = {};
+
+    // Fetch selected chart variables
+    for (const v of this.chartVariables) {
+      if (selected.has(v.key)) {
+        requests[v.key] = this.telemetryService.getHistory(devEUI, v.key, rangeStr, options);
+      }
+    }
+
+    // Always fetch flow + pressure for statistics even if not on chart
+    if (!selected.has('caudal_lts'))
+      requests['_stats_flow'] = this.telemetryService.getHistory(devEUI, 'caudal_lts', rangeStr, options);
+    if (!selected.has('presion_kg'))
+      requests['_stats_pressure'] = this.telemetryService.getHistory(devEUI, 'presion_kg', rangeStr, options);
+
+    // Always fetch totalizer for bottom chart
+    requests['last_total_flow'] = this.telemetryService.getHistory(devEUI, 'last_total_flow', rangeStr, options);
+
+    forkJoin(requests).subscribe({
       next: (res: any) => {
         // Convertir a [timestamp_ms, value] para ECharts time axis
         // Valores <= 0.01 se tratan como null (bomba apagada en sitios Ignition)
@@ -496,26 +556,41 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
           const v = p.value;
           return [ts, (v != null && v > 0.01) ? v : null];
         };
-        const flows     = res.flow.data.map(toPoint);
-        const pressures = res.pressure.data.map(toPoint);
-        const rssis     = res.rssi.data.map((p: any) =>
-          [new Date(p.timestamp).getTime(), p.value ?? null] as [number, number | null]);
-        const totalFlows = res.totalFlow.data.map((p: any) =>
+
+        // Build chart data for selected variables
+        const chartData: Record<string, [number, number | null][]> = {};
+        for (const v of this.chartVariables) {
+          if (selected.has(v.key) && res[v.key]) {
+            if (v.key === 'rssi' || v.key === 'snr') {
+              // Signal/SNR: keep raw values (no zero-threshold filter)
+              chartData[v.key] = res[v.key].data.map((p: any) =>
+                [new Date(p.timestamp).getTime(), p.value ?? null] as [number, number | null]);
+            } else {
+              chartData[v.key] = res[v.key].data.map(toPoint);
+            }
+          }
+        }
+
+        // Statistics: always from flow + pressure
+        const flowData = res['caudal_lts'] || res['_stats_flow'];
+        const pressureData = res['presion_kg'] || res['_stats_pressure'];
+        if (flowData && pressureData) {
+          const readings: TelemetryReading[] = flowData.data
+            .map((p: any, i: number) => ({
+              flow:      p.value ?? 0,
+              pressure:  pressureData.data[i]?.value ?? 0,
+              timestamp: new Date(p.timestamp)
+            }))
+            .filter((r: TelemetryReading) => !isNaN(r.timestamp.getTime()) && (r.flow > 0.01 || r.pressure > 0.01));
+          readings.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+          this.calculateStatistics(readings);
+        }
+
+        const totalFlows = res['last_total_flow'].data.map((p: any) =>
           [new Date(p.timestamp).getTime(), p.value ?? null] as [number, number | null]);
 
-        // Estadísticas: alinear caudal y presión por índice
-        // Filtramos lecturas donde la bomba está apagada (ambos ~0)
-        const readings: TelemetryReading[] = res.flow.data
-          .map((p: any, i: number) => ({
-            flow:      p.value ?? 0,
-            pressure:  res.pressure.data[i]?.value ?? 0,
-            timestamp: new Date(p.timestamp)
-          }))
-          .filter((r: TelemetryReading) => !isNaN(r.timestamp.getTime()) && (r.flow > 0.01 || r.pressure > 0.01));
-        readings.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-
-        this.calculateStatistics(readings);
-        this.updateMainChart(flows, pressures, rssis);
+        this.lastChartData = chartData;
+        this.renderMainChart();
         this.updateTotalizerChart(totalFlows);
         this.loading.set(false);
       },
@@ -568,79 +643,90 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
 
-  private updateMainChart(
-    flows:     [number, number | null][],
-    pressures: [number, number | null][],
-    rssis:     [number, number | null][]
-  ): void {
-    const showSignal = this.showSignal();
+  private updateMainChart(data: Record<string, [number, number | null][]>): void {
+    const selected = this.selectedVars();
+    const activeVars = this.chartVariables.filter(v => selected.has(v.key) && data[v.key]);
 
     // =========================
-    // Y-AXIS AUTO-SCALING
+    // Y AXES — built dynamically from selected variables
     // =========================
-    const flowVals     = flows.map(p => p[1]).filter((v): v is number => v !== null);
-    const pressureVals = pressures.map(p => p[1]).filter((v): v is number => v !== null);
+    const yAxis: any[] = [];
+    const varAxisIndex: Record<string, number> = {};
+    let rightOffset = 0;
 
-    const allVals = [...flowVals, ...pressureVals];
-    const combinedMax = allVals.length ? Math.ceil(Math.max(...allVals) * 1.15) : 10;
+    for (const v of activeVars) {
+      const idx = yAxis.length;
+      varAxisIndex[v.key] = idx;
+      const isLeft = v.position === 'left';
 
-    // =========================
-    // Y AXIS (single shared axis like Ignition)
-    // =========================
-    const yAxis: any[] = [
-      { type: 'value', name: 'Lt/s · Kg/cm²', position: 'left', min: 0, max: combinedMax,
-        splitLine: { lineStyle: { color: '#e5e7eb' } } }
-    ];
+      const axis: any = {
+        type: 'value', name: v.unit, position: isLeft ? 'left' : 'right',
+        scale: true,
+        axisLabel: { color: v.color }, nameTextStyle: { color: v.color },
+        splitLine: { show: idx === 0, lineStyle: { color: '#e5e7eb' } }
+      };
 
-    if (showSignal) {
-      const rssiVals = rssis.map(p => p[1]).filter((v): v is number => v !== null);
-      const rssiMin = rssiVals.length ? Math.floor(Math.min(...rssiVals) * 1.1) : -120;
-      const rssiMax = rssiVals.length ? Math.ceil(Math.max(...rssiVals) * 1.1)  : 0;
-      const isNegative = rssiMax <= 0;
-      yAxis.push({
-        type: 'value', name: isNegative ? 'dBm' : 'Señal %', position: 'right',
-        min: isNegative ? Math.min(rssiMin, -120) : 0,
-        max: isNegative ? Math.max(rssiMax, -40)  : Math.max(rssiMax, 100),
-        splitLine: { show: false }
-      });
+      if (!isLeft && rightOffset > 0) axis.offset = rightOffset;
+      if (!isLeft) rightOffset += 60;
+
+      yAxis.push(axis);
     }
 
     // =========================
-    // SERIES (ECG – líneas finas, sin relleno, sin suavizado)
+    // SERIES — dynamic per selected variable
     // =========================
-    const series: any[] = [
-      {
-        name: 'Caudal',    type: 'line', yAxisIndex: 0, data: flows,
+    const series: any[] = [];
+    const legendData: string[] = [];
+
+    const type = this.chartType();
+    const isBar = type === 'bar';
+    const isArea = type === 'area';
+
+    for (const v of activeVars) {
+      legendData.push(v.label);
+      const isDashed = v.key === 'rssi' || v.key === 'snr';
+      const s: any = {
+        name: v.label,
+        type: isBar ? 'bar' : 'line',
+        yAxisIndex: varAxisIndex[v.key],
+        data: data[v.key],
         showSymbol: false, smooth: false, sampling: 'lttb',
-        lineStyle: { width: 1.5, color: '#007bff' },
         connectNulls: false
-      },
-      {
-        name: 'Presión',   type: 'line', yAxisIndex: 0, data: pressures,
-        showSymbol: false, smooth: false, sampling: 'lttb',
-        lineStyle: { width: 1.5, color: '#28a745' },
-        connectNulls: false
+      };
+      if (isBar) {
+        s.itemStyle = { color: v.color };
+        s.barMaxWidth = 8;
+      } else {
+        s.lineStyle = { width: isDashed ? 1 : 1.5, color: v.color, ...(isDashed ? { type: 'dashed' } : {}) };
       }
-    ];
-
-    if (showSignal) {
-      series.push({
-        name: 'Señal',     type: 'line', yAxisIndex: 1, data: rssis,
-        showSymbol: false, smooth: false, sampling: 'lttb',
-        lineStyle: { width: 1, type: 'dashed', color: '#ffc107' }
-      });
+      if (isArea) {
+        s.areaStyle = { color: v.color + '25' };
+        s.stack = 'total';
+      }
+      series.push(s);
     }
+
+    const rightAxes = activeVars.filter(v => v.position === 'right').length;
+    const gridRight = Math.max(65, 65 + (rightAxes - 1) * 60);
 
     const option: any = {
       tooltip: { trigger: 'axis' },
-      legend: {
-        data: showSignal ? ['Caudal', 'Presión', 'Señal'] : ['Caudal', 'Presión'],
-        top: 0
+      legend: { data: legendData, top: 0 },
+      toolbox: {
+        right: gridRight + 10,
+        itemSize: 20, itemGap: 12,
+        iconStyle: { borderColor: '#475569', borderWidth: 1.5 },
+        emphasis: { iconStyle: { borderColor: '#007bff' } },
+        feature: {
+          dataZoom: {
+            yAxisIndex: 'none',
+            title: { zoom: 'Seleccionar rango', back: 'Restaurar' },
+            brushStyle: { borderWidth: 1, color: 'rgba(0,123,255,0.15)', borderColor: '#007bff' }
+          },
+          restore: { title: 'Restaurar' }
+        }
       },
-      grid: {
-        left: 55, right: showSignal ? 80 : 20,
-        bottom: 70, top: 40
-      },
+      grid: { left: 55, right: gridRight, bottom: 70, top: 55 },
       xAxis: { type: 'time', boundaryGap: false },
       yAxis,
       dataZoom: [
@@ -695,9 +781,108 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
     }, true);
   }
 
-  toggleSignal() {
-    this.showSignal.set(!this.showSignal());
-    this.loadCharts(); // reconstruye la gráfica
+  toggleVar(key: string) {
+    const current = new Set(this.selectedVars());
+    if (current.has(key)) {
+      if (current.size <= 1) return; // al menos una variable
+      current.delete(key);
+    } else {
+      current.add(key);
+    }
+    this.selectedVars.set(current);
+    this.loadCharts();
   }
+
+  isVarSelected(key: string): boolean {
+    return this.selectedVars().has(key);
+  }
+
+  setChartType(t: ChartType) {
+    this.chartType.set(t);
+    // Gauge uses live data, no need to re-fetch
+    if (t === 'gauge') {
+      this.renderGauge();
+      return;
+    }
+    // Re-render from cached data if available
+    if (Object.keys(this.lastChartData).length > 0) {
+      this.renderMainChart();
+    } else {
+      this.loadCharts();
+    }
+  }
+
+  private renderMainChart() {
+    if (this.chartType() === 'gauge') {
+      this.renderGauge();
+    } else {
+      this.updateMainChart(this.lastChartData);
+    }
+  }
+
+  // =========================
+  // GAUGE CHART
+  // =========================
+  private renderGauge(): void {
+    const selected = this.selectedVars();
+    const activeVars = this.chartVariables.filter(v => selected.has(v.key));
+    const series: any[] = [];
+    const count = activeVars.length;
+
+    activeVars.forEach((v, i) => {
+      let currentValue = 0;
+      let max = 100;
+
+      if (v.key === 'caudal_lts') {
+        currentValue = this.datos().caudal;
+        max = Math.max(50, currentValue * 1.5);
+      } else if (v.key === 'presion_kg') {
+        currentValue = this.datos().presion;
+        max = Math.max(10, currentValue * 1.5);
+      } else if (v.key === 'rssi') {
+        currentValue = this.signalPercent();
+        max = 100;
+      } else if (v.key === 'snr') {
+        currentValue = this.commStats().snr;
+        max = 30;
+      }
+
+      const centerX = `${(100 / (count + 1)) * (i + 1)}%`;
+
+      series.push({
+        type: 'gauge',
+        center: [centerX, '55%'],
+        radius: count <= 2 ? '75%' : '55%',
+        startAngle: 220,
+        endAngle: -40,
+        min: 0,
+        max: Math.ceil(max),
+        splitNumber: 5,
+        axisLine: {
+          lineStyle: {
+            width: 18,
+            color: [[0.3, '#e5e7eb'], [0.7, v.color + '60'], [1, v.color]]
+          }
+        },
+        axisTick: { distance: -18, length: 6, lineStyle: { color: '#fff', width: 2 } },
+        splitLine: { distance: -18, length: 18, lineStyle: { color: '#fff', width: 3 } },
+        axisLabel: { distance: 25, color: '#64748b', fontSize: 11 },
+        pointer: { width: 5, length: '60%', itemStyle: { color: v.color } },
+        anchor: { show: true, size: 14, itemStyle: { borderWidth: 2, borderColor: v.color } },
+        title: { show: true, offsetCenter: [0, '85%'], fontSize: 14, color: '#475569', fontWeight: 600 },
+        detail: {
+          valueAnimation: true,
+          formatter: `{value} ${v.unit}`,
+          fontSize: 18, fontWeight: 700,
+          color: v.color,
+          offsetCenter: [0, '65%']
+        },
+        data: [{ value: Number(currentValue.toFixed(2)), name: v.label }]
+      });
+    });
+
+    this.mainChart.setOption({ series }, true);
+  }
+
 
 }

@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import { generateSecret, generateURI, verify as verifyTotp } from 'otplib';
 import * as QRCode from 'qrcode';
 import { send2FACode, sendPasswordResetEmail } from '../services/email-service';
-import { findUserByEmail, findUserById, validate2FACode, clearUser2FAToken, verifyCredentials, generateAndSave2FACode, generateTempToken, saveTotpSecret, enableTotp, disableTotp, generatePasswordResetToken, findUserByResetToken, resetPasswordWithToken } from '../services/user-service';
+import { findUserByEmail, findUserById, validate2FACode, clearUser2FAToken, verifyCredentials, generateAndSave2FACode, generateTempToken, saveTotpSecret, enableTotp, disableTotp, generatePasswordResetToken, findUserByResetToken, resetPasswordWithToken, generateEmailVerifyToken, validateEmailVerifyToken } from '../services/user-service';
 import bcrypt from 'bcrypt';
 import { ILoginRequest } from '../interfaces/user.interface';
 import { pool } from '../services/db-service';
@@ -22,7 +22,7 @@ router.post('/login', async (req: Request, res: Response) => {
         const user = await verifyCredentials({ email, password });
 
         if (!user) {
-            return res.status(401).json({ error: 'Invalid credentials or account blocked.' });
+            return res.status(401).json({ error: 'Credenciales invalidas o cuenta bloqueada.' });
         }
 
         // TOTP (Google Authenticator) takes priority if enabled
@@ -40,9 +40,14 @@ router.post('/login', async (req: Request, res: Response) => {
         if (user.is_2fa_enabled) {
             const tempToken = generateTempToken(user.id);
             const code = await generateAndSave2FACode(user.id);
+            const emailToken = await generateEmailVerifyToken(user.id);
 
-            // Sending the code via Gmail Relay
-            await send2FACode(user.email, code);
+            // Build magic link URL
+            const baseUrl = process.env.FRONTEND_URL || 'https://scada.playtelecom.com';
+            const verifyUrl = `${baseUrl}/auth/verify-email?token=${emailToken}`;
+
+            // Sending both code and magic link via Gmail Relay
+            await send2FACode(user.email, code, verifyUrl);
 
             return res.status(200).json({
                 message: '2FA code sent to your email',
@@ -76,7 +81,8 @@ router.post('/login', async (req: Request, res: Response) => {
         	scope: user.scope,
                 scope_id: user.scope_id,
         	estado_id: user.estado_id,
-        	totp_enabled: !!user.totp_enabled
+        	totp_enabled: !!user.totp_enabled,
+        	is_2fa_enabled: !!user.is_2fa_enabled
     	    }
         });
 
@@ -142,7 +148,8 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
                 scope: user.scope,
 		scope_id: user.scope_id,
         	estado_id: user.estado_id,
-        	totp_enabled: !!user.totp_enabled
+        	totp_enabled: !!user.totp_enabled,
+        	is_2fa_enabled: !!user.is_2fa_enabled
             }
         });
 
@@ -338,7 +345,8 @@ router.post('/verify-totp', async (req: Request, res: Response) => {
                 scope: user.scope,
                 scope_id: user.scope_id,
                 estado_id: user.estado_id,
-                totp_enabled: true
+                totp_enabled: true,
+                is_2fa_enabled: !!user.is_2fa_enabled
             }
         });
 
@@ -392,6 +400,65 @@ router.post('/2fa/disable', isAuth, async (req: Request, res: Response) => {
     } catch (error) {
         console.error('>>> [TOTP Disable Error]:', error);
         res.status(500).json({ error: 'Failed to disable TOTP.' });
+    }
+});
+
+// ── Email Magic Link Verification ──
+
+router.get('/verify-email', async (req: Request, res: Response) => {
+    const { token } = req.query;
+
+    if (!token || typeof token !== 'string') {
+        return res.status(400).json({ error: 'Token is required.' });
+    }
+
+    try {
+        const user = await validateEmailVerifyToken(token);
+
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid or expired verification link.' });
+        }
+
+        // Clear the 2FA code as well (magic link replaces it)
+        await clearUser2FAToken(user.id);
+
+        // Generate final session JWT (8 hours)
+        const sessionToken = jwt.sign(
+            {
+                id: user.id,
+                role_id: user.role_id,
+                scope: user.scope,
+                scope_id: user.scope_id,
+                estado_id: user.estado_id
+            },
+            process.env['JWT_SECRET'] as string,
+            { expiresIn: '8h' }
+        );
+
+        // Audit log
+        await pool.query(
+            `INSERT INTO scada.audit_logs (user_id, action, details, ip_address)
+             VALUES ($1, $2, $3, $4)`,
+            [user.id, 'LOGIN_SUCCESS', JSON.stringify({ method: '2FA_MAGIC_LINK', site_access: 'SCADA - SOA' }), req.ip]
+        );
+
+        res.status(200).json({
+            message: 'Email verified successfully',
+            token: sessionToken,
+            user: {
+                id: user.id,
+                full_name: user.full_name,
+                role_id: user.role_id,
+                scope: user.scope,
+                scope_id: user.scope_id,
+                estado_id: user.estado_id,
+                totp_enabled: !!user.totp_enabled,
+                is_2fa_enabled: !!user.is_2fa_enabled
+            }
+        });
+    } catch (error) {
+        console.error('>>> [Email Verify Error]:', error);
+        res.status(500).json({ error: 'Internal server error during email verification.' });
     }
 });
 

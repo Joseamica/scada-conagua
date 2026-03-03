@@ -79,6 +79,16 @@
             </select>
           </label>
 
+          <label class="field">
+            <span>Accion</span>
+            <select
+              [value]="filterAccion()"
+              (change)="filterAccion.set(($any($event.target)).value)">
+              <option value="ALL">Todas</option>
+              <option *ngFor="let a of actionOptions()" [value]="a">{{ a }}</option>
+            </select>
+          </label>
+
         </div>
       </div>
 
@@ -95,6 +105,7 @@
               <tr>
                 <th>Usuario</th>
                 <th>Rol</th>
+                <th>Entidad</th>
                 <th>Accion</th>
                 <th>IP</th>
                 <th class="col-date">Fecha / Hora</th>
@@ -105,13 +116,14 @@
               <tr *ngFor="let l of filteredLogs()">
                 <td>{{ l.full_name || l.email }}</td>
                 <td>{{ l.role_name }}</td>
+                <td>{{ l.entity_name || l.scope || '—' }}</td>
                 <td>{{ l.action }}</td>
                 <td class="mono">{{ l.ip_address }}</td>
                 <td class="mono col-date">{{ formatDate(l.created_at) }}</td>
               </tr>
 
               <tr *ngIf="filteredLogs().length === 0">
-                <td colspan="5" class="empty">
+                <td colspan="6" class="empty">
                   {{ loading() ? 'Cargando...' : 'Sin resultados' }}
                 </td>
               </tr>

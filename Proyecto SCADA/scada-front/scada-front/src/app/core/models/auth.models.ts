@@ -6,7 +6,8 @@ export interface UserSession {
   scope: string;
   scope_id: number;
   estado_id: number;
-
+  totp_enabled: boolean;
+  is_2fa_enabled: boolean;
 }
 
 export interface AuthResponse {

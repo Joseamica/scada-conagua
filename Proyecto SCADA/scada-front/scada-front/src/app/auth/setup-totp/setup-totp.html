@@ -1,0 +1,62 @@
+<div class="auth-shell">
+  <div class="auth-card">
+
+    <h1>Configura Google Authenticator</h1>
+    <p class="auth-text">
+      Tu cuenta requiere verificacion en dos pasos. Configura Google Authenticator para continuar.
+    </p>
+
+    <!-- Steps -->
+    <div class="setup-steps">
+      <div class="step">
+        <span class="step-num">1</span>
+        <span class="step-text">Abre <strong>Google Authenticator</strong> en tu telefono</span>
+      </div>
+      <div class="step">
+        <span class="step-num">2</span>
+        <span class="step-text">Escanea el codigo QR</span>
+      </div>
+      <div class="step">
+        <span class="step-num">3</span>
+        <span class="step-text">Ingresa el codigo de 6 digitos</span>
+      </div>
+    </div>
+
+    <!-- QR Code -->
+    @if (qrCode) {
+      <div class="qr-container">
+        <div class="qr-frame">
+          <img [src]="qrCode" alt="Codigo QR para Google Authenticator" class="qr-image" />
+        </div>
+      </div>
+
+      <!-- Manual key -->
+      <div class="manual-key">
+        <span class="manual-key-label">Clave manual:</span>
+        <div class="manual-key-row">
+          <code class="manual-key-value">{{ totpSecret }}</code>
+          <button class="btn-copy" type="button" (click)="copySecret()">
+            {{ secretCopied ? 'Copiado' : 'Copiar' }}
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Verify input -->
+    <div class="verify-section">
+      <label class="verify-label">Codigo de verificacion</label>
+      <otp-input (completed)="onCodeCompleted($event)"></otp-input>
+    </div>
+
+    @if (errorMsg) {
+      <div class="error">{{ errorMsg }}</div>
+    }
+
+    <div class="footer-actions">
+      <button class="btn btn-link" type="button" (click)="logout()">
+        Cerrar sesion
+      </button>
+    </div>
+
+  </div>
+</div>

@@ -1,125 +1,344 @@
-.gerencia-container{
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-  display:grid;
-  grid-template-columns: 480px 1fr;
-  height:100vh;
-  background:#f5f7fa;
+:host { display: block; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
 
+.gerencia-container {
+  display: grid;
+  grid-template-columns: 520px 1fr;
+  height: 100vh;
+  background: #f5f7fa;
 }
 
-/* LEFT */
+/* ===== LEFT PANEL ===== */
 
-.panel-left{
-  padding:30px;
-  background:white;
+.panel-left {
+  padding: 24px 24px 90px;
+  background: #fff;
+  overflow-y: auto;
 }
 
-.gasto-circle-wrapper{
-
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:14px;
-
+.gasto-circle-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
-/* 🔥 círculo institucional */
-.gasto-circle{
-
-  width:180px;
-  height:180px;
-
-  border-radius:50%;
-
-  background:white;
-
-  /* doble borde como dashboard real */
-  border:8px solid #2f6f64;
-
-  display:flex;
-  align-items:center;
-  justify-content:center;
-
+.gasto-circle {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: #fff;
+  border: 7px solid #2f6f64;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* contenido centrado PERFECTO */
-.gasto-content{
+.gasto-content { text-align: center; }
 
-  text-align:center;
-
+.gasto-number {
+  font-size: 36px;
+  font-weight: 700;
+  color: #111827;
 }
 
-.gasto-number{
-
-  font-size:42px;
-  font-weight:700;
-  color:#111827;
-
+.gasto-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
 }
 
-.gasto-title{
-
-  font-size:18px;
-  font-weight:600;
-  color:#111827;
-
-}
-
-.title{
-  margin-top:10px;
-  font-weight:600;
-  font-size: 20px;
-}
-
-.chart-card{
-
-  margin-top:30px;
-  background:#f8fafc;
-  padding:20px;
-  border-radius:10px;
-
-}
-
-.chart-card h3 {
-    font-size: 15px;
-}
-
-/* RIGHT */
-
-.panel-right{
-  position:relative;
-}
-
-#mapDetalle{
-  width:100%;
-  height:100%;
-}
-
-.chart-container{
-
-  width:100%;
-  height:320px;   /* 👈 cambia esto y verás la magia */
-
-}
-
-.metric-delta{
-
-  margin-top:20px;
-  font-weight:600;
-  font-size:16px;
+.metric-delta {
+  margin-top: 12px;
+  font-weight: 600;
+  font-size: 13px;
   text-align: center;
-
 }
 
-.delta{
+.delta { margin-bottom: 2px; }
+.delta.up { color: #16a34a; }
 
-  margin-bottom:6px;
+/* ===== CHART CARD ===== */
 
+.chart-card {
+  margin-top: 20px;
+  background: #f8fafc;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
 }
 
-.delta.up{
-
-  color:#16a34a;
-
+/* Row 1: title + date picker */
+.chart-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
 }
 
+.chart-title-row h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+/* Row 2: time range strip */
+.time-strip {
+  display: flex;
+  gap: 2px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 3px;
+  margin-bottom: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.time-strip::-webkit-scrollbar { display: none; }
+
+.time-strip button {
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.time-strip button:hover { color: #0f172a; }
+
+.time-strip button.active {
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Active filter pill */
+.active-filters {
+  margin-bottom: 6px;
+}
+
+.filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  font-size: 11px;
+  color: #0369a1;
+  font-weight: 600;
+}
+
+.filter-pill__clear {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.filter-pill__clear:hover { color: #ef4444; }
+
+/* Row 3: unified controls — variables + separator + chart type */
+.chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.ctrl-pill {
+  font-size: 10.5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1.5px solid #d1d5db;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-weight: 600;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.ctrl-pill:hover {
+  border-color: var(--c, #007bff);
+  color: var(--c, #007bff);
+}
+
+.ctrl-pill.active {
+  background: var(--c, #007bff);
+  border-color: var(--c, #007bff);
+  color: #fff;
+}
+
+/* Chart type pills use neutral dark color */
+.ctrl-pill--type:hover {
+  border-color: #475569;
+  color: #0f172a;
+}
+
+.ctrl-pill--type.active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #fff;
+}
+
+/* Vertical separator between variable pills and type pills */
+.ctrl-sep {
+  width: 1px;
+  height: 16px;
+  background: #d1d5db;
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+/* ===== CHART ===== */
+
+.chart-container {
+  width: 100%;
+  height: 320px;
+}
+
+/* ===== SITIOS LIST ===== */
+
+.sitios-card {
+  margin-top: 16px;
+  background: #f8fafc;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.sitios-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sitios-header h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.sitios-count {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.sitios-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.sitio-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.sitio-row:hover {
+  border-color: #2f6f64;
+  box-shadow: 0 2px 6px rgba(47, 111, 100, 0.1);
+}
+
+.sitio-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sitio-nombre {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sitio-estatus {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.sitio-estatus.activo { color: #16a34a; }
+.sitio-estatus.obra { color: #d97706; }
+
+.sitio-values {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.sitio-val {
+  font-size: 11px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.sitio-val b {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.sitio-empty {
+  text-align: center;
+  padding: 20px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* ===== MAP MARKERS ===== */
+
+:host ::ng-deep .pozo-marker {
+  background: none !important;
+  border: none !important;
+}
+
+:host ::ng-deep .pozo-marker-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #2f6f64;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ===== RIGHT PANEL ===== */
+
+.panel-right { position: relative; }
+
+#mapDetalle {
+  width: 100%;
+  height: 100%;
+}

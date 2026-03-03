@@ -10,6 +10,7 @@ export interface AuditLogEntry {
   email: string;
   role_name: string;
   scope: string;
+  entity_name: string;
   action: string;
   details: string;
   ip_address: string;

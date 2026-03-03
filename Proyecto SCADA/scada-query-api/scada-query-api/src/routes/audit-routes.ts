@@ -69,10 +69,12 @@ router.get('/logs', isSupervisor, async (req: Request, res: Response) => {
         const dataValues = [...values, limit, offset];
         const dataResult = await pool.query(
             `SELECT a.id, a.user_id, u.full_name, u.email, r.role_name, u.scope,
+                    e.name AS entity_name,
                     a.action, a.details, a.ip_address, a.created_at
              FROM scada.audit_logs a
              LEFT JOIN scada.users u ON a.user_id = u.id
              LEFT JOIN scada.roles r ON u.role_id = r.id
+             LEFT JOIN scada.entities e ON u.entity_id = e.id
              ${whereClause}
              ORDER BY a.created_at DESC
              LIMIT $${dataValues.length - 1} OFFSET $${dataValues.length}`,
@@ -117,17 +119,19 @@ router.get('/logs/export', isSupervisor, async (req: Request, res: Response) => 
 
         const result = await pool.query(
             `SELECT a.id, u.full_name, u.email, r.role_name, u.scope,
+                    e.name AS entity_name,
                     a.action, a.details, a.ip_address, a.created_at
              FROM scada.audit_logs a
              LEFT JOIN scada.users u ON a.user_id = u.id
              LEFT JOIN scada.roles r ON u.role_id = r.id
+             LEFT JOIN scada.entities e ON u.entity_id = e.id
              ${whereClause}
              ORDER BY a.created_at DESC`,
             values
         );
 
         // Build CSV
-        const header = 'ID,Usuario,Email,Rol,Nivel,Accion,Detalles,IP,Fecha\n';
+        const header = 'ID,Usuario,Email,Rol,Nivel,Municipio,Accion,Detalles,IP,Fecha\n';
         const rows = result.rows.map(r => {
             const details = typeof r.details === 'string' ? r.details : JSON.stringify(r.details);
             return [
@@ -136,6 +140,7 @@ router.get('/logs/export', isSupervisor, async (req: Request, res: Response) => 
                 r.email || '',
                 r.role_name || '',
                 r.scope || '',
+                r.entity_name || '',
                 r.action,
                 `"${details.replace(/"/g, '""')}"`,
                 r.ip_address || '',

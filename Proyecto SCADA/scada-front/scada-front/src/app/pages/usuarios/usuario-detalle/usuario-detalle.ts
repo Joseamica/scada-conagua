@@ -15,6 +15,7 @@ import {
 // JSON directo
 import estadosJson from '../../../../assets/data/estados.json';
 import { UserService } from '../../../core/services/user.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { User, UserScope, UserStatus } from '../../../core/models/user.model';
 import { EntityService } from '../../../core/services/entity.service';
 import { Entity } from '../../../core/models/entity.model';
@@ -53,14 +54,10 @@ export class UsuarioDetalle implements OnInit {
   showConfirm = false;
 
   estadoActual = signal<EstadoValue | null>(null);
+  nivelActual = signal<string>('');
 
-  estados: EstadoValue[] = [
-    'FEDERAL',
-    ...Object.values(estadosJson)
-      .map((e: any) => e.estado as string)
-      .filter(e => e !== 'Todos')
-      .sort((a, b) => a.localeCompare(b))
-  ];
+  // OCAVM opera exclusivamente en Estado de Mexico
+  estados: EstadoValue[] = ['ESTADO DE MEXICO'];
 
   private normalize(value: string): string {
     return (value || '')
@@ -94,19 +91,33 @@ export class UsuarioDetalle implements OnInit {
   trackByValue = (_: number, v: string) => v;
 
   entities = signal<Entity[]>([]);
+  filteredEntities = computed(() => {
+    const nivel = this.nivelActual();
+    const all = this.entities();
+    if (!nivel) return all;
+    // Map nivel values to entity level values
+    const levelMap: Record<string, string> = {
+      'Federal': 'Federal',
+      'Estatal': 'Estatal',
+      'Municipal': 'Municipal',
+    };
+    const targetLevel = levelMap[nivel];
+    if (!targetLevel) return all;
+    return all.filter((e) => e.level === targetLevel);
+  });
   roleOptions = ROLE_OPTIONS;
 
   constructor( private fb: FormBuilder,
                private router: Router,
                private userService: UserService,
-               private entityService: EntityService
+               private entityService: EntityService,
+               private authService: AuthService
   ) {}
 
   ngOnInit(): void {
     this.form = this.fb.group({
       nombre: ['', Validators.required],
       apellido: [''],
-      usuario: ['', Validators.required],
       correo: ['', [Validators.required, Validators.email]],
       telefono: [''],
       password: ['', this.mode === 'create' ? Validators.required : []],
@@ -114,9 +125,9 @@ export class UsuarioDetalle implements OnInit {
       is_2fa_enabled: [false],
       rol: ['', Validators.required],
       nivel: ['', Validators.required],
-      estado: [''],
-      municipio: [''],
-      entity_id: [''],
+      estado: [{ value: '', disabled: true }],
+      municipio: [{ value: '', disabled: true }],
+      entity_id: [{ value: '', disabled: true }],
       can_view: [true],
       can_edit: [false],
       can_export: [false],
@@ -130,27 +141,44 @@ export class UsuarioDetalle implements OnInit {
 
     const estadoCtrl = this.form.get('estado');
     const municipioCtrl = this.form.get('municipio');
+    const nivelCtrl = this.form.get('nivel');
+    const entityCtrl = this.form.get('entity_id');
 
     // inicial
     this.estadoActual.set((estadoCtrl?.value || '') as EstadoValue);
 
-    estadoCtrl?.valueChanges.subscribe((estado: EstadoValue) => {
-      const val = (estado || '') as EstadoValue;
-      this.estadoActual.set(val || null);
+    // Nivel change: cascade estado → municipio → dependencia
+    nivelCtrl?.valueChanges.subscribe((nivel: string) => {
+      this.nivelActual.set(nivel);
+      entityCtrl?.setValue('', { emitEvent: false });
+      entityCtrl?.enable({ emitEvent: false });
 
-      // reset inmediato
-      municipioCtrl?.setValue('', { emitEvent: false });
-      municipioCtrl?.disable({ emitEvent: false });
-
-      // esperar a que el DOM pinte nuevas opciones
-      queueMicrotask(() => {
-        if (val === 'FEDERAL' || !val) {
-          municipioCtrl?.setValue('Todos', { emitEvent: false });
-          municipioCtrl?.disable({ emitEvent: false });
-        } else {
+      if (nivel === 'Federal' || nivel === 'Estatal') {
+        estadoCtrl?.setValue('ESTADO DE MEXICO', { emitEvent: false });
+        estadoCtrl?.disable({ emitEvent: false });
+        this.estadoActual.set('ESTADO DE MEXICO');
+        municipioCtrl?.clearValidators();
+        municipioCtrl?.setValue('Todos', { emitEvent: false });
+        municipioCtrl?.disable({ emitEvent: false });
+      } else if (nivel === 'Municipal') {
+        estadoCtrl?.setValue('ESTADO DE MEXICO', { emitEvent: false });
+        estadoCtrl?.disable({ emitEvent: false });
+        this.estadoActual.set('ESTADO DE MEXICO');
+        municipioCtrl?.setValidators(Validators.required);
+        municipioCtrl?.updateValueAndValidity({ emitEvent: false });
+        queueMicrotask(() => {
           municipioCtrl?.enable({ emitEvent: false });
-        }
-      });
+          municipioCtrl?.setValue('', { emitEvent: false });
+        });
+      } else {
+        estadoCtrl?.setValue('', { emitEvent: false });
+        estadoCtrl?.disable({ emitEvent: false });
+        this.estadoActual.set(null);
+        municipioCtrl?.clearValidators();
+        municipioCtrl?.setValue('', { emitEvent: false });
+        municipioCtrl?.disable({ emitEvent: false });
+        entityCtrl?.disable({ emitEvent: false });
+      }
     });
 
     // Modo edición
@@ -161,19 +189,40 @@ export class UsuarioDetalle implements OnInit {
       this.mode = 'edit';
       this.userId = usuario.id;
 
+      // Enable disabled controls before patching values
+      estadoCtrl?.enable({ emitEvent: false });
+      municipioCtrl?.enable({ emitEvent: false });
+      entityCtrl?.enable({ emitEvent: false });
+
+      const nivel = usuario.scope || '';
+      this.nivelActual.set(nivel);
+      this.estadoActual.set(usuario.estado_name || 'ESTADO DE MEXICO');
+
       this.form.patchValue({
         nombre: usuario.full_name,
         apellido: usuario.last_name,
-        usuario: usuario.email,
         correo: usuario.email,
         telefono: usuario.phone || '',
         rol: this.getRoleNameById(usuario.role_id),
         is_2fa_enabled: usuario.is_2fa_enabled,
-        nivel: usuario.scope === 'Federal' ? 'FEDERAL' : (usuario as any).estado,
-        estado: usuario.estado_name,
-        municipio: usuario.scope_id.toString(),
+        nivel: nivel,
+        estado: usuario.estado_name || 'ESTADO DE MEXICO',
         entity_id: usuario.entity_id || ''
       });
+
+      // Set municipio by name from scope_id
+      if (nivel === 'Municipal' && usuario.scope_id) {
+        const nombreMuni = this.getMunicipioNameById(usuario.scope_id);
+        queueMicrotask(() => {
+          this.form.get('municipio')?.setValue(nombreMuni, { emitEvent: false });
+        });
+      } else {
+        this.form.get('municipio')?.setValue('Todos', { emitEvent: false });
+        municipioCtrl?.disable({ emitEvent: false });
+      }
+
+      // Estado always locked to Estado de Mexico
+      estadoCtrl?.disable({ emitEvent: false });
 
       // Load permissions for this user
       this.userService.getPermissions(usuario.id).subscribe({
@@ -185,20 +234,10 @@ export class UsuarioDetalle implements OnInit {
             can_block: perms.can_block
           });
         },
-        error: () => {} // Permissions may not exist yet
+        error: () => {}
       });
 
-      // Lógica para combos de Estado/Municipio basada en scope_id
-      if (usuario.scope === 'Municipio' && usuario.scope_id) {
-      // Si es del Edomex (ID 15 en tu JSON), forzamos el estado
-      this.form.get('estado')?.setValue('MEXICO', { emitEvent: true });
-    
-      queueMicrotask(() => {
-        const nombreMuni = this.getMunicipioNameById(usuario.scope_id);
-          this.form.get('municipio')?.setValue(nombreMuni, { emitEvent: false });
-        });
-      }
-      // Si es edición, el password no es obligatorio
+      // Password not required in edit mode
       this.form.get('password')?.clearValidators();
       this.form.get('password')?.updateValueAndValidity();
       this.form.get('confirmPassword')?.clearValidators();
@@ -272,7 +311,7 @@ export class UsuarioDetalle implements OnInit {
   guardar() {
     if (this.form.invalid) return;
 
-      const formVal = this.form.value;
+      const formVal = this.form.getRawValue();
 
     const userData: Partial<User> = {
       full_name: formVal.nombre,
@@ -309,8 +348,25 @@ export class UsuarioDetalle implements OnInit {
           });
         }
         this.userService.logNavigation('USUARIO_GESTION_EXITOSA').subscribe({
-          error: () => {} // best-effort audit log
+          error: () => {}
         });
+
+        // Detect self-edit: if the admin changed their own role/scope, force re-login
+        const currentUser = this.authService.currentUser();
+        if (this.mode === 'edit' && currentUser && currentUser.id === this.userId) {
+          const newRoleId = Number(this.getRoleId(formVal.rol));
+          const newScopeId = this.findMunicipioId(formVal.municipio);
+          const changed = currentUser.role_id !== newRoleId
+            || currentUser.scope !== formVal.nivel
+            || currentUser.scope_id !== newScopeId;
+
+          if (changed) {
+            alert('Tus permisos han cambiado. Se cerrara la sesion para aplicar los cambios.');
+            this.authService.logout();
+            return;
+          }
+        }
+
         this.router.navigate(['/usuarios']);
       },
       error: (err: HttpErrorResponse) => {

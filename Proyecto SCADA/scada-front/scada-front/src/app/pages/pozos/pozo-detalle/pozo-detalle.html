@@ -67,8 +67,8 @@
           <ng-icon name="heroSignal" size="20"></ng-icon>
         </div>
         <div class="kpi-body">
-          <span class="kpi-value">{{ commStats().lteRssi }}</span>
-          <span class="kpi-unit">dBm</span>
+          <span class="kpi-value">{{ signalPercent() }}</span>
+          <span class="kpi-unit">%</span>
         </div>
         <span class="kpi-label">Señal LTE</span>
         <div class="kpi-quality" [ngClass]="commQualityClass()">
@@ -293,9 +293,28 @@
               <div #mainChart class="chart"></div>
             </div>
             <div class="chart-actions">
-              <button class="btn-ghost btn-sm" type="button" (click)="toggleSignal()">
-                {{ showSignal() ? 'Ocultar Señal LTE' : 'Mostrar Señal LTE' }}
-              </button>
+              <div class="var-selector">
+                <span class="var-selector__label">Variables:</span>
+                <button
+                  *ngFor="let v of chartVariables"
+                  class="var-pill"
+                  [class.active]="isVarSelected(v.key)"
+                  [style.--pill-color]="v.color"
+                  (click)="toggleVar(v.key)">
+                  {{ v.label }}
+                </button>
+              </div>
+              <div class="chart-type-divider"></div>
+              <div class="var-selector">
+                <span class="var-selector__label">Gráfico:</span>
+                <button
+                  *ngFor="let t of chartTypeOptions"
+                  class="type-pill"
+                  [class.active]="chartType() === t.key"
+                  (click)="setChartType(t.key)">
+                  {{ t.label }}
+                </button>
+              </div>
             </div>
             <div>
               <h3 class="chart-section-title">Caudal totalizado</h3>
@@ -318,9 +337,25 @@
     <p *ngIf="accionPendiente() === 'start'">
       ¿Está seguro que desea <strong>arrancar</strong> la bomba?
     </p>
-    <p *ngIf="accionPendiente() === 'stop'">
-      ¿Está seguro que desea <strong>parar</strong> la bomba?
-    </p>
+
+    <ng-container *ngIf="accionPendiente() === 'stop'">
+      <div class="modal-warning-banner stop-warning">
+        <ng-icon name="heroExclamationTriangle"></ng-icon>
+        <span>Esta acción detendrá la bomba. Para confirmar, escriba el nombre del pozo.</span>
+      </div>
+      <label class="confirm-label">
+        Escriba <strong>{{ pozoNombre() }}</strong> para confirmar
+      </label>
+      <input
+        class="confirm-input"
+        type="text"
+        [placeholder]="pozoNombre()"
+        [value]="confirmInput()"
+        (input)="confirmInput.set($any($event.target).value)"
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </ng-container>
 
     <div class="modal-warning-banner" *ngIf="pilotFault() || estadoEnergia() === 'off'">
       <ng-icon name="heroExclamationTriangle"></ng-icon>
@@ -335,7 +370,7 @@
         class="btn-confirm"
         [class.start]="accionPendiente() === 'start'"
         [class.stop]="accionPendiente() === 'stop'"
-        [disabled]="(accionPendiente() === 'start' && !canStart()) || (accionPendiente() === 'stop' && !canStop())"
+        [disabled]="(accionPendiente() === 'start' && !canStart()) || (accionPendiente() === 'stop' && (!canStop() || !stopConfirmValid()))"
         (click)="confirmarAccion()"
       >
         Confirmar

@@ -27,7 +27,7 @@ interface GisSource {
 // ✅ NUEVO: fuentes múltiples (solo agrega aquí archivos)
 const SITIOS_SOURCES: GisSource[] = [
   //{ type: 'kml' as const, path: 'assets/mapas/4PT/sitios.kml' },
-  { type: 'kml' as const, path: 'assets/mapas/4PT/sitios_piloto.kml', municipioId: 0, estadoId: 0 },
+  { type: 'kml' as const, path: 'assets/mapas/4PT/sitios_piloto.kml', municipioId: 0, estadoId: 15 },
   { type: 'kml' as const, path: 'assets/mapas/4PT/chalco.kml', municipioId: 25, estadoId: 15 },
   { type: 'kml' as const, path: 'assets/mapas/4PT/chicoloapan.kml', municipioId: 29, estadoId: 15 },
   { type: 'kml' as const, path: 'assets/mapas/4PT/odapas_chimalhuacan.kml', municipioId: 31, estadoId: 15 },
@@ -956,8 +956,10 @@ export class ModuloGis implements OnInit {
     } 
     else if (user.scope === 'Estatal') {
       // NIVEL 2: Estatal - Filtra todos los municipios del estado (ej. Edomex ID 15)
-      console.log(`[GIS] Access: ESTATAL (ID: ${user.estado_id}). Filtering by State.`);
-      filteredSources = SITIOS_SOURCES.filter(src => src.estadoId === user.estado_id);
+      // Default to 15 (Estado de Mexico) if estado_id is missing — OCAVM only operates in EdoMex
+      const estadoId = user.estado_id || 15;
+      console.log(`[GIS] Access: ESTATAL (ID: ${estadoId}). Filtering by State.`);
+      filteredSources = SITIOS_SOURCES.filter(src => src.estadoId === estadoId);
     } 
     else if (user.scope === 'Municipal') {
       // NIVEL 3: Municipal - Restricción total al scope_id (ej. Ecatepec ID 34)

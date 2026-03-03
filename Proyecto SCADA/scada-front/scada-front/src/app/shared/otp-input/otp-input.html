@@ -1,0 +1,15 @@
+<div class="otp-container" (paste)="onPaste($event)">
+  @for (digit of digits; track $index) {
+    <input
+      #otpBox
+      type="text"
+      inputmode="numeric"
+      maxlength="1"
+      class="otp-box"
+      [value]="digit"
+      (input)="onInput($event, $index)"
+      (keydown)="onKeydown($event, $index)"
+      autocomplete="one-time-code"
+    />
+  }
+</div>

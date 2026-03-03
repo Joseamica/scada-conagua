@@ -15,143 +15,151 @@ import { TelemetriaAvanzada } from './pages/telemetria/telemetria-avanzada/telem
 import { Overview } from './pages/gerencia/overview/overview';
 import { authGuard } from './core/guards/auth.guard';
 import { roleGuard } from './core/guards/role.guard';
+import { totpSetupGuard } from './core/guards/totp-setup.guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
   { path: 'login', component: Login },
-  { path: 'auth/login/token', loadComponent: () => import('./auth/login/token/token').then(m => m.Token) },
-  
   {
-  path: 'auth/login/token',
-  loadComponent: () =>
-    import('./auth/login/token/token')
-      .then(m => m.Token)
+    path: 'auth/login/token',
+    loadComponent: () =>
+      import('./auth/login/token/token').then((m) => m.Token),
   },
 
   {
-  path: 'auth/login/reset-pass',
-  loadComponent: () =>
-    import('./auth/login/login-reset-pass/login-reset-pass')
-      .then(m => m.LoginResetPass)
+    path: 'auth/login/reset-pass',
+    loadComponent: () =>
+      import('./auth/login/login-reset-pass/login-reset-pass').then((m) => m.LoginResetPass),
   },
 
   {
     path: 'auth/forgot-password',
     loadComponent: () =>
-      import('./auth/forgot-password/forgot-password')
-        .then(m => m.ForgotPassword)
+      import('./auth/forgot-password/forgot-password').then((m) => m.ForgotPassword),
   },
 
   {
     path: 'auth/reset-password',
     loadComponent: () =>
-      import('./auth/reset-password/reset-password')
-        .then(m => m.ResetPassword)
+      import('./auth/reset-password/reset-password').then((m) => m.ResetPassword),
+  },
+
+  {
+    path: 'auth/setup-totp',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./auth/setup-totp/setup-totp').then((m) => m.SetupTotp),
+  },
+
+  {
+    path: 'auth/verify-email',
+    loadComponent: () =>
+      import('./auth/verify-email/verify-email').then((m) => m.VerifyEmail),
   },
 
   {
     path: 'dashboard',
     component: DashboardComponent,
-    canActivate: [authGuard], // 🛡️ Protección activa
+    canActivate: [authGuard, totpSetupGuard],
     data: { title: 'Dashboard General' },
     children: [
       { path: 'hidrometria', component: Hidrometria },
       { path: 'alarmas', component: Alarmas },
       { path: 'sitios', component: Sitios },
-    ]
+    ],
   },
 
   {
     path: 'telemetria',
-    canActivate: [authGuard],
+    canActivate: [authGuard, totpSetupGuard],
     children: [
       {
         path: '',
         component: TelemetriaDashboard,
-        data: { title: 'Telemetría' }
+        data: { title: 'Telemetria' },
       },
       {
         path: 'avanzadas',
         component: TelemetriaAvanzada,
-        data: { title: 'Gráficas avanzadas' }
-      }
-    ]
+        data: { title: 'Graficas avanzadas' },
+      },
+    ],
   },
 
-
-  // 👉 RUTA SIMPLE PARA EL GIS
-  { 
-    path: 'modulo-gis', 
+  {
+    path: 'modulo-gis',
     component: ModuloGis,
-    canActivate: [authGuard], // 🛡️ Protección activa 
-    data: { title: 'Módulo SIG' } 
+    canActivate: [authGuard, totpSetupGuard],
+    data: { title: 'Modulo SIG' },
   },
 
   {
     path: 'pozos/:id',
-    canActivate: [authGuard],
+    canActivate: [authGuard, totpSetupGuard],
     loadComponent: () =>
-    import('./pages/pozos/pozo-detalle/pozo-detalle')
-      .then(m => m.PozoDetalleComponent),
+      import('./pages/pozos/pozo-detalle/pozo-detalle').then((m) => m.PozoDetalleComponent),
   },
   {
-    path:'gerencia/municipio/:id',
-    canActivate: [authGuard],
-    loadComponent:()=>import('./pages/gerencia-municipio/gerencia-municipio')
-     .then(m=>m.GerenciaMunicipio),
-     data: { title: 'Gasto total por municipio' }
+    path: 'gerencia/municipio/:id',
+    canActivate: [authGuard, totpSetupGuard],
+    loadComponent: () =>
+      import('./pages/gerencia-municipio/gerencia-municipio').then((m) => m.GerenciaMunicipio),
+    data: { title: 'Gasto total por municipio' },
   },
 
   {
     path: 'gerencia/overview-gastos',
-    canActivate: [authGuard, roleGuard],
+    canActivate: [authGuard, totpSetupGuard, roleGuard],
     component: Overview,
-    data: { title: 'Resumen gasto general', expectedRole: 4 } // Todos los roles
+    data: { title: 'Resumen gasto general', expectedRole: 4 },
   },
-  // 👉 RUTA USUARIOS
+
   {
     path: 'usuarios',
     component: Usuarios,
-    canActivate: [authGuard, roleGuard], // 🛡️ Protección activa
+    canActivate: [authGuard, totpSetupGuard, roleGuard],
     data: {
-      expectedRole: 1, // Solo Administradores 
-      title: 'Gestión de Usuarios' 
-    }
+      expectedRole: 1,
+      title: 'Gestion de Usuarios',
+    },
   },
   {
     path: 'usuarios/nuevo',
-    canActivate: [authGuard, roleGuard],
+    canActivate: [authGuard, totpSetupGuard, roleGuard],
     component: UsuarioDetalle,
-    data: { title: 'Nuevo Usuario', expectedRole: 1 }
+    data: { title: 'Nuevo Usuario', expectedRole: 1 },
   },
   {
     path: 'usuarios/:id/editar',
-    canActivate: [authGuard, roleGuard],
+    canActivate: [authGuard, totpSetupGuard, roleGuard],
     component: UsuarioDetalle,
-    data: { title: 'Editar Usuario', expectedRole: 1 }
+    data: { title: 'Editar Usuario', expectedRole: 1 },
   },
   {
     path: 'perfil',
     component: PerfilUsuario,
-      data: { title: 'Perfil de Usuario' }
+    canActivate: [authGuard, totpSetupGuard],
+    data: { title: 'Perfil de Usuario' },
   },
   {
     path: 'reporte',
     component: ReporteActividad,
-     data: { title: 'Bitácora' }
+    canActivate: [authGuard, totpSetupGuard],
+    data: { title: 'Bitacora' },
   },
 
   {
     path: 'sitios/nuevo',
     component: SitioForm,
-    data: { title: 'Nuevo Sitio' }
+    canActivate: [authGuard, totpSetupGuard],
+    data: { title: 'Nuevo Sitio' },
   },
   {
     path: 'sitios/editar/:id',
     component: SitioForm,
-    data: { title: 'Editar Sitio' }
+    canActivate: [authGuard, totpSetupGuard],
+    data: { title: 'Editar Sitio' },
   },
-  
-  { path: '**', redirectTo: 'login' }
-  
+
+  { path: '**', redirectTo: 'login' },
 ];

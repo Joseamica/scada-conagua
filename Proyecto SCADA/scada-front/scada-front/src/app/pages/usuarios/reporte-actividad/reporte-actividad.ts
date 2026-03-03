@@ -47,8 +47,14 @@ export class ReporteActividad implements OnInit {
   fechaHasta = signal('');
   filterRol = signal<string>('ALL');
   filterNivel = signal<string>('ALL');
+  filterAccion = signal<string>('ALL');
 
   roleOptions = Object.values(ROLE_MAP);
+
+  actionOptions = computed(() => {
+    const actions = new Set(this.logs().map(l => l.action));
+    return [...actions].sort();
+  });
 
   /* =========================
      DATA
@@ -100,6 +106,7 @@ export class ReporteActividad implements OnInit {
     const q = this.search().trim().toLowerCase();
     const rol = this.filterRol();
     const nivel = this.filterNivel();
+    const accion = this.filterAccion();
 
     return this.logs().filter(l => {
       const matchesQ =
@@ -112,7 +119,10 @@ export class ReporteActividad implements OnInit {
       const matchesNivel =
         nivel === 'ALL' || l.scope === nivel;
 
-      return matchesQ && matchesRol && matchesNivel;
+      const matchesAccion =
+        accion === 'ALL' || l.action === accion;
+
+      return matchesQ && matchesRol && matchesNivel && matchesAccion;
     });
   });
 
@@ -130,6 +140,7 @@ export class ReporteActividad implements OnInit {
     this.fechaHasta.set('');
     this.filterRol.set('ALL');
     this.filterNivel.set('ALL');
+    this.filterAccion.set('ALL');
     this.currentPage.set(1);
     this.loadLogs();
   }

@@ -41,11 +41,7 @@
           </div>
         </div>
 
-        <div class="fields-grid cols-3">
-          <div class="field">
-            <label class="field-label" for="uUsuario">Usuario <span class="required">*</span></label>
-            <input id="uUsuario" type="text" formControlName="usuario" placeholder="Nombre de usuario" autocomplete="off" />
-          </div>
+        <div class="fields-grid cols-2">
           <div class="field">
             <label class="field-label" for="uCorreo">Correo electronico <span class="required">*</span></label>
             <input id="uCorreo" type="email" formControlName="correo" placeholder="usuario@ejemplo.com" autocomplete="off" />
@@ -152,10 +148,11 @@
             <label class="field-label" for="uEntity">Dependencia</label>
             <select id="uEntity" formControlName="entity_id">
               <option value="">Selecciona Dependencia</option>
-              <option *ngFor="let e of entities()" [value]="e.id">
-                {{ e.name }} ({{ e.level }})
+              <option *ngFor="let e of filteredEntities()" [value]="e.id">
+                {{ e.name }}
               </option>
             </select>
+            <p class="field-hint" *ngIf="form.get('entity_id')?.disabled">Selecciona un nivel primero</p>
           </div>
         </div>
 
@@ -164,10 +161,9 @@
             <label class="field-label" for="uEstado">Estado</label>
             <select id="uEstado" formControlName="estado">
               <option value="">Selecciona estado</option>
-              <option *ngFor="let e of estados; trackBy: trackByValue" [value]="e">
-                {{ e === 'FEDERAL' ? 'Federal (todos)' : e }}
-              </option>
+              <option value="ESTADO DE MEXICO">Estado de Mexico</option>
             </select>
+            <p class="field-hint" *ngIf="!form.get('estado')?.value">Se asigna automaticamente al elegir nivel</p>
           </div>
           <div class="field">
             <label class="field-label" for="uMunicipio">Municipio</label>
@@ -177,6 +173,8 @@
                 {{ m === 'ALL' ? 'Todos' : m }}
               </option>
             </select>
+            <p class="field-hint" *ngIf="form.get('municipio')?.disabled && form.get('nivel')?.value === 'Municipal'">Selecciona un estado primero</p>
+            <p class="field-hint" *ngIf="form.get('municipio')?.disabled && form.get('nivel')?.value && form.get('nivel')?.value !== 'Municipal'">No aplica para nivel {{ form.get('nivel')?.value }}</p>
           </div>
         </div>
       </section>

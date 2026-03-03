@@ -9,7 +9,7 @@ import { ICreateUserRequest, IUser, ILoginRequest } from '../interfaces/user.int
 const JWT_SECRET = process.env['JWT_SECRET'] as string;
 
 export const createUser = async (userData: ICreateUserRequest): Promise<number> => {
-    const { full_name, last_name, email, password, role_id, phone, scope, scope_id, estado_id, estado_name, municipio_name, entity_id } = userData;
+    const { full_name, last_name, email, password, role_id, phone, is_2fa_enabled, scope, scope_id, estado_id, estado_name, municipio_name, entity_id } = userData;
 
     // Double check within the service to prevent race conditions
     const exists = await isEmailRegistered(email);
@@ -23,12 +23,12 @@ export const createUser = async (userData: ICreateUserRequest): Promise<number> 
 
     const query = `
         INSERT INTO scada.users (
-            full_name, last_name, email, password_hash, role_id, phone, scope, scope_id, estado_id, estado_name, municipio_name, entity_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            full_name, last_name, email, password_hash, role_id, phone, is_2fa_enabled, scope, scope_id, estado_id, estado_name, municipio_name, entity_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING id;
     `;
 
-    const values = [full_name, last_name, email, passwordHash, role_id, phone, scope, scope_id, estado_id, estado_name, municipio_name, entity_id || null];
+    const values = [full_name, last_name, email, passwordHash, role_id, phone, !!is_2fa_enabled, scope, scope_id, estado_id, estado_name, municipio_name, entity_id || null];
 
     try {
         const result = await pool.query(query, values);
@@ -43,7 +43,7 @@ export const createUser = async (userData: ICreateUserRequest): Promise<number> 
 const AUTH_COLUMNS = `id, full_name, last_name, email, password_hash, role_id, phone,
     is_2fa_enabled, is_blocked, scope, scope_id, estado_id, estado_name, municipio_name,
     two_factor_token, token_expiry, failed_attempts, locked_until,
-    totp_enabled, totp_secret, entity_id, created_at`;
+    totp_enabled, totp_secret, entity_id, created_at, email_verify_token`;
 
 // Columns for safe reads (never includes password_hash or totp_secret)
 const SAFE_COLUMNS = `id, full_name, last_name, email, role_id, phone,
@@ -321,6 +321,41 @@ export const disableTotp = async (userId: number): Promise<void> => {
 export const findUserById = async (userId: number): Promise<IUser | null> => {
     const result = await pool.query(`SELECT ${AUTH_COLUMNS} FROM scada.users WHERE id = $1`, [userId]);
     return result.rows.length > 0 ? result.rows[0] : null;
+};
+
+// ── Email verification magic link ──
+
+/**
+ * Generate a UUID-based token for email magic link verification.
+ * Stores it in two_factor_token alongside the 6-digit code (reuses same columns).
+ * Returns the UUID token for the magic link URL.
+ */
+export const generateEmailVerifyToken = async (userId: number): Promise<string> => {
+    const token = crypto.randomUUID();
+    await pool.query(
+        'UPDATE scada.users SET email_verify_token = $1 WHERE id = $2',
+        [token, userId]
+    );
+    return token;
+};
+
+/**
+ * Validate an email magic link token. Returns the user if valid, null otherwise.
+ */
+export const validateEmailVerifyToken = async (token: string): Promise<IUser | null> => {
+    const result = await pool.query(
+        `SELECT ${AUTH_COLUMNS} FROM scada.users
+         WHERE email_verify_token = $1
+           AND token_expiry > NOW()
+           AND is_blocked = false`,
+        [token]
+    );
+    if (result.rows.length > 0) {
+        // Clear the token after use
+        await pool.query('UPDATE scada.users SET email_verify_token = NULL WHERE id = $1', [result.rows[0].id]);
+        return result.rows[0];
+    }
+    return null;
 };
 
 // ── Password Reset (self-service) ──

@@ -1,0 +1,26 @@
+<div class="auth-shell">
+  <div class="auth-card">
+
+    @if (status === 'loading') {
+      <div class="spinner"></div>
+      <h1>Verificando tu cuenta...</h1>
+      <p class="auth-text">Espera un momento mientras validamos tu identidad.</p>
+    }
+
+    @if (status === 'success') {
+      <div class="icon-success">&#10003;</div>
+      <h1>Verificacion exitosa</h1>
+      <p class="auth-text">Tu identidad ha sido verificada. Redirigiendo...</p>
+    }
+
+    @if (status === 'error') {
+      <div class="icon-error">!</div>
+      <h1>Error de verificacion</h1>
+      <p class="auth-text">{{ errorMsg }}</p>
+      <button class="btn btn-primary" (click)="goToLogin()">
+        Volver al inicio de sesion
+      </button>
+    }
+
+  </div>
+</div>

@@ -33,9 +33,10 @@ export interface ICreateUserRequest {
     password: string;
     role_id: number;
     phone?: string;
+    is_2fa_enabled?: boolean;
     scope: string;
     scope_id: number;
-    estado_id: number;    
+    estado_id: number;
     estado_name?: string;
     municipio_name?: string;
     entity_id?: number;

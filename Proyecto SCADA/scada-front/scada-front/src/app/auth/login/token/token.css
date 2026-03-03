@@ -29,39 +29,23 @@
   line-height: 1.4;
 }
 
-.auth-input {
-  width: 100%;
-  padding: 12px 14px;
-  font-size: 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  margin-bottom: 14px;
-  box-sizing: border-box;
+.error {
+  color: #dc2626;
+  font-size: 13px;
+  margin: 14px 0;
+  padding: 10px;
+  background: #fef2f2;
+  border-radius: 8px;
 }
 
-.auth-input:focus {
-  outline: none;
-  border-color: #6d002b;
-  box-shadow: 0 0 0 2px rgba(109, 0, 43, 0.12);
-}
-
-/* Botones */
-.btn {
-  border-radius: 10px;
-  padding: 12px;
-  font-weight: 700;
-  font-size: 14px;
+.btn-link {
+  background: none;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
   cursor: pointer;
   border: none;
-}
-
-.btn-primary {
-  background: #6d002b;
-  color: #ffffff;
-  margin-bottom: 15px;
-}
-
-.btn.full {
-  width: 100%;
-  margin-top: 10px;
+  padding: 0;
+  margin-top: 8px;
 }

@@ -6,55 +6,106 @@
   <div class="panel-left">
 
     <!-- CIRCULO GASTO -->
-   <div class="gasto-circle-wrapper">
-
-  <div class="gasto-circle">
-
-      <div class="gasto-content">
-
+    <div class="gasto-circle-wrapper">
+      <div class="gasto-circle">
+        <div class="gasto-content">
           <div class="gasto-number">
-              {{ gastoTotal | number:'1.0-0' }} l/s
+            {{ gastoTotal | number:'1.0-0' }} l/s
           </div>
-
+        </div>
       </div>
+      <div class="gasto-title">
+        Gasto producido {{ municipioNombre }}
+      </div>
+    </div>
 
-  </div>
-
-  <div class="gasto-title">
-      Gasto producido {{ municipioNombre }}
-  </div>
-
-</div>
-
-<div class="metric-delta">
-
-  <div class="delta up">
-     ▲ +42 l/s (+1.97 % ayer)
-  </div>
-
-  <div class="delta up">
-     ▲ +57 l/s (+2.68 % mes)
-  </div>
-
-</div>
+    <div class="metric-delta">
+      <div class="delta up">▲ +42 l/s (+1.97 % ayer)</div>
+      <div class="delta up">▲ +57 l/s (+2.68 % mes)</div>
+    </div>
 
     <!-- GRAFICA -->
     <div class="chart-card">
+      <div class="chart-title-row">
+        <h3>Suma pozos {{ municipioNombre }}</h3>
+        <app-date-range-picker #datePicker
+          (rangeApplied)="onRangeApplied($event)">
+        </app-date-range-picker>
+      </div>
 
-      <h3>Suma pozos {{ municipioNombre }}</h3>
+      <div class="time-strip">
+        <button
+          *ngFor="let r of timeRanges"
+          (click)="setRange(r.key)"
+          [class.active]="range() === r.key && !customRangeActive()">
+          {{ r.label }}
+        </button>
+      </div>
 
-     <div id="chartMunicipio" class="chart-container"></div>
+      <div class="active-filters" *ngIf="customRangeActive()">
+        <span class="filter-pill">
+          {{ activeRangeLabel() }}
+          <button class="filter-pill__clear" (click)="setRange('7d')">&times;</button>
+        </span>
+      </div>
 
+      <div class="chart-controls">
+        <button
+          *ngFor="let v of chartVariables"
+          class="ctrl-pill"
+          [class.active]="isVarSelected(v.key)"
+          [style.--c]="v.color"
+          (click)="toggleVar(v.key)">
+          {{ v.label }}
+        </button>
+        <span class="ctrl-sep"></span>
+        <button
+          *ngFor="let t of chartTypeOptions"
+          class="ctrl-pill ctrl-pill--type"
+          [class.active]="chartType() === t.key"
+          (click)="setChartType(t.key)">
+          {{ t.label }}
+        </button>
+      </div>
+
+      <div #chartEl class="chart-container"></div>
+    </div>
+
+    <!-- SITIOS DEL MUNICIPIO -->
+    <div class="sitios-card">
+      <div class="sitios-header">
+        <h3>Sitios del municipio</h3>
+        <span class="sitios-count">{{ totalPozos }} sitios · {{ pozosActivos }} activos</span>
+      </div>
+
+      <div class="sitios-list">
+        <div
+          *ngFor="let s of sitios()"
+          class="sitio-row"
+          (click)="goToPozo(s.slug)">
+          <div class="sitio-info">
+            <span class="sitio-nombre">{{ s.nombre }}</span>
+            <span class="sitio-estatus" [class.activo]="s.estatus === 'Activo'" [class.obra]="s.estatus === 'Obra'">
+              {{ s.estatus }}
+            </span>
+          </div>
+          <div class="sitio-values">
+            <span class="sitio-val"><b>{{ s.caudal }}</b> Lt/s</span>
+            <span class="sitio-val"><b>{{ s.presion }}</b> Kg/cm²</span>
+          </div>
+        </div>
+
+        <div *ngIf="sitios().length === 0" class="sitio-empty">
+          Sin sitios registrados
+        </div>
+      </div>
     </div>
 
   </div>
 
-
   <!-- PANEL DERECHO -->
   <div class="panel-right">
-
     <div id="mapDetalle"></div>
-
   </div>
 
 </div>

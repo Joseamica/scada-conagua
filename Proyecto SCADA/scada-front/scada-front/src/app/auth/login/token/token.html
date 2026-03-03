@@ -3,37 +3,33 @@
   <div class="auth-card">
     <h1>Verificacion de seguridad</h1>
 
-    <p class="auth-text" *ngIf="method === 'email'">
-      Te enviamos un codigo de verificacion a tu correo electronico.
-      Ingresa el codigo para continuar.
-    </p>
+    @if (method === 'email') {
+      <p class="auth-text">
+        Te enviamos un codigo de verificacion a tu correo electronico.
+        Ingresa el codigo para continuar.
+      </p>
+    }
 
-    <p class="auth-text" *ngIf="method === 'totp'">
-      Ingresa el codigo de 6 digitos de tu aplicacion
-      <strong>Google Authenticator</strong>.
-    </p>
+    @if (method === 'totp') {
+      <p class="auth-text">
+        Ingresa el codigo de 6 digitos de tu aplicacion
+        <strong>Google Authenticator</strong>.
+      </p>
+    }
 
-    <input
-      type="text"
-      maxlength="6"
-      [placeholder]="method === 'totp' ? 'Codigo de Google Authenticator' : 'Codigo de verificacion'"
-      class="auth-input"
-      [(ngModel)]="tokenValue"
-      name="tokenValue"
-      autocomplete="one-time-code"
-    />
+    <otp-input (completed)="onCodeCompleted($event)"></otp-input>
 
-    <button class="btn btn-primary full" (click)="verificarToken()">
-        Verificar
-    </button>
-
-    <div class="error" *ngIf="errorMsg">
+    @if (errorMsg) {
+      <div class="error">
         {{ errorMsg }}
-    </div>
+      </div>
+    }
 
-    <button class="btn btn-link" *ngIf="method === 'email'" (click)="reenviarToken()">
+    @if (method === 'email') {
+      <button class="btn btn-link" (click)="reenviarToken()">
         Reenviar codigo
-    </button>
+      </button>
+    }
   </div>
 
 </div>

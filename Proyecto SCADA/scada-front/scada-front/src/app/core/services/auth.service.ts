@@ -90,6 +90,16 @@ export class AuthService {
     return this.http.post(`${this.URL}/2fa/disable`, { code });
   }
 
+  verifyEmailToken(token: string): Observable<AuthResponse> {
+    return this.http.get<AuthResponse>(`${this.URL}/verify-email`, { params: { token } }).pipe(
+      tap(res => {
+        if (res && res.token) {
+          this.saveSession(res.token, res.user!);
+        }
+      })
+    );
+  }
+
   forgotPassword(email: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.URL}/forgot-password`, { email });
   }
