@@ -100,34 +100,49 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 });
 
-// Endpoint para verificar los 6-digitos (code)y posibles al final de la sesión con  JWT
+// Endpoint para verificar los 6-digitos (code) con tempToken + JWT final
 router.post('/verify-2fa', async (req: Request, res: Response) => {
-    const { email, code } = req.body;
+    const { tempToken, code } = req.body;
 
-    if (!email || !code) {
-        return res.status(400).json({ error: 'Email and verification code are required.' });
+    if (!tempToken || !code) {
+        return res.status(400).json({ error: 'Temp token and verification code are required.' });
     }
 
     try {
-        const user = await validate2FACode(email, code);
+        // Decode tempToken to get userId (same pattern as verify-totp)
+        const decoded = jwt.verify(tempToken, process.env['JWT_SECRET'] as string) as any;
+
+        if (decoded.type !== '2FA_PENDING') {
+            return res.status(401).json({ error: 'Invalid token type.' });
+        }
+
+        const user = await findUserById(decoded.userId);
 
         if (!user) {
             return res.status(401).json({ error: 'Invalid or expired verification code.' });
         }
 
-        // 1. Clear tokens to prevent reuse
-	if (user && user.two_factor_token === code) {
-            await clearUser2FAToken(user.id);
+        // Validate the 6-digit code against the stored one
+        if (!user.two_factor_token || user.two_factor_token !== code) {
+            return res.status(401).json({ error: 'Invalid or expired verification code.' });
         }
+
+        // Check token expiry
+        if (!user.token_expiry || new Date() > new Date(user.token_expiry)) {
+            return res.status(401).json({ error: 'Invalid or expired verification code.' });
+        }
+
+        // 1. Clear tokens to prevent reuse
+        await clearUser2FAToken(user.id);
+
         // 2. Generate final session JWT (8 hours)
-        // Including scope and role for frontend authorization
         const sessionToken = jwt.sign(
-            { 
-                id: user.id, 
-                role_id: user.role_id, 
-                scope: user.scope, 
+            {
+                id: user.id,
+                role_id: user.role_id,
+                scope: user.scope,
                 scope_id: user.scope_id,
-	        estado_id: user.estado_id	
+                estado_id: user.estado_id
             },
             process.env['JWT_SECRET'] as string,
             { expiresIn: '8h' }
@@ -147,46 +162,56 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
                 full_name: user.full_name,
                 role_id: user.role_id,
                 scope: user.scope,
-		scope_id: user.scope_id,
-        	estado_id: user.estado_id,
-        	totp_enabled: !!user.totp_enabled,
-        	is_2fa_enabled: !!user.is_2fa_enabled,
-        	can_operate: perms?.can_operate ?? false
+                scope_id: user.scope_id,
+                estado_id: user.estado_id,
+                totp_enabled: !!user.totp_enabled,
+                is_2fa_enabled: !!user.is_2fa_enabled,
+                can_operate: perms?.can_operate ?? false
             }
         });
 
-    } catch (error) {
+    } catch (error: any) {
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({ error: 'Session expired. Please login again.' });
+        }
         console.error('>>> [2FA Error]:', error);
         res.status(500).json({ error: 'Internal server error during verification.' });
     }
 });
 
-// Endpoint para el reenvío de code  2FA si el code previo one se pierde o expira
+// Endpoint para el reenvío de code 2FA — requiere tempToken para evitar abuso
 router.post('/resend-2fa', async (req: Request, res: Response) => {
-    const { email } = req.body;
+    const { tempToken } = req.body;
 
-    if (!email) {
-        return res.status(400).json({ error: 'Email is required' });
+    if (!tempToken) {
+        return res.status(400).json({ error: 'Temp token is required.' });
     }
 
     try {
-        const user = await findUserByEmail(email);
+        const decoded = jwt.verify(tempToken, process.env['JWT_SECRET'] as string) as any;
 
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+        if (decoded.type !== '2FA_PENDING') {
+            return res.status(200).json({ message: 'A new security code has been sent.' });
         }
 
-        // Generate a fresh 6-digit code and update the DB
-        const newCode = await generateAndSave2FACode(user.id);
+        const user = await findUserById(decoded.userId);
 
-        // Send via the Gmail Relay
+        if (!user) {
+            // Generic response — no user enumeration
+            return res.status(200).json({ message: 'A new security code has been sent.' });
+        }
+
+        const newCode = await generateAndSave2FACode(user.id);
         await send2FACode(user.email, newCode);
 
         res.status(200).json({ message: 'A new security code has been sent.' });
 
-    } catch (error) {
+    } catch (error: any) {
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({ error: 'Session expired. Please login again.' });
+        }
         console.error('>>> [Resend Error]:', error);
-        res.status(500).json({ error: 'Failed to resend code. Please try again.' });
+        res.status(200).json({ message: 'A new security code has been sent.' });
     }
 });
 

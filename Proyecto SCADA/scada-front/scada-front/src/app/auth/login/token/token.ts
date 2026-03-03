@@ -52,14 +52,14 @@ export class Token implements OnInit {
   }
 
   private verificarEmail(code: string) {
-    const email = sessionStorage.getItem('pending_email');
+    const tempToken = sessionStorage.getItem('2fa_temp_token');
 
-    if (!email) {
+    if (!tempToken) {
       this.errorMsg = 'Sesion expirada. Inicia sesion de nuevo.';
       return;
     }
 
-    this.authService.verify2FA(email, code).subscribe({
+    this.authService.verify2FA(tempToken, code).subscribe({
       next: (res) => {
         this.limpiarSession();
         // Check if TOTP setup is needed
@@ -77,14 +77,14 @@ export class Token implements OnInit {
   }
 
   reenviarToken() {
-    const email = sessionStorage.getItem('pending_email');
+    const tempToken = sessionStorage.getItem('2fa_temp_token');
 
-    if (!email) {
-      this.errorMsg = 'Sesion invalida. Regresa al login.';
+    if (!tempToken) {
+      this.errorMsg = 'Sesion expirada. Inicia sesion de nuevo.';
       return;
     }
 
-    this.authService.resend2FA(email).subscribe({
+    this.authService.resend2FA(tempToken).subscribe({
       next: () => {
         this.errorMsg = 'Nuevo codigo enviado con exito.';
       },

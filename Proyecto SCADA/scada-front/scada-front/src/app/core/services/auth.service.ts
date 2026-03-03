@@ -33,8 +33,8 @@ export class AuthService {
   );
 }
 
-  verify2FA(email: string, code: string): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.URL}/verify-2fa`, { email, code }).pipe(
+  verify2FA(tempToken: string, code: string): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.URL}/verify-2fa`, { tempToken, code }).pipe(
       tap(res => {
         if (res && res.token) {
           this.saveSession(res.token, res.user!);
@@ -63,8 +63,8 @@ export class AuthService {
   }
 
   // Llama al backend para generar un nuevo correo de verificación 2FA
-  resend2FA(email: string): Observable<any> {
-    return this.http.post(`${this.URL}/resend-2fa`, { email });
+  resend2FA(tempToken: string): Observable<any> {
+    return this.http.post(`${this.URL}/resend-2fa`, { tempToken });
   }
 
   // TOTP (Google Authenticator)
