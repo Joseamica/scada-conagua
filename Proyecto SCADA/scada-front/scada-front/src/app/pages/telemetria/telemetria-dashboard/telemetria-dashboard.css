@@ -510,9 +510,9 @@
   transition: background 0.1s ease;
 }
 
-.table tbody tr:hover td { background: var(--bg-card-hover); }
+.table tbody tr:hover td { background: var(--table-hover); }
 
-.row-alt td { background: var(--bg-card-hover); }
+.row-alt td { background: var(--table-stripe); }
 .row-alt:hover td { background: var(--table-hover) !important; }
 
 /* Cell: Site name with dot */
@@ -629,13 +629,13 @@
   flex-shrink: 0;
 }
 
-.pill--ok   { background: var(--success-bg); border-color: var(--success-border); color: #065f46; }
+.pill--ok   { background: var(--success-bg); border-color: var(--success-border); color: var(--success); }
 .pill--ok .pill-dot { background: #10b981; }
 
-.pill--warn { background: var(--warning-bg); border-color: #fde68a; color: #92400e; }
+.pill--warn { background: var(--warning-bg); border-color: var(--warning); color: var(--warning); }
 .pill--warn .pill-dot { background: #f59e0b; }
 
-.pill--bad  { background: var(--danger-bg); border-color: var(--danger-border); color: #991b1b; }
+.pill--bad  { background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger); }
 .pill--bad .pill-dot { background: #ef4444; }
 
 /* =========================
@@ -712,7 +712,7 @@
 .btn-action {
   border-radius: 8px;
   padding: 7px 8px;
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-strong);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -736,24 +736,25 @@
 }
 
 .btn-action--chart {
-  color: #059669;
-  border-color: #d1fae5;
-  background: #f0fdf4;
+  color: var(--success);
+  border-color: var(--success-border);
+  background: var(--success-bg);
 }
 
 .btn-action--chart:hover {
-  background: #dcfce7;
-  border-color: #86efac;
+  background: var(--success-border);
+  border-color: var(--success);
 }
 
 .btn-action--edit {
   color: var(--text-secondary);
-  background: var(--bg-card-hover);
+  background: var(--bg-card);
+  border-color: var(--border-strong);
 }
 
 .btn-action--edit:hover {
-  background: var(--border-default);
-  border-color: var(--border-strong);
+  background: var(--table-hover);
+  border-color: var(--text-muted);
   color: var(--text-primary);
 }
 

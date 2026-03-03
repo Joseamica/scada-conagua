@@ -157,8 +157,8 @@
 }
 
 .badge.blocked {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--danger-bg);
+  color: var(--danger);
 }
 
 .security-extra {

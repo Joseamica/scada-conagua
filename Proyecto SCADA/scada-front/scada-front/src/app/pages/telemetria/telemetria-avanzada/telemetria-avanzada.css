@@ -28,7 +28,7 @@
 }
 .search input{
   border:0; outline:none; background:transparent; width:100%;
-  font-size:14px;
+  font-size:14px; color:var(--text-primary);
 }
 .search-ico{ opacity:.7; }
 
@@ -44,7 +44,7 @@
 .field{ display:flex; flex-direction:column; gap:6px; font-size:13px; color:var(--text-primary); }
 .field select{
   border:1px solid var(--border-default); border-radius:10px; padding:10px 12px;
-  background:var(--bg-card);
+  background:var(--bg-card); color:var(--text-primary);
 }
 
 .grid{
@@ -105,9 +105,9 @@
   font-size:12px; font-weight:700;
   border:1px solid var(--border-default);
 }
-.pill--ok{ background:var(--success-bg); border-color:var(--success-border); color:#065f46; }
-.pill--warn{ background:var(--warning-bg); border-color:#fde68a; color:#92400e; }
-.pill--bad{ background:var(--danger-bg); border-color:var(--danger-border); color:#991b1b; }
+.pill--ok{ background:var(--success-bg); border-color:var(--success-border); color:var(--success); }
+.pill--warn{ background:var(--warning-bg); border-color:var(--warning); color:var(--warning); }
+.pill--bad{ background:var(--danger-bg); border-color:var(--danger-border); color:var(--danger); }
 
 .btn{
   border-radius:10px; padding:10px 12px; font-weight:700;
@@ -167,8 +167,8 @@
 /* Estado SIN SEÑAL más claro visualmente */
 .pill--warn {
   background: var(--warning-bg);
-  border-color: #fde68a;
-  color: #92400e;
+  border-color: var(--warning);
+  color: var(--warning);
 }
 
 /* Placeholder vacío (por si no hay datos) */
@@ -184,6 +184,8 @@
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 14px;
+  background: var(--bg-card);
+  color: var(--text-primary);
 }
 
 /* Checkbox alineado */
@@ -337,7 +339,14 @@
   padding: 2px 6px;
   font-size: 13px;
   border-radius: 10px;
-  border: 1px solid var(--border-default);;
+  border: 1px solid var(--border-default);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  color-scheme: light;
+}
+
+html[data-theme="dark"] .date-range-inline input[type="date"] {
+  color-scheme: dark;
 }
 
 .date-sep {

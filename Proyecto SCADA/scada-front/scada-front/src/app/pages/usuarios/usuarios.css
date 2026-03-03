@@ -329,12 +329,17 @@
 
 .table-header {
   padding: 10px 16px;
-  background: var(--bg-card-hover);
+  background: var(--table-header-bg);
   border-bottom: 1px solid var(--border-default);
+  border-top: 2px solid var(--border-strong);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.table-wrap:first-child .table-header {
+  border-top: none;
 }
 
 .table-title {
@@ -392,12 +397,12 @@
 }
 
 .table tbody tr { transition: background 0.1s ease; cursor: pointer; }
-.table tbody tr:hover td { background: var(--bg-card-hover); }
+.table tbody tr:hover td { background: var(--table-hover); }
 .table tbody tr.selected td { background: var(--info-bg); }
 .table tbody tr:last-child td { border-bottom: none; }
 
-.row-alt td { background: var(--bg-card-hover); }
-.row-alt:hover td { background: var(--bg-app) !important; }
+.row-alt td { background: var(--table-stripe); }
+.row-alt:hover td { background: var(--table-hover) !important; }
 
 /* Cell: user name with avatar */
 .cell-name {
@@ -442,10 +447,10 @@
   white-space: nowrap;
 }
 
-.role-badge--1 { background: rgba(109, 0, 43, 0.08); color: #6d002b; } /* Admin */
-.role-badge--2 { background: #eff6ff; color: #1d4ed8; }                /* Supervisor */
-.role-badge--3 { background: #f0fdf4; color: #15803d; }                /* Operador */
-.role-badge--4 { background: #f8fafc; color: #475569; }                /* Tecnico */
+.role-badge--1 { background: var(--accent-light); color: var(--accent); }   /* Admin */
+.role-badge--2 { background: var(--info-bg); color: var(--info); }          /* Supervisor */
+.role-badge--3 { background: var(--success-bg); color: var(--success); }    /* Operador */
+.role-badge--4 { background: var(--table-hover); color: var(--text-secondary); } /* Tecnico */
 
 /* Cell: action tag */
 .action-tag {
@@ -493,10 +498,10 @@
   flex-shrink: 0;
 }
 
-.pill--ok   { background: var(--success-bg); border-color: var(--success-border); color: #065f46; }
+.pill--ok   { background: var(--success-bg); border-color: var(--success-border); color: var(--success); }
 .pill--ok .pill-dot { background: #10b981; }
 
-.pill--bad  { background: var(--danger-bg); border-color: var(--danger-border); color: #991b1b; }
+.pill--bad  { background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger); }
 .pill--bad .pill-dot { background: #ef4444; }
 
 /* ===== EMPTY STATE ===== */
@@ -566,7 +571,7 @@
 .btn-action {
   border-radius: 8px;
   padding: 7px 8px;
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-strong);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -581,8 +586,8 @@
 .btn-action:active { transform: translateY(0); }
 .btn-action:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.btn-action--edit { color: var(--text-secondary); background: var(--bg-card-hover); }
-.btn-action--edit:hover { background: var(--border-default); border-color: var(--border-strong); color: var(--text-primary); }
+.btn-action--edit { color: var(--text-secondary); background: var(--bg-card); border-color: var(--border-strong); }
+.btn-action--edit:hover { background: var(--table-hover); border-color: var(--text-muted); color: var(--text-primary); }
 
 .btn-action--danger { color: var(--danger); background: var(--bg-card); border-color: var(--danger-border); }
 .btn-action--danger:hover { background: var(--danger-bg); border-color: #f87171; }

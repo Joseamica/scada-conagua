@@ -118,9 +118,9 @@ html[data-theme="dark"] {
   --footer-bg: #1e293b;
   --kpi-card-bg: #1e293b;
   --chart-grid: #334155;
-  --table-stripe: #1e293b;
-  --table-hover: #334155;
-  --table-header-bg: #1e293b;
+  --table-stripe: #253245;
+  --table-hover: #2d3d50;
+  --table-header-bg: #1a2536;
   --scrollbar-thumb: #475569;
   --scrollbar-track: #0f172a;
 }
@@ -272,6 +272,23 @@ body, html {
 
 .leaflet-popup-content {
   margin: 8px 12px;
+}
+
+.leaflet-bar a,
+.leaflet-bar a:hover {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border-bottom-color: var(--border-default) !important;
+}
+
+.leaflet-bar {
+  border: 1px solid var(--border-default) !important;
+}
+
+.leaflet-control-layers {
+  background: var(--bg-card) !important;
+  border-color: var(--border-default) !important;
+  color: var(--text-primary) !important;
 }
 
 

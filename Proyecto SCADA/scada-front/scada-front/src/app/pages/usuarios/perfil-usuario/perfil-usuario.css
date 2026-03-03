@@ -80,10 +80,10 @@
   text-transform: uppercase;
 }
 
-.role-badge--1 { background: #fdf2f4; color: #6d002b; border: 1px solid #f5c6d0; }
-.role-badge--2 { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-.role-badge--3 { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
-.role-badge--4 { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+.role-badge--1 { background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent); }
+.role-badge--2 { background: var(--info-bg); color: var(--info); border: 1px solid var(--info-border); }
+.role-badge--3 { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+.role-badge--4 { background: var(--table-hover); color: var(--text-secondary); border: 1px solid var(--border-default); }
 
 .scope-badge {
   display: inline-flex;
@@ -299,13 +299,13 @@
 
 .toast--ok {
   background: var(--success-bg);
-  color: #065f46;
+  color: var(--success);
   border: 1px solid var(--success-border);
 }
 
 .toast--error {
   background: var(--danger-bg);
-  color: #991b1b;
+  color: var(--danger);
   border: 1px solid var(--danger-border);
 }
 

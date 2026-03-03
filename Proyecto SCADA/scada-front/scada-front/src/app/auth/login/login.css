@@ -175,7 +175,7 @@
 
 .toast--error {
   background: var(--danger-bg);
-  color: #991b1b;
+  color: var(--danger);
   border: 1px solid var(--danger-border);
 }
 
