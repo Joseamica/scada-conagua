@@ -1,0 +1,62 @@
+{
+  "name": "scada-demo",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "dev": "ng serve",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "serve:ssr:scada-demo": "node dist/scada-demo/server/server.mjs"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "singleQuote": true,
+    "overrides": [
+      {
+        "files": "*.html",
+        "options": {
+          "parser": "angular"
+        }
+      }
+    ]
+  },
+  "private": true,
+  "packageManager": "npm@10.8.2",
+  "dependencies": {
+    "@angular/common": "^21.0.0",
+    "@angular/compiler": "^21.0.0",
+    "@angular/core": "^21.0.0",
+    "@angular/forms": "^21.0.0",
+    "@angular/platform-browser": "^21.0.0",
+    "@angular/platform-server": "^21.0.0",
+    "@angular/router": "^21.0.0",
+    "@angular/ssr": "^21.0.1",
+    "@mapbox/leaflet-omnivore": "^0.3.4",
+    "@ng-icons/bootstrap-icons": "^33.0.0",
+    "@ng-icons/core": "^33.0.0",
+    "@ng-icons/heroicons": "^33.0.0",
+    "echarts": "^6.0.0",
+    "express": "^5.1.0",
+    "heroicons": "^2.2.0",
+    "leaflet": "^1.9.4",
+    "leaflet-kml": "^1.0.1",
+    "leaflet-omnivore": "^0.3.4",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zone.js": "^0.16.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^21.0.1",
+    "@angular/cli": "^21.0.1",
+    "@angular/compiler-cli": "^21.0.0",
+    "@types/express": "^5.0.1",
+    "@types/leaflet": "^1.9.21",
+    "@types/node": "^20.17.19",
+    "baseline-browser-mapping": "^2.9.19",
+    "jsdom": "^27.1.0",
+    "typescript": "~5.9.2",
+    "vitest": "^4.0.8"
+  }
+}

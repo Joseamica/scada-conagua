@@ -1,0 +1,213 @@
+<app-header-bar></app-header-bar>
+
+<div class="shell">
+  <main class="page">
+
+    <section class="card">
+
+      <form [formGroup]="form" (ngSubmit)="save()">
+
+        <!-- DATOS BASICOS -->
+        <div class="section">
+
+          <h3>Datos básicos</h3>
+
+          <div class="grid-2">
+
+            <div class="field">
+              <label>Nombre del sitio</label>
+              <input formControlName="nombre">
+            </div>
+
+            <div class="field">
+              <label>Tipo de sitio</label>
+
+              <div class="tipo-grid">
+                <div
+                  class="tipo-card"
+                  *ngFor="let t of tiposSitio"
+                  [class.active]="form.value.tipo === t.value"
+                  (click)="form.patchValue({tipo:t.value})">
+
+                  {{ t.label }}
+
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Proveedor</label>
+
+              <select formControlName="proveedor">
+
+                <option [ngValue]="null">Seleccionar</option>
+
+                <option *ngFor="let p of proveedores"
+                        [ngValue]="p.id">
+
+                  {{ p.nombre }}
+
+                </option>
+
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Estatus</label>
+
+              <select formControlName="estatus">
+
+                <option *ngFor="let e of estatusSitio"
+                        [ngValue]="e.value">
+
+                  {{ e.label }}
+
+                </option>
+
+              </select>
+            </div>
+
+            <div class="field">
+
+  <label>ID Gateway</label>
+
+  <input formControlName="gatewayId">
+
+</div>
+
+<div class="field">
+
+  <label>ID UTR</label>
+
+  <input formControlName="utrId">
+
+</div>
+
+          </div>
+
+          
+
+
+        </div>
+
+
+        <!-- UBICACION -->
+        <div class="section">
+
+          <h3>Ubicación</h3>
+
+          <div class="grid-2">
+
+            <div class="field">
+
+              <label>Estado</label>
+              <select formControlName="estado">
+                <option value="">Seleccionar</option>
+                <ng-container *ngIf="estados && estados.length > 0">
+                    <option *ngFor="let e of estados" [value]="e.estado">
+                    {{ e.estado }}
+                    </option>
+                </ng-container>
+            </select>
+
+            </div>
+
+            <div class="field">
+            <label>Municipio</label>
+            <select formControlName="municipio">
+                <option value="">Seleccionar</option>
+                <option *ngFor="let m of municipiosFiltrados" [value]="m">
+                {{ m }}
+                </option>
+            </select>
+            </div>
+
+            <div class="field">
+              <label>Latitud</label>
+              <input formControlName="lat">
+            </div>
+
+            <div class="field">
+              <label>Longitud</label>
+              <input formControlName="lng">
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- VISUAL -->
+        <div class="section">
+
+          <h3>Visualización</h3>
+
+          <div class="field full">
+
+            <label>Añadir render</label>
+
+            <div class="file-ui">
+
+              <input
+                type="file"
+                accept="image/*"
+                (change)="onRenderSelected($event)"
+                #fileInput
+                hidden>
+
+              <button
+                type="button"
+                class="btn btn-outline"
+                (click)="fileInput.click()">
+
+                Seleccionar archivo
+
+              </button>
+
+              <span class="file-name">
+
+                {{ form.value.render ? 'Render cargado' : 'Ningún archivo seleccionado' }}
+
+              </span>
+
+            </div>
+
+            <div class="render-preview" *ngIf="form.value.render">
+              <img [src]="form.value.render">
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- ACTIONS -->
+<div class="form-actions">
+
+  <button
+    type="button"
+    class="btn btn-outline"
+    (click)="cancelar()">
+
+    Cancelar
+
+  </button>
+
+  <button
+    type="submit"
+    class="btn btn-primary">
+
+    {{ modo === 'create' ? 'Guardar sitio' : 'Actualizar sitio' }}
+
+  </button>
+
+</div>
+
+
+      </form>
+
+    </section>
+
+  </main>
+</div>
+
+<app-footer-tabs></app-footer-tabs>

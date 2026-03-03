@@ -1,0 +1,137 @@
+<app-header-bar></app-header-bar>
+
+<div class="shell">
+  <main class="page">
+
+    <section class="card">
+
+      <!-- TOOLBAR -->
+      <div class="toolbar">
+
+        <div class="search">
+          <span class="search-ico">
+            <ng-icon name="heroMagnifyingGlass" size="22"></ng-icon>
+          </span>
+          <input
+            type="text"
+            placeholder="Buscar accion o usuario"
+            [value]="search()"
+            (input)="search.set(($any($event.target)).value)">
+        </div>
+
+        <div class="tool-actions">
+          <button class="btn btn-outline" type="button" (click)="toggleFilters()">
+            <ng-icon name="heroSquaresPlus" size="22"></ng-icon>
+            Filtros
+          </button>
+
+          <button class="btn btn-outline" type="button" (click)="clearFilters()">
+            <ng-icon name="heroArrowPath" size="22"></ng-icon>
+            Limpiar
+          </button>
+
+          <button class="btn btn-primary" type="button" (click)="downloadReport()">
+            <ng-icon name="heroDocumentChartBar" size="22"></ng-icon>
+            Descargar CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTER PANEL -->
+      <div class="filters" *ngIf="filtersOpen()">
+        <div class="filter-grid">
+
+          <label class="field">
+            <span>Fecha desde</span>
+            <input
+              type="date"
+              [value]="fechaDesde()"
+              (change)="fechaDesde.set(($any($event.target)).value); applyDateFilters()">
+          </label>
+
+          <label class="field">
+            <span>Fecha hasta</span>
+            <input
+              type="date"
+              [value]="fechaHasta()"
+              (change)="fechaHasta.set(($any($event.target)).value); applyDateFilters()">
+          </label>
+
+          <label class="field">
+            <span>Rol</span>
+            <select
+              [value]="filterRol()"
+              (change)="filterRol.set(($any($event.target)).value)">
+              <option value="ALL">Todos</option>
+              <option *ngFor="let r of roleOptions" [value]="r">{{ r }}</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Nivel</span>
+            <select
+              [value]="filterNivel()"
+              (change)="filterNivel.set(($any($event.target)).value)">
+              <option value="ALL">Todos</option>
+              <option value="Federal">Federal</option>
+              <option value="Estatal">Estatal</option>
+              <option value="Municipal">Municipal</option>
+            </select>
+          </label>
+
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="table-wrap">
+        <div class="table-title">
+          Log de actividad
+          <span class="hint">{{ totalRecords() }} registros</span>
+        </div>
+
+        <div class="table-scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th>Accion</th>
+                <th>IP</th>
+                <th class="col-date">Fecha / Hora</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr *ngFor="let l of filteredLogs()">
+                <td>{{ l.full_name || l.email }}</td>
+                <td>{{ l.role_name }}</td>
+                <td>{{ l.action }}</td>
+                <td class="mono">{{ l.ip_address }}</td>
+                <td class="mono col-date">{{ formatDate(l.created_at) }}</td>
+              </tr>
+
+              <tr *ngIf="filteredLogs().length === 0">
+                <td colspan="5" class="empty">
+                  {{ loading() ? 'Cargando...' : 'Sin resultados' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination" *ngIf="totalPages() > 1">
+          <button class="btn btn-outline" type="button" (click)="prevPage()" [disabled]="currentPage() <= 1">
+            Anterior
+          </button>
+          <span class="page-info">Pagina {{ currentPage() }} de {{ totalPages() }}</span>
+          <button class="btn btn-outline" type="button" (click)="nextPage()" [disabled]="currentPage() >= totalPages()">
+            Siguiente
+          </button>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+<app-footer-tabs></app-footer-tabs>

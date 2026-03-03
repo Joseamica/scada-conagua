@@ -1,0 +1,39 @@
+<div class="auth-shell">
+
+  <div class="auth-card">
+    <h1>Verificacion de seguridad</h1>
+
+    <p class="auth-text" *ngIf="method === 'email'">
+      Te enviamos un codigo de verificacion a tu correo electronico.
+      Ingresa el codigo para continuar.
+    </p>
+
+    <p class="auth-text" *ngIf="method === 'totp'">
+      Ingresa el codigo de 6 digitos de tu aplicacion
+      <strong>Google Authenticator</strong>.
+    </p>
+
+    <input
+      type="text"
+      maxlength="6"
+      [placeholder]="method === 'totp' ? 'Codigo de Google Authenticator' : 'Codigo de verificacion'"
+      class="auth-input"
+      [(ngModel)]="tokenValue"
+      name="tokenValue"
+      autocomplete="one-time-code"
+    />
+
+    <button class="btn btn-primary full" (click)="verificarToken()">
+        Verificar
+    </button>
+
+    <div class="error" *ngIf="errorMsg">
+        {{ errorMsg }}
+    </div>
+
+    <button class="btn btn-link" *ngIf="method === 'email'" (click)="reenviarToken()">
+        Reenviar codigo
+    </button>
+  </div>
+
+</div>

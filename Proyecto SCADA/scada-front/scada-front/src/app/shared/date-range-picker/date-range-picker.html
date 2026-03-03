@@ -1,0 +1,127 @@
+<div class="drp-wrapper">
+
+  <!-- ======================== -->
+  <!-- TRIGGER BUTTON           -->
+  <!-- ======================== -->
+  <button class="drp-trigger" type="button" (click)="toggleOpen($event)">
+    <svg class="drp-trigger-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    <span class="drp-trigger-label">{{ triggerLabel }}</span>
+    <svg class="drp-chevron" [class.open]="isOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  </button>
+
+  <!-- ======================== -->
+  <!-- POPOVER                  -->
+  <!-- ======================== -->
+  <div class="drp-popover" *ngIf="isOpen" (click)="stopProp($event)">
+
+    <!-- DATE INPUT ROW -->
+    <div class="drp-inputs-row">
+      <div class="drp-input-field" [class.drp-input-field--active]="!selectingTo && !!draftFrom">
+        <span>{{ fmtInput(draftFrom) }}</span>
+      </div>
+      <span class="drp-input-sep">–</span>
+      <div class="drp-input-field" [class.drp-input-field--active]="selectingTo">
+        <span>{{ fmtInput(effectiveTo) }}</span>
+      </div>
+      <span class="drp-hint" *ngIf="selectingTo">Selecciona fecha de fin</span>
+    </div>
+
+    <!-- BODY: CALENDARS + PRESETS -->
+    <div class="drp-body">
+
+      <!-- CALENDARS -->
+      <div class="drp-calendars">
+
+        <!-- Month navigation -->
+        <div class="drp-months-header">
+          <button class="drp-nav-btn" type="button" (click)="prevMonth()" title="Mes anterior">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="drp-month-label">{{ getMonthLabel(leftMonthDate) }}</span>
+          <span class="drp-month-label">{{ getMonthLabel(rightMonthDate) }}</span>
+          <button class="drp-nav-btn" type="button" (click)="nextMonth()" title="Mes siguiente">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+
+        <!-- Two-month grid -->
+        <div class="drp-cal-grid">
+
+          <!-- LEFT CALENDAR -->
+          <div class="drp-cal">
+            <div class="drp-weekdays">
+              <span *ngFor="let d of weekDays">{{ d }}</span>
+            </div>
+            <div class="drp-days" (mouseleave)="onCalMouseLeave()">
+              <ng-container *ngFor="let day of leftDays; trackBy: trackDay">
+                <button *ngIf="day !== null"
+                        type="button"
+                        [class]="getDayClass(day)"
+                        (click)="onDayClick(day)"
+                        (mouseenter)="onDayHover(day)">
+                  <span>{{ day.getDate() }}</span>
+                </button>
+                <span *ngIf="day === null" class="drp-day drp-day--empty"></span>
+              </ng-container>
+            </div>
+          </div>
+
+          <!-- RIGHT CALENDAR -->
+          <div class="drp-cal">
+            <div class="drp-weekdays">
+              <span *ngFor="let d of weekDays">{{ d }}</span>
+            </div>
+            <div class="drp-days" (mouseleave)="onCalMouseLeave()">
+              <ng-container *ngFor="let day of rightDays; trackBy: trackDay">
+                <button *ngIf="day !== null"
+                        type="button"
+                        [class]="getDayClass(day)"
+                        (click)="onDayClick(day)"
+                        (mouseenter)="onDayHover(day)">
+                  <span>{{ day.getDate() }}</span>
+                </button>
+                <span *ngIf="day === null" class="drp-day drp-day--empty"></span>
+              </ng-container>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- PRESETS -->
+      <div class="drp-presets">
+        <button *ngFor="let p of presets"
+                type="button"
+                class="drp-preset-btn"
+                [class.drp-preset-btn--active]="selectedPreset === p.name"
+                (click)="onPresetClick(p.name)">
+          <svg *ngIf="selectedPreset === p.name" class="drp-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          <span *ngIf="selectedPreset !== p.name" class="drp-check-ph"></span>
+          {{ p.label }}
+        </button>
+      </div>
+
+    </div>
+
+    <!-- FOOTER: interval + cancel/apply -->
+    <div class="drp-footer">
+      <div class="drp-interval">
+        <label>Muestreo:</label>
+        <select #intervalSel class="drp-interval-sel">
+          <option *ngFor="let iv of intervals" [value]="iv.value" [selected]="iv.value === appliedInterval">{{ iv.label }}</option>
+        </select>
+      </div>
+      <div class="drp-footer-actions">
+        <button type="button" class="drp-btn drp-btn--cancel" (click)="cancel()">Cancelar</button>
+        <button type="button" class="drp-btn drp-btn--apply" (click)="apply()">Aplicar</button>
+      </div>
+    </div>
+
+  </div>
+</div>

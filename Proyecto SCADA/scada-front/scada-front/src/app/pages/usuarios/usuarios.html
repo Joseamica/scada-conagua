@@ -1,0 +1,311 @@
+<app-header-bar></app-header-bar>
+
+<div class="shell">
+  <main class="page">
+
+    <!-- KPI STRIP -->
+    <section class="kpi-strip">
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--total">
+          <ng-icon name="heroUserGroup" size="20"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ usersList().length }}</span>
+          <span class="kpi-label">Total usuarios</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--ok">
+          <ng-icon name="heroShieldCheck" size="20"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ usersActivos() }}</span>
+          <span class="kpi-label">Activos</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--warn">
+          <ng-icon name="heroLockClosed" size="20"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ usersBloqueados() }}</span>
+          <span class="kpi-label">Bloqueados</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--info">
+          <ng-icon name="heroFunnel" size="20"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ filteredUsers().length }}</span>
+          <span class="kpi-label">Filtrados</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- CARD PRINCIPAL -->
+    <section class="card">
+
+      <!-- TOOLBAR -->
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div class="search">
+            <span class="search-ico" aria-hidden="true">
+              <ng-icon name="heroMagnifyingGlass" size="16"></ng-icon>
+            </span>
+            <input
+              type="text"
+              [value]="search()"
+              (input)="search.set(($any($event.target)).value)"
+              placeholder="Buscar usuario..."
+              aria-label="Buscar usuario por nombre o correo"
+            />
+            <span class="search-hint" *ngIf="!search()">nombre o correo</span>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-outline" type="button" (click)="toggleFilters()" aria-label="Mostrar filtros">
+            <ng-icon name="heroAdjustmentsHorizontal" size="16"></ng-icon>
+            <span class="btn-label">Filtros</span>
+            <span class="filter-badge" *ngIf="activeFilterCount() > 0">{{ activeFilterCount() }}</span>
+          </button>
+          <button class="btn btn-outline" type="button" (click)="clearFilters()"
+                  [disabled]="activeFilterCount() === 0" aria-label="Limpiar filtros">
+            <ng-icon name="heroArrowPath" size="16"></ng-icon>
+            <span class="btn-label">Limpiar</span>
+          </button>
+          <button class="btn btn-primary" type="button" (click)="crearUsuario()" aria-label="Crear nuevo usuario">
+            <ng-icon name="heroPlus" size="16"></ng-icon>
+            Nuevo usuario
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTER PANEL -->
+      <div class="filters" *ngIf="filtersOpen()">
+        <div class="filter-grid">
+          <div class="field">
+            <label for="fRol">Rol</label>
+            <select id="fRol" [value]="filterRol()" (change)="filterRol.set(($any($event.target)).value)">
+              <option value="ALL">Todos</option>
+              <option *ngFor="let r of roleOptions" [value]="r">{{ r }}</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="fNivel">Nivel</label>
+            <select id="fNivel" [value]="filterNivel()" (change)="filterNivel.set(($any($event.target)).value)">
+              <option value="ALL">Todos</option>
+              <option value="Federal">Federal</option>
+              <option value="Estatal">Estatal</option>
+              <option value="Municipal">Municipal</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="fEstatus">Estatus</label>
+            <select id="fEstatus" [value]="filterEstatus()" (change)="filterEstatus.set(($any($event.target)).value)">
+              <option value="ALL">Todos</option>
+              <option value="ACTIVO">Activo</option>
+              <option value="BLOQUEADO">Bloqueado</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN GRID -->
+      <div class="grid">
+
+        <!-- Entity Tree -->
+        <aside class="tree" role="navigation" aria-label="Navegación por dependencia">
+          <div class="tree-head">
+            <ng-icon name="heroBuildingOffice2" size="14"></ng-icon>
+            Dependencias
+          </div>
+          <div class="tree-body">
+
+            <button class="tree-item"
+                    [class.active]="selectedEntityId() === null"
+                    (click)="selectEntity(null)">
+              <span>Todos</span>
+              <span class="tree-count">{{ usersList().length }}</span>
+            </button>
+
+            <ng-container *ngFor="let n1 of entityTree()">
+              <div class="tree-level-label">{{ n1.entity.level | uppercase }}</div>
+              <button class="tree-item"
+                      [class.active]="isEntitySelected(n1.entity.id)"
+                      (click)="selectEntity(n1.entity)">
+                <span>{{ n1.entity.name }}</span>
+              </button>
+
+              <ng-container *ngIf="n1.children.length > 0">
+                <div class="tree-children">
+                  <ng-container *ngFor="let n2 of n1.children">
+                    <div class="tree-level-label">{{ n2.entity.level | uppercase }}</div>
+                    <button class="tree-item"
+                            [class.active]="isEntitySelected(n2.entity.id)"
+                            (click)="selectEntity(n2.entity)">
+                      <span>{{ n2.entity.name }}</span>
+                    </button>
+
+                    <ng-container *ngIf="n2.children.length > 0">
+                      <div class="tree-children">
+                        <ng-container *ngFor="let n3 of n2.children">
+                          <button class="tree-item"
+                                  [class.active]="isEntitySelected(n3.entity.id)"
+                                  (click)="selectEntity(n3.entity)">
+                            <span>{{ n3.entity.name }}</span>
+                          </button>
+                        </ng-container>
+                      </div>
+                    </ng-container>
+                  </ng-container>
+                </div>
+              </ng-container>
+            </ng-container>
+
+          </div>
+        </aside>
+
+        <!-- Tables -->
+        <section class="tables">
+
+          <!-- Users table -->
+          <div class="table-wrap">
+            <div class="table-header">
+              <div class="table-title">
+                <span>Listado de usuarios</span>
+                <span class="muted">({{ filteredUsers().length }})</span>
+                <span class="table-entity-tag" *ngIf="selectedEntityId()">{{ selectedEntityName() }}</span>
+              </div>
+            </div>
+
+            <div class="table-scroll">
+              <table class="table" role="grid">
+                <thead>
+                  <tr>
+                    <th scope="col">Nombre</th>
+                    <th scope="col">Correo</th>
+                    <th scope="col">Rol</th>
+                    <th scope="col">Nivel</th>
+                    <th scope="col">Dependencia</th>
+                    <th scope="col">Estatus</th>
+                    <th scope="col" class="col-actions">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let u of filteredUsers(); let odd = odd"
+                      (click)="selectUser(u.id)"
+                      [class.selected]="selectedUserId() === u.id"
+                      [class.row-alt]="odd">
+                    <td class="cell-name">
+                      <div class="user-avatar-sm" [class.user-avatar-sm--blocked]="u.is_blocked">
+                        {{ getInitials(u.full_name) }}
+                      </div>
+                      <span>{{ u.full_name }}</span>
+                    </td>
+                    <td class="mono">{{ u.email }}</td>
+                    <td>
+                      <span class="role-badge" [ngClass]="'role-badge--' + u.role_id">{{ u.role_name }}</span>
+                    </td>
+                    <td>{{ u.scope }}</td>
+                    <td>{{ u.entity_name || '—' }}</td>
+                    <td>
+                      <span class="pill" [ngClass]="statusClass(u)">
+                        <span class="pill-dot" aria-hidden="true"></span>
+                        {{ statusLabel(u) }}
+                      </span>
+                    </td>
+                    <td class="col-actions">
+                      <div class="actions-cell">
+                        <button class="btn-action btn-action--edit" type="button"
+                                (click)="$event.stopPropagation(); onEditar(u)"
+                                title="Editar usuario"
+                                [attr.aria-label]="'Editar ' + u.full_name">
+                          <ng-icon name="heroPencilSquare" size="16"></ng-icon>
+                        </button>
+                        <button class="btn-action btn-action--danger" type="button"
+                                (click)="$event.stopPropagation(); onEliminar(u)"
+                                title="Revocar acceso"
+                                [attr.aria-label]="'Revocar acceso de ' + u.full_name">
+                          <ng-icon name="heroNoSymbol" size="16"></ng-icon>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <tr *ngIf="filteredUsers().length === 0">
+                    <td colspan="7" class="empty">
+                      <div class="empty-state">
+                        <ng-icon name="heroUserGroup" size="32"></ng-icon>
+                        <p class="empty-title">Sin resultados</p>
+                        <p class="empty-desc">No hay usuarios para los filtros seleccionados</p>
+                        <button class="btn btn-outline btn-sm" type="button" (click)="clearFilters()">
+                          Limpiar filtros
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Audit Log -->
+          <div class="table-wrap">
+            <div class="table-header">
+              <div class="table-title">
+                <ng-icon name="heroShieldCheck" size="16"></ng-icon>
+                <span>Seguridad Log</span>
+                <span class="muted">({{ logs().length }})</span>
+              </div>
+              <button class="btn btn-outline btn-sm" type="button" (click)="onReporteAuditoria()">
+                <ng-icon name="heroDocumentChartBar" size="16"></ng-icon>
+                Reporte completo
+              </button>
+            </div>
+
+            <div class="table-scroll table-scroll--short">
+              <table class="table" role="grid">
+                <thead>
+                  <tr>
+                    <th scope="col">Usuario</th>
+                    <th scope="col">Acción</th>
+                    <th scope="col">IP</th>
+                    <th scope="col" class="col-date">Fecha / Hora</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let l of logs(); let odd = odd" [class.row-alt]="odd">
+                    <td class="cell-name-sm">{{ l.full_name || l.email }}</td>
+                    <td>
+                      <span class="action-tag">{{ l.action }}</span>
+                    </td>
+                    <td class="mono">{{ l.ip_address }}</td>
+                    <td class="mono col-date">{{ formatDate(l.created_at) }}</td>
+                  </tr>
+                  <tr *ngIf="logs().length === 0">
+                    <td colspan="4" class="empty">
+                      <div class="empty-state empty-state--sm">
+                        <ng-icon name="heroShieldCheck" size="24"></ng-icon>
+                        <p class="empty-desc">Sin registros de auditoría</p>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </section>
+      </div>
+
+    </section>
+  </main>
+
+<app-footer-tabs></app-footer-tabs>

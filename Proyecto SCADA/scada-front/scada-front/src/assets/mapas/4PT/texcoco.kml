@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document id="root_doc">
+<Schema name="sitios__sitios_texcocokmz" id="sitios__sitios_texcocokmz">
+	<SimpleField name="id" type="string"></SimpleField>
+	<SimpleField name="timestamp" type="string"></SimpleField>
+	<SimpleField name="begin" type="string"></SimpleField>
+	<SimpleField name="end" type="string"></SimpleField>
+	<SimpleField name="altitudeMode" type="string"></SimpleField>
+	<SimpleField name="tessellate" type="int"></SimpleField>
+	<SimpleField name="extrude" type="int"></SimpleField>
+	<SimpleField name="visibility" type="int"></SimpleField>
+	<SimpleField name="drawOrder" type="int"></SimpleField>
+	<SimpleField name="icon" type="string"></SimpleField>
+</Schema>
+<Folder><name>sitios__sitios_texcocokmz</name>
+  <Placemark id="sitios__sitios_texcocokmz.1">
+	<name>AVENIDA JUÁREZ Y CALLE ALLENDE</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.8825772476503,19.5121186848852,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.2">
+	<name>CAJA DE VÁLVULAS COLÓN Y JOSEFA ORTIZ</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.8873902,19.5158247,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.3">
+	<name>CALLE ALLENDE Y LÁZARO CÁRDENAS</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.8650447629916,19.5110025987712,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.4">
+	<name>CÁRCAMO DE LA CALLE BARRANQUILLA Y CALLE MORAL</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.8796507799358,19.5032592099164,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.5">
+	<name>CÁRCAMO JOYAS DE SANTA ANA</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.8934881,19.5203499,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.6">
+	<name>POZO 1 LA CONCHITA</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.872413,19.511437,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.7">
+	<name>POZO 11 LOMAS DE SAN ESTEBAN</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.879304,19.458302,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.8">
+	<name>POZO 12 LAS VEGAS</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.889687,19.503856,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.9">
+	<name>POZO 3 EL AHUEHUETE</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.880696,19.5060777777778,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.10">
+	<name>POZO 7 LA PREPARATORIA</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.885425,19.5017555555556,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.11">
+	<name>POZO EL GAVILÁN</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.843042,19.553198,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.12">
+	<name>POZO EL XOLACHE</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.88858,19.520708,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.13">
+	<name>POZO ISSSTE</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.865251,19.49052,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.14">
+	<name>POZO LA ALAMEDA</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.8738038,19.5200502,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.15">
+	<name>POZO LA CABAÑA</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.885307,19.484174,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.16">
+	<name>POZO LA CAZUELA</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.857055,19.510499,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.17">
+	<name>POZO LOMAS DE COCOYOC</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.861294,19.486621,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.18">
+	<name>POZO LOMAS DE CRISTO</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.880247,19.464638,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.19">
+	<name>POZO MOLINO DE FLORES</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.849587,19.507209,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.20">
+	<name>POZO PARQUE MOLINO DE FLORES</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.840667,19.514031,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.21">
+	<name>POZO VALLE EL MOLINO</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.851518,19.510834,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.22">
+	<name>POZO VILLAS DE TOLIMPA</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.882794,19.474888,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_texcocokmz.23">
+	<name>POZO 8 CIUDAD DEPORTIVA</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_texcocokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.883888,19.520052,0</coordinates></Point>
+  </Placemark>
+</Folder>
+</Document></kml>

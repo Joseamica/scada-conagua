@@ -1,0 +1,571 @@
+/* =========================================
+   HEADER BAR — SCADA SOA
+   ========================================= */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  padding: 0 16px;
+  height: 56px;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ===== LEFT SECTION ===== */
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Logo button */
+.logo-btn {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.logo-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #6d002b 0%, #8b0035 100%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  display: grid;
+  place-items: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.logo-btn:hover .logo-mark {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(109, 0, 43, 0.25);
+}
+
+.logo-btn:focus-visible .logo-mark {
+  outline: 2px solid #6d002b;
+  outline-offset: 2px;
+}
+
+/* Divider */
+.header-divider {
+  width: 1px;
+  height: 24px;
+  background: #e2e8f0;
+  flex-shrink: 0;
+}
+
+/* Title */
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.header-title-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pill--ok {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.pill--critical {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+/* ===== RIGHT SECTION ===== */
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Pill buttons (alerts, messages) */
+.header-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.header-pill-btn:focus-visible {
+  outline: 2px solid #6d002b;
+  outline-offset: 2px;
+}
+
+/* Danger (alertas) */
+.header-pill-btn--danger {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.header-pill-btn--danger:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.15);
+}
+
+.header-pill-btn--danger.is-active {
+  background: #fee2e2;
+  border-color: #f87171;
+}
+
+/* Info (mensajes) */
+.header-pill-btn--info {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.header-pill-btn--info:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  box-shadow: 0 1px 4px rgba(59, 130, 246, 0.15);
+}
+
+.header-pill-btn--info.is-active {
+  background: #dbeafe;
+  border-color: #60a5fa;
+}
+
+/* ===== USER CHIP ===== */
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  font-family: inherit;
+}
+
+.user-chip:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.user-chip.is-active {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.user-chip:focus-visible {
+  outline: 2px solid #6d002b;
+  outline-offset: 2px;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #6d002b 0%, #a0003f 100%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  min-width: 0;
+}
+
+.user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-role {
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  line-height: 1.2;
+}
+
+.user-chevron {
+  color: #94a3b8;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.user-chip.is-active .user-chevron {
+  transform: rotate(180deg);
+}
+
+/* ===== DROPDOWNS (shared) ===== */
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  z-index: 1200;
+  overflow: hidden;
+  animation: dropdownIn 0.15s ease;
+}
+
+@keyframes dropdownIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-header {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.dropdown-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.dropdown-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: #6d002b;
+  padding: 2px 7px;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+
+.dropdown-body {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.dropdown-footer {
+  padding: 10px 16px;
+  border-top: 1px solid #f1f5f9;
+  background: #fafbfc;
+  text-align: center;
+}
+
+.dropdown-footer-btn {
+  background: none;
+  border: none;
+  color: #6d002b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+  font-family: inherit;
+}
+
+.dropdown-footer-btn:hover {
+  background: rgba(109, 0, 43, 0.06);
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 4px 0;
+}
+
+/* ===== ALERTS DROPDOWN ===== */
+
+.alerts-dropdown {
+  right: 160px;
+  width: 340px;
+}
+
+.alert-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f8fafc;
+  transition: background 0.1s ease;
+  cursor: pointer;
+}
+
+.alert-item:last-child { border-bottom: none; }
+.alert-item:hover { background: #f8fafc; }
+
+.alert-indicator {
+  width: 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  align-self: stretch;
+}
+
+.alert-item--critical .alert-indicator { background: #ef4444; }
+.alert-item--warning  .alert-indicator { background: #f59e0b; }
+.alert-item--info     .alert-indicator { background: #3b82f6; }
+
+.alert-content { min-width: 0; flex: 1; }
+
+.alert-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 2px;
+}
+
+.alert-text {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.alert-time {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+/* ===== INBOX DROPDOWN ===== */
+
+.inbox-dropdown {
+  right: 80px;
+  width: 360px;
+}
+
+.message-item {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f8fafc;
+  transition: background 0.1s ease;
+  cursor: pointer;
+}
+
+.message-item:last-child { border-bottom: none; }
+.message-item:hover { background: #f8fafc; }
+
+.message-item--unread {
+  background: #eff6ff;
+}
+
+.message-item--unread:hover {
+  background: #dbeafe;
+}
+
+.message-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3b82f6;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.message-content { min-width: 0; flex: 1; }
+
+.message-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 3px;
+}
+
+.message-text {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.message-time {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+/* ===== USER DROPDOWN ===== */
+
+.user-dropdown {
+  right: 16px;
+  width: 240px;
+}
+
+.dropdown-user-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.dropdown-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #6d002b 0%, #a0003f 100%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.dropdown-user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dropdown-user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdown-user-email {
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Menu items */
+.dropdown-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  transition: background 0.1s ease;
+  font-family: inherit;
+  text-align: left;
+}
+
+.dropdown-menu-item:hover {
+  background: #f8fafc;
+}
+
+.dropdown-menu-item:focus-visible {
+  outline: 2px solid #6d002b;
+  outline-offset: -2px;
+}
+
+.dropdown-menu-item--danger {
+  color: #dc2626;
+}
+
+.dropdown-menu-item--danger:hover {
+  background: #fef2f2;
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media (max-width: 768px) {
+  .header {
+    padding: 0 12px;
+    height: 50px;
+  }
+
+  .user-info { display: none; }
+  .user-chip { padding: 4px; gap: 6px; }
+  .header-title-text { font-size: 14px; }
+  .header-divider { display: none; }
+
+  .alerts-dropdown,
+  .inbox-dropdown {
+    left: 8px;
+    right: 8px;
+    width: auto;
+  }
+
+  .user-dropdown {
+    right: 8px;
+    width: 220px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-title-text { max-width: 120px; }
+  .status-pill { display: none; }
+}
+
+/* ===== REDUCED MOTION ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  .dropdown,
+  .logo-mark,
+  .header-icon-btn,
+  .user-chip,
+  .user-chevron {
+    transition: none;
+    animation: none;
+  }
+}

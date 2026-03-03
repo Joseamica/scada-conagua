@@ -1,0 +1,52 @@
+{
+  "name": "scada-query-api",
+  "version": "1.0.0",
+  "description": "API REST for fetching SCADA telemetry data (InfluxDB) and control.",
+  "main": "dist/server.js",
+  "scripts": {
+    "start": "node dist/server.js",
+    "dev": "ts-node --transpile-only src/server.ts",
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "migrate": "ts-node --transpile-only src/migrate.ts"
+  },
+  "keywords": [
+    "node",
+    "express",
+    "typescript",
+    "influxdb",
+    "postgresql",
+    "scada"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@influxdata/influxdb-client": "^1.33.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.3",
+    "mqtt": "^5.6.1",
+    "nodemailer": "^7.0.12",
+    "otplib": "^13.3.0",
+    "pg": "^8.16.3",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20.14.9",
+    "@types/nodemailer": "^7.0.5",
+    "@types/pg": "^8.16.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.2.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.3",
+    "vitest": "^4.0.18"
+  }
+}

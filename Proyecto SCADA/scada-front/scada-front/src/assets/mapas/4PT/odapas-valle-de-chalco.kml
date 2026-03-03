@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>Odapas Valle de Chalco.kmz</name>
+	<StyleMap id="default">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#default0</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#hl</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="default0">
+	</Style>
+	<Style id="hl">
+		<IconStyle>
+			<scale>1.2</scale>
+		</IconStyle>
+	</Style>
+	<Folder>
+		<name>Odapas Valle de Chalco</name>
+		<open>1</open>
+		<Placemark>
+			<name>Unidad Habitacional Teovillas</name>
+			<styleUrl>#default</styleUrl>
+			<Point>
+				<coordinates>-98.95652511670424,19.32979531721042,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Pozo 13 (Col. Ruben Dario)</name>
+			<styleUrl>#default</styleUrl>
+			<Point>
+				<coordinates>-98.94939565989712,19.32224043540211,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Pozo 6A</name>
+			<Point>
+				<coordinates>-98.93719444444444,19.30183333333333,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Pozo 5</name>
+			<styleUrl>#default</styleUrl>
+			<Point>
+				<coordinates>-98.94715152229335,19.31318545943098,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Pozo 12</name>
+			<styleUrl>#default</styleUrl>
+			<Point>
+				<coordinates>-98.95101258325859,19.30584356516347,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Pozo 7</name>
+			<styleUrl>#default</styleUrl>
+			<Point>
+				<coordinates>-98.93885287528005,19.29098057843907,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Pozo 11</name>
+			<styleUrl>#default</styleUrl>
+			<Point>
+				<coordinates>-98.91453109528172,19.28433735804718,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Pozo 3</name>
+			<styleUrl>#default</styleUrl>
+			<Point>
+				<coordinates>-98.93583135670369,19.27493277451703,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Pozo 4</name>
+			<styleUrl>#default</styleUrl>
+			<Point>
+				<coordinates>-98.94294434719396,19.28432904870848,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Pozo 2</name>
+			<styleUrl>#default</styleUrl>
+			<Point>
+				<coordinates>-98.94465261877039,19.27838961166425,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Pozo 1</name>
+			<styleUrl>#default</styleUrl>
+			<Point>
+				<coordinates>-98.95029375207385,19.27857851417391,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Pozo 8</name>
+			<styleUrl>#default</styleUrl>
+			<Point>
+				<coordinates>-98.95233127282944,19.29670601789972,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Pozo 10</name>
+			<styleUrl>#default</styleUrl>
+			<Point>
+				<coordinates>-98.93423234078774,19.25177014657774,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Presión 1</name>
+			<styleUrl>#default</styleUrl>
+			<Point>
+				<coordinates>-98.94785632434761,19.31349037286137,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Presión 2</name>
+			<styleUrl>#default</styleUrl>
+			<Point>
+				<coordinates>-98.93811381630707,19.30605269393495,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Presión 3</name>
+			<Point>
+				<coordinates>-98.93480555555556,19.27619444444444,0</coordinates>
+			</Point>
+		</Placemark>
+		<atom:link rel="app" href="https://www.google.com/earth/about/versions/#earth-pro" title="Google Earth Pro 7.3.6.10441"></atom:link>
+	</Folder>
+</Document>
+</kml>

@@ -1,0 +1,703 @@
+// src/app/pages/pozos/pozo-detalle/pozo-detalle.ts
+
+import { Component, computed, signal, ViewChild, ElementRef, AfterViewInit, OnInit, inject, DestroyRef, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
+import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
+import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { POZOS_DATA } from '../pozos-data';
+import { POZOS_LAYOUT } from '../pozos-layout';
+import { TIME_RANGES, TimeRange } from '../../../shared/time-ranges';
+import { TelemetryService } from '../../../core/services/telemetry';
+import { timer, forkJoin } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import * as echarts from 'echarts';
+
+// ICONOS
+import { NgIconComponent, provideIcons } from '@ng-icons/core';
+import {
+  heroChartBarSquare, heroBolt, heroBeaker, heroChartBar,
+  heroSignal, heroCog6Tooth, heroPresentationChartLine, heroExclamationTriangle
+} from '@ng-icons/heroicons/outline';
+import { bootstrapBatteryFull, bootstrapBatteryHalf, bootstrapBatteryLow } from '@ng-icons/bootstrap-icons';
+import { DateRangePickerComponent, DateRangeOutput } from '../../../shared/date-range-picker/date-range-picker';
+
+type AlertLevel = 'info' | 'warning' | 'critical';
+
+export interface LiveStatusResponse {
+    site_name: string;
+    devEui: string;
+    municipality: string;
+    site_type: string;
+    last_flow_value: number;
+    last_pressure_value: number;
+    battery_level: number;
+    is_cfe_on: boolean | string;  // Soportar boolean y 't'/'f'
+    last_updated_at: string;
+    rssi: number;
+    snr: number;
+    // 🚀 Nuevos campos para Ixtapaluca e interlocking
+    bomba_activa: boolean | string;
+    fallo_arrancador: boolean | string;
+    last_total_flow: number;
+}
+
+export interface TelemetryPoint {
+  timestamp: string;
+  value: number;
+  unit: string;
+}
+
+export interface TelemetryHistoryResponse {
+  siteName: string;
+  devEui: string;
+  measurement: string;
+  data: TelemetryPoint[];
+}
+
+interface TelemetryReading {
+  flow: number;     // Lt/s
+  pressure: number; // bar
+  timestamp: Date;  
+}
+
+@Component({
+  selector: 'app-pozo-detalle',
+  standalone: true,
+  imports: [CommonModule, HeaderBarComponent, FooterTabsComponent, NgIconComponent, DateRangePickerComponent],
+  providers: [
+    provideIcons({
+      heroChartBarSquare, heroBolt, heroBeaker, heroChartBar,
+      heroSignal, heroCog6Tooth, heroPresentationChartLine, heroExclamationTriangle,
+      bootstrapBatteryFull, bootstrapBatteryHalf, bootstrapBatteryLow
+    })
+  ],
+  templateUrl: './pozo-detalle.html',
+  styleUrl: './pozo-detalle.css'
+})
+export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
+  // Inyecciones
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private telemetryService = inject(TelemetryService);
+  private destroyRef = inject(DestroyRef);
+  public liveStatus = signal<LiveStatusResponse | null>(null);
+
+  private resizeHandler = () => { this.mainChart?.resize(); this.totalizerChart?.resize(); };
+
+  // 1. Estado para evitar el efecto del refresh de 60s
+  public isCommandPending = signal<boolean>(false);
+
+  // 2. Lógica de Interbloqueo (Computed para los botones)
+  public controlsDisabled = computed(() => {
+    const status = this.liveStatus(); // ✅ Ahora sí existe el nombre
+    if (!status) return true;
+
+    // REGLAS DE ANÍBAL:
+    const isCfeOff = status.is_cfe_on === false || status.is_cfe_on === 'f';
+    const hasStarterFault = status.fallo_arrancador === true || status.fallo_arrancador === 't';
+    
+    return isCfeOff || hasStarterFault || this.isCommandPending();
+  });
+
+  goToAdvanced() {
+    this.router.navigate(['/telemetria/avanzadas']);
+  }
+
+  // VIEWCHILD
+  @ViewChild('mainChart') mainChartRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('totalizerChart') totalizerChartRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('datePicker') datePickerRef!: DateRangePickerComponent;
+  mainChart!: echarts.ECharts;
+  totalizerChart!: echarts.ECharts;
+
+  // Duración en ms de cada botón rápido
+  private quickRangeMs: Record<string, number> = {
+    '15m': 15*60e3, '30m': 30*60e3, '1h': 3600e3, '6h': 6*3600e3,
+    '12h': 12*3600e3, '24h': 86400e3, '7d': 7*86400e3, '1m': 30*86400e3, '1y': 365*86400e3
+  };
+
+  // =========================
+  // RANGOS
+  // =========================
+  timeRanges = TIME_RANGES;
+  range = signal<TimeRange>('24h');
+
+  setRange(r: TimeRange) {
+    this.range.set(r);
+    // Sincronizar el date picker con las fechas correspondientes
+    if (this.datePickerRef) {
+      const now = new Date();
+      const ms = this.quickRangeMs[r] || 86400e3;
+      const from = new Date(now.getTime() - ms);
+      this.datePickerRef.syncFromQuickRange(from, now);
+    }
+    this.clearCustomRange();
+  }
+
+  // =========================
+  // RANGO PERSONALIZADO
+  // =========================
+  customFrom        = signal<string>('');
+  customTo          = signal<string>('');
+  customInterval    = signal<string>('');
+  customRangeActive = computed(() => !!this.customFrom() && !!this.customTo());
+
+  // Pills: descripción legible del filtro activo
+  activeRangeLabel = computed(() => {
+    if (this.customRangeActive()) {
+      const fmt = (iso: string) => {
+        const d = new Date(iso);
+        return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+      };
+      return `${fmt(this.customFrom())} – ${fmt(this.customTo())}`;
+    }
+    const labels: Record<string, string> = {
+      '15m': 'Últimos 15 min', '30m': 'Últimos 30 min', '1h': 'Última hora',
+      '6h': 'Últimas 6h', '12h': 'Últimas 12h', '24h': 'Último día',
+      '7d': 'Última semana', '1m': 'Último mes', '1y': 'Último año'
+    };
+    return labels[this.range()] || this.range();
+  });
+
+  activeIntervalLabel = computed(() => {
+    if (this.customRangeActive() && this.customInterval()) {
+      const map: Record<string, string> = {
+        '1m': '1 min', '5m': '5 min', '15m': '15 min', '30m': '30 min',
+        '1h': '1 hora', '6h': '6 horas', '1d': '1 día'
+      };
+      return map[this.customInterval()] || this.customInterval();
+    }
+    const autoMap: Record<string, string> = {
+      '15m': '1 min', '30m': '2 min', '1h': '5 min', '6h': '15 min',
+      '12h': '30 min', '24h': '1 hora', '7d': '6 horas', '1m': '1 día', '1y': '7 días'
+    };
+    return 'Auto (' + (autoMap[this.range()] || '1h') + ')';
+  });
+
+  onRangeApplied(event: DateRangeOutput): void {
+    this.customFrom.set(event.from);
+    this.customTo.set(event.to);
+    this.customInterval.set(event.interval);
+    console.log('[SCADA] Rango aplicado:', event.from, '→', event.to, '| intervalo:', event.interval || 'Auto', '| preset:', event.preset);
+    this.loadCharts();
+  }
+
+  clearCustomRange(): void {
+    this.customFrom.set('');
+    this.customTo.set('');
+    this.customInterval.set('');
+    this.loadCharts();
+  }
+
+  clearInterval(): void {
+    this.customInterval.set('');
+    this.loadCharts();
+  }
+
+  // =========================
+  // ESTADO GENERAL (HTML)
+  // =========================
+  pozoId = signal<string>('');
+  pozoNombre = signal('Cargando...');
+  alertLevel = signal<AlertLevel>('warning');
+  alertText = signal('');
+  isOnline = signal(true);
+  loading = signal(false);
+  lat = signal<number>(0);
+  lng = signal<number>(0);
+
+  showSignal = signal(false);
+
+  layout = signal<any>(null);
+  datos = signal<any>({
+    caudal: 0,
+    presion: 0,
+    nivel: 0,
+    nombre: 'Cargando...',
+    alerta: 'Sincronizando...',
+    lte: { rssi: 0, snr: 0 }
+  });
+  
+  // SEÑALES DE ESTADÍSTICAS (Requeridas por el HTML)
+  statsFlow = signal({ min: 0, max: 0, avg: 0, accumulated: 0 });
+  statsPressure = signal({ min: 0, max: 0, avg: 0 });
+
+  // DATOS OPERATIVOS
+  commStats = signal({ lteRssi: 0, snr: 0 });
+  batteryLevel = signal<number>(0);
+  liveTotalFlow = signal<number>(0);
+  estadoBomba = signal<'on' | 'off'>('on');
+  estadoEnergia = signal<'on' | 'off'>('on');
+  fallaArrancador = signal<'on' | 'off'>('off');
+
+  // =========================
+  // LOGICA DEL ARRANCADOR
+  // =========================
+  // Verde: Listo para arrancar (Bomba parada)
+  readonly pilotStartReady = computed(() => this.estadoBomba() === 'off');
+
+  // Rojo: En operación (Bomba corriendo)
+  readonly pilotStopReady = computed(() => this.estadoBomba() === 'on');
+
+  // Amarillo: Falla técnica
+  readonly pilotFault = computed(() => this.fallaArrancador() === 'on');
+  // DETERMINA SI EL BOTÓN DE "ARRANCAR" PUEDE CLIQUEARSE (Solo arranca si: parada + sin falla + hay CFE)
+  readonly canStart = computed(() => {
+    // Regla: Solo si está parada, NO hay falla y hay energía CFE
+    return this.estadoBomba() === 'off' && 
+         this.fallaArrancador() === 'off' && 
+         this.estadoEnergia() === 'on';
+  });
+
+  // DETERMINA SI EL BOTÓN DE "PARAR" PUEDE CLIQUEARSE
+  readonly canStop = computed(() => {
+    // Regla: Solo si está operando y NO hay falla
+    return this.estadoBomba() === 'on' && 
+         this.fallaArrancador() === 'off';
+  });
+
+  // =========================
+  // COMPUTED SIGNALS (Resuelven error TS2339)
+  // =========================
+  
+  statusPill = computed(() =>
+    this.isOnline() ? { text: 'On line', cls: 'pill pill--ok' } : { text: 'Off line', cls: 'pill pill--critical' }
+  );
+
+  batteryIcon = computed(() => {
+    const lvl = this.batteryLevel();
+    if (lvl >= 70) return 'bootstrapBatteryFull';
+    if (lvl >= 25) return 'bootstrapBatteryHalf';
+    return 'bootstrapBatteryLow';
+  });
+
+  batteryClass = computed(() => {
+    const lvl = this.batteryLevel();
+    if (lvl >= 70) return 'battery--full';
+    if (lvl >= 25) return 'battery--medium';
+    return 'battery--critical';
+  });
+
+  // ✅ Resuelve: Property 'commQualityLabel' does not exist
+  commQualityLabel = computed(() => {
+    const rssi = this.commStats().lteRssi;
+    if (rssi >= -70) return 'Excelente';
+    if (rssi >= -85) return 'Bueno';
+    return 'Malo';
+  });
+
+  // ✅ Resuelve: Property 'commQualityClass' does not exist
+  commQualityClass = computed(() => {
+    const rssi = this.commStats().lteRssi;
+    if (rssi >= -70) return 'comm-excellent';
+    if (rssi >= -85) return 'comm-good';
+    return 'comm-bad';
+  });
+
+  // =========================
+  // OVERLAY LTE
+  // =========================
+  overlayVisible = signal(false);
+
+  toggleOverlay() {
+    this.overlayVisible.set(!this.overlayVisible());
+  }
+
+  cerrarOverlay() {
+    this.overlayVisible.set(false);
+  }
+
+  // =========================
+  // CONFIRMACIÓN
+  // =========================
+  accionPendiente = signal<'start' | 'stop' | null>(null);
+
+  abrirConfirmacion(a: 'start' | 'stop') {
+    // Validación de seguridad antes de abrir el modal
+    if (a === 'start' && !this.canStart()) {
+      console.warn('Acción bloqueada: Condiciones inseguras para arranque.');
+      return;
+    }
+  
+    if (a === 'stop' && !this.canStop()) {
+      console.warn('Acción bloqueada: Condiciones inseguras para paro.');
+      return;
+    }
+
+    this.accionPendiente.set(a);
+  }
+
+  cancelarAccion() {
+    this.accionPendiente.set(null);
+  }
+
+  confirmarAccion() {
+    const action = this.accionPendiente();
+    
+    // 🛡️ Seguridad: No procedemos si no hay acción o si los controles están bloqueados (CFE/Fallo)
+    if (!action || this.controlsDisabled()) {
+      console.warn('Acción de control abortada por interbloqueo de seguridad.');
+      return;
+    }
+
+    const command = action === 'start' ? 'START' : 'STOP';
+    
+    // 🔒 Activamos el bloqueo de 90 segundos para ignorar el refresh de la página
+    this.isCommandPending.set(true);
+
+    // 📡 Enviamos el payload con site_name para que el backend construya el tópico de Ignition
+    this.telemetryService.sendControlCommand({
+      devEUI: this.pozoId(),
+      command: command,
+      siteName: this.liveStatus()?.site_name 
+    }).subscribe({
+      next: () => {
+        // 💡 Optimistic UI Update: Reflejamos el cambio en la UI de inmediato
+        this.estadoBomba.set(action === 'start' ? 'on' : 'off');
+        
+        // Si ya tenemos el status cargado, actualizamos su valor local para ser consistentes
+        const currentStatus = this.liveStatus();
+        if (currentStatus) {
+          this.liveStatus.set({
+            ...currentStatus,
+            bomba_activa: action === 'start'
+          });
+        }
+
+        this.accionPendiente.set(null);
+
+        // ⏱️ Desbloqueamos después de 90 segundos (superior al refresh de 60s)
+        setTimeout(() => {
+          this.isCommandPending.set(false);
+          console.log(`[SCADA] Lockout finalizado para ${this.pozoId()}`);
+        }, 90000);
+      },
+      error: (err) => {
+        this.isCommandPending.set(false);
+        console.error('🛑 Control command failed:', err);
+        alert('Error al enviar el comando. Por favor, verifique la conexión con el sitio.');
+      }
+    });
+  }
+
+  // =========================
+  // CICLO DE VIDA
+  // =========================
+  ngOnInit() {
+    const slug = this.route.snapshot.paramMap.get('id')!;
+    const staticData = POZOS_DATA[slug];
+
+    if (staticData?.devEui) {
+      this.pozoId.set(staticData.devEui);
+      this.lat.set(staticData.lat);
+      this.lng.set(staticData.lng);
+      this.layout.set(POZOS_LAYOUT[slug]);
+      this.startAutoRefresh(staticData.devEui);
+    }
+  }
+
+  ngAfterViewInit() {
+    this.mainChart = echarts.init(this.mainChartRef.nativeElement);
+    this.totalizerChart = echarts.init(this.totalizerChartRef.nativeElement);
+    this.loadCharts();
+    window.addEventListener('resize', this.resizeHandler);
+  }
+
+  ngOnDestroy() {
+    if (this.mainChart) this.mainChart.dispose();
+    if (this.totalizerChart) this.totalizerChart.dispose();
+    window.removeEventListener('resize', this.resizeHandler);
+  }
+
+  private startAutoRefresh(devEui: string) {
+    // Carga inmediata del status (no requiere chart inicializado)
+    this.loadLiveStatus(devEui);
+
+    // Refresh cada 60s (la primera carga de charts viene de ngAfterViewInit)
+    timer(60000, 60000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.loadLiveStatus(devEui);
+        if (this.mainChart) this.loadCharts();
+      });
+  }
+
+  // =========================
+  // LÓGICA DE DATOS
+  // =========================
+  loadLiveStatus(devEUI: string) {
+    this.telemetryService.getSiteStatus(devEUI).subscribe({
+      next: (data: any) => {
+        if (this.isCommandPending()) {
+          console.warn(`[SCADA] Refresh ignorado para ${devEUI} debido a comando en proceso.`);
+          return;
+        }
+
+        this.liveStatus.set(data as LiveStatusResponse);
+
+        // Sincronizamos el estado visual de la bomba
+        const isActive = data.bomba_activa === true || data.bomba_activa === 't';
+        this.estadoBomba.set(isActive ? 'on' : 'off');
+
+        const flowVal = Number(data.last_flow_value) || 0;
+        const pressureVal = Number(data.last_pressure_value) || 0;
+        const batteryVal = Number(data.battery_level) || 0;
+
+        // 1. Sincronización básica de UI
+        this.pozoNombre.set(data.site_name);
+        this.isOnline.set(data.is_cfe_on);
+        this.batteryLevel.set(batteryVal);
+        this.liveTotalFlow.set(Number(data.last_total_flow) || 0);
+        this.estadoBomba.set(flowVal > 0 ? 'on' : 'off');
+        this.estadoEnergia.set(data.is_cfe_on ? 'on' : 'off');
+        this.commStats.set({ lteRssi: Number(data.rssi), snr: Number(data.snr) });
+
+        // ✅ 2. Actualizamos 'datos' para que el HTML encuentre los valores
+        this.datos.set({
+          caudal: flowVal,
+          presion: pressureVal,
+          nivel: batteryVal
+        });
+      }
+    });
+  }
+
+  loadCharts() {
+    const devEUI = this.pozoId();
+    if (!devEUI) return;
+
+    // Determinar parámetros de rango
+    let rangeStr = `-${this.range()}`;
+    if (this.range() === '1m') rangeStr = '-1mo';
+
+    const options: { from?: string; to?: string; interval?: string } = {};
+    if (this.customRangeActive()) {
+      options.from = this.customFrom();
+      options.to   = this.customTo();
+    }
+    if (this.customInterval()) {
+      options.interval = this.customInterval();
+    }
+
+    this.loading.set(true);
+
+    forkJoin({
+      flow:       this.telemetryService.getHistory(devEUI, 'caudal_lts', rangeStr, options),
+      pressure:   this.telemetryService.getHistory(devEUI, 'presion_kg', rangeStr, options),
+      rssi:       this.telemetryService.getHistory(devEUI, 'rssi',       rangeStr, options),
+      totalFlow:  this.telemetryService.getHistory(devEUI, 'last_total_flow', rangeStr, options)
+    }).subscribe({
+      next: (res: any) => {
+        // Convertir a [timestamp_ms, value] para ECharts time axis
+        // Valores <= 0.01 se tratan como null (bomba apagada en sitios Ignition)
+        const toPoint = (p: any): [number, number | null] => {
+          const ts = new Date(p.timestamp).getTime();
+          const v = p.value;
+          return [ts, (v != null && v > 0.01) ? v : null];
+        };
+        const flows     = res.flow.data.map(toPoint);
+        const pressures = res.pressure.data.map(toPoint);
+        const rssis     = res.rssi.data.map((p: any) =>
+          [new Date(p.timestamp).getTime(), p.value ?? null] as [number, number | null]);
+        const totalFlows = res.totalFlow.data.map((p: any) =>
+          [new Date(p.timestamp).getTime(), p.value ?? null] as [number, number | null]);
+
+        // Estadísticas: alinear caudal y presión por índice
+        // Filtramos lecturas donde la bomba está apagada (ambos ~0)
+        const readings: TelemetryReading[] = res.flow.data
+          .map((p: any, i: number) => ({
+            flow:      p.value ?? 0,
+            pressure:  res.pressure.data[i]?.value ?? 0,
+            timestamp: new Date(p.timestamp)
+          }))
+          .filter((r: TelemetryReading) => !isNaN(r.timestamp.getTime()) && (r.flow > 0.01 || r.pressure > 0.01));
+        readings.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+        this.calculateStatistics(readings);
+        this.updateMainChart(flows, pressures, rssis);
+        this.updateTotalizerChart(totalFlows);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('Error loading history:', err);
+        this.loading.set(false);
+      }
+    });
+  }
+
+  private calculateStatistics(readings: TelemetryReading[]): void {
+    if (readings.length < 2) return;
+
+    // Compute the median interval from the data to detect real gaps (device offline)
+    // vs normal aggregation intervals (1h, 6h, 1d). Gaps > 3× median are skipped.
+    const intervals = readings.slice(1).map(
+      (r, i) => (r.timestamp.getTime() - readings[i].timestamp.getTime()) / 1000
+    ).filter(d => d > 0).sort((a, b) => a - b);
+    const medianInterval = intervals[Math.floor(intervals.length / 2)] ?? 3600;
+    const MAX_SIGNAL_GAP_SECONDS = medianInterval * 3;
+
+    let totalAccumulatedLiters = 0;
+
+    // Integrate flow over time using the trapezoidal rule, skipping real gaps
+    for (let i = 1; i < readings.length; i++) {
+      const durationSeconds = (readings[i].timestamp.getTime() - readings[i - 1].timestamp.getTime()) / 1000;
+      if (durationSeconds > 0 && durationSeconds <= MAX_SIGNAL_GAP_SECONDS) {
+        const averageFlow = (readings[i].flow + readings[i - 1].flow) / 2;
+        totalAccumulatedLiters += averageFlow * durationSeconds;
+      }
+    }
+
+    const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+    const flowVals     = readings.map(r => r.flow);
+    const pressureVals = readings.map(r => r.pressure);
+
+    this.statsFlow.set({
+      min:         round3(Math.min(...flowVals)),
+      max:         round3(Math.max(...flowVals)),
+      avg:         round3(flowVals.reduce((a, b) => a + b, 0) / flowVals.length),
+      accumulated: round3(totalAccumulatedLiters / 1000)
+    });
+
+    this.statsPressure.set({
+      min: round3(Math.min(...pressureVals)),
+      max: round3(Math.max(...pressureVals)),
+      avg: round3(pressureVals.reduce((a, b) => a + b, 0) / pressureVals.length)
+    });
+  }
+
+
+  private updateMainChart(
+    flows:     [number, number | null][],
+    pressures: [number, number | null][],
+    rssis:     [number, number | null][]
+  ): void {
+    const showSignal = this.showSignal();
+
+    // =========================
+    // Y-AXIS AUTO-SCALING
+    // =========================
+    const flowVals     = flows.map(p => p[1]).filter((v): v is number => v !== null);
+    const pressureVals = pressures.map(p => p[1]).filter((v): v is number => v !== null);
+
+    const allVals = [...flowVals, ...pressureVals];
+    const combinedMax = allVals.length ? Math.ceil(Math.max(...allVals) * 1.15) : 10;
+
+    // =========================
+    // Y AXIS (single shared axis like Ignition)
+    // =========================
+    const yAxis: any[] = [
+      { type: 'value', name: 'Lt/s · Kg/cm²', position: 'left', min: 0, max: combinedMax,
+        splitLine: { lineStyle: { color: '#e5e7eb' } } }
+    ];
+
+    if (showSignal) {
+      const rssiVals = rssis.map(p => p[1]).filter((v): v is number => v !== null);
+      const rssiMin = rssiVals.length ? Math.floor(Math.min(...rssiVals) * 1.1) : -120;
+      const rssiMax = rssiVals.length ? Math.ceil(Math.max(...rssiVals) * 1.1)  : 0;
+      const isNegative = rssiMax <= 0;
+      yAxis.push({
+        type: 'value', name: isNegative ? 'dBm' : 'Señal %', position: 'right',
+        min: isNegative ? Math.min(rssiMin, -120) : 0,
+        max: isNegative ? Math.max(rssiMax, -40)  : Math.max(rssiMax, 100),
+        splitLine: { show: false }
+      });
+    }
+
+    // =========================
+    // SERIES (ECG – líneas finas, sin relleno, sin suavizado)
+    // =========================
+    const series: any[] = [
+      {
+        name: 'Caudal',    type: 'line', yAxisIndex: 0, data: flows,
+        showSymbol: false, smooth: false, sampling: 'lttb',
+        lineStyle: { width: 1.5, color: '#007bff' },
+        connectNulls: false
+      },
+      {
+        name: 'Presión',   type: 'line', yAxisIndex: 0, data: pressures,
+        showSymbol: false, smooth: false, sampling: 'lttb',
+        lineStyle: { width: 1.5, color: '#28a745' },
+        connectNulls: false
+      }
+    ];
+
+    if (showSignal) {
+      series.push({
+        name: 'Señal',     type: 'line', yAxisIndex: 1, data: rssis,
+        showSymbol: false, smooth: false, sampling: 'lttb',
+        lineStyle: { width: 1, type: 'dashed', color: '#ffc107' }
+      });
+    }
+
+    const option: any = {
+      tooltip: { trigger: 'axis' },
+      legend: {
+        data: showSignal ? ['Caudal', 'Presión', 'Señal'] : ['Caudal', 'Presión'],
+        top: 0
+      },
+      grid: {
+        left: 55, right: showSignal ? 80 : 20,
+        bottom: 70, top: 40
+      },
+      xAxis: { type: 'time', boundaryGap: false },
+      yAxis,
+      dataZoom: [
+        { type: 'inside',  xAxisIndex: 0, filterMode: 'filter' },
+        { type: 'slider',  xAxisIndex: 0, bottom: 8, height: 22, handleSize: '80%' }
+      ],
+      series
+    };
+
+    this.mainChart.setOption(option, true);
+  }
+
+
+
+  private updateTotalizerChart(totalFlows: [number, number | null][]): void {
+    const vals = totalFlows.map(p => p[1]).filter((v): v is number => v !== null);
+    if (vals.length === 0) {
+      this.totalizerChart.setOption({ title: { text: 'Sin datos de caudal totalizado', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 14 } }, series: [] }, true);
+      return;
+    }
+
+    this.totalizerChart.setOption({
+      tooltip: {
+        trigger: 'axis',
+        formatter: (params: any) => {
+          const p = Array.isArray(params) ? params[0] : params;
+          const d = new Date(p.value[0]);
+          return `${d.toLocaleString()}<br/><b>${p.marker} ${p.value[1]?.toLocaleString()} m³</b>`;
+        }
+      },
+      grid: { left: 70, right: 20, bottom: 70, top: 40 },
+      xAxis: { type: 'time', boundaryGap: false },
+      yAxis: {
+        type: 'value', name: 'm³',
+        splitLine: { lineStyle: { color: '#e5e7eb' } }
+      },
+      dataZoom: [
+        { type: 'inside', xAxisIndex: 0, filterMode: 'filter' },
+        { type: 'slider', xAxisIndex: 0, bottom: 8, height: 22, handleSize: '80%' }
+      ],
+      series: [{
+        name: 'Totalizado',
+        type: 'line',
+        data: totalFlows,
+        showSymbol: false,
+        smooth: false,
+        sampling: 'lttb',
+        lineStyle: { width: 1.5, color: '#e91e8f' },
+        areaStyle: { color: 'rgba(233,30,143,0.08)' },
+        connectNulls: false
+      }]
+    }, true);
+  }
+
+  toggleSignal() {
+    this.showSignal.set(!this.showSignal());
+    this.loadCharts(); // reconstruye la gráfica
+  }
+
+}

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Folder>
+	<name>ODAPAS Neza</name>
+	<open>1</open>
+	<Placemark>
+		<name>Calle 7 y Guadalupe Victoria</name>
+		<Point>
+			<coordinates>-99.05772222222222,19.40272222222222,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Linea Maestra</name>
+		<Point>
+			<coordinates>-98.98933333333333,19.36625,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Pozo 303</name>
+		<Point>
+			<coordinates>-98.98225000000001,19.39008333333333,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Carcamo Maravillas</name>
+		<Point>
+			<coordinates>-99.03119444444444,19.42463888888889,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Ingreso 3 Culturas</name>
+		<Point>
+			<coordinates>-99.03044444444443,19.484075,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Planta de Rebombeo Ciudad Lago</name>
+		<Point>
+			<coordinates>-99.0431111111111,19.45805555555555,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Linea Ramal Peñon Texcoco</name>
+		<Point>
+			<coordinates>-99.04288888888888,19.45777777777778,0</coordinates>
+		</Point>
+	</Placemark>
+	<atom:link rel="app" href="https://www.google.com/earth/about/versions/#earth-pro" title="Google Earth Pro 7.3.6.10441"></atom:link>
+</Folder>
+</kml>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document id="root_doc">
+
+    <Schema name="sitios__sitios_piloto" id="sitios__sitios_piloto">
+      <SimpleField name="id" type="string"></SimpleField>
+      <SimpleField name="tessellate" type="int"></SimpleField>
+      <SimpleField name="extrude" type="int"></SimpleField>
+      <SimpleField name="visibility" type="int"></SimpleField>
+    </Schema>
+
+    <!-- Sitio piloto 1 -->
+    <Placemark id="sitios__sitios_piloto.1">
+      <name>SITIO PILOTO 4PT</name>
+      <ExtendedData>
+        <SchemaData schemaUrl="#sitios__sitios_piloto">
+          <SimpleData name="tessellate">-1</SimpleData>
+          <SimpleData name="extrude">0</SimpleData>
+          <SimpleData name="visibility">-1</SimpleData>
+        </SchemaData>
+      </ExtendedData>
+      <Point>
+        <coordinates>-99.20417981344357, 19.42466165861819,0</coordinates>
+      </Point>
+    </Placemark>
+
+    <!-- Sitio piloto 2 -->
+    <Placemark id="sitios__sitios_piloto.2">
+      <name>SITIO PILOTO ICH</name>
+      <ExtendedData>
+        <SchemaData schemaUrl="#sitios__sitios_piloto">
+          <SimpleData name="tessellate">-1</SimpleData>
+          <SimpleData name="extrude">0</SimpleData>
+          <SimpleData name="visibility">-1</SimpleData>
+        </SchemaData>
+      </ExtendedData>
+      <Point>
+        <coordinates>-99.2410483577034,18.95123501418520,0</coordinates>
+    </Placemark>
+
+  </Document>
+</kml>

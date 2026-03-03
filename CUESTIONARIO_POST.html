@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cuestionario Post-Licitacion — SCADA SOA / CONAGUA</title>
+<style>
+  :root {
+    --conagua-blue: #003366;
+    --conagua-light: #0066cc;
+    --accent: #e63946;
+    --bg: #f8f9fa;
+    --card: #ffffff;
+    --border: #dee2e6;
+    --text: #212529;
+    --text-muted: #6c757d;
+    --urgent: #dc3545;
+    --important: #fd7e14;
+    --normal: #28a745;
+    --critical-bg: #fff3cd;
+    --critical-border: #ffc107;
+    --gantt-bg: #e8f4fd;
+    --gantt-border: #90caf9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .header {
+    background: linear-gradient(135deg, var(--conagua-blue), var(--conagua-light));
+    color: white;
+    padding: 2rem;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  }
+  .header h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.2rem; }
+  .header .subtitle { font-size: 0.95rem; opacity: 0.9; }
+  .header .meta { display: flex; justify-content: center; gap: 2rem; margin-top: 0.6rem; font-size: 0.85rem; opacity: 0.85; flex-wrap: wrap; }
+  .progress-bar-container {
+    background: var(--card);
+    padding: 0.8rem 2rem;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 99;
+    display: flex; align-items: center; gap: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .progress-bar { flex: 1; height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--conagua-light), var(--normal)); border-radius: 4px; width: 0%; transition: width 0.3s; }
+  .progress-text { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; min-width: 120px; text-align: right; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+
+  .gantt-summary {
+    background: var(--gantt-bg);
+    border: 1px solid var(--gantt-border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .gantt-summary h2 { font-size: 1.1rem; color: var(--conagua-blue); margin-bottom: 0.8rem; }
+  .gantt-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .gantt-table th { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 2px solid var(--gantt-border); color: var(--conagua-blue); }
+  .gantt-table td { padding: 0.4rem 0.6rem; border-bottom: 1px solid #d0e8f7; }
+  .gantt-table .risk-alto { color: var(--urgent); font-weight: 700; }
+  .gantt-table .risk-medio { color: var(--important); font-weight: 600; }
+  .gantt-table .risk-bajo { color: var(--normal); }
+  .gantt-note { margin-top: 1rem; padding: 0.8rem; background: var(--critical-bg); border: 1px solid var(--critical-border); border-radius: 6px; font-size: 0.88rem; }
+
+  .toc { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .toc h2 { font-size: 1.1rem; margin-bottom: 1rem; color: var(--conagua-blue); }
+  .toc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.4rem; }
+  .toc-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.6rem; border-radius: 4px; text-decoration: none; color: var(--text); font-size: 0.88rem; transition: background 0.15s; }
+  .toc-item:hover { background: #e9ecef; }
+  .toc-badge { font-size: 0.65rem; padding: 0.1rem 0.45rem; border-radius: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .badge-urgent { background: #f8d7da; color: var(--urgent); }
+  .badge-important { background: #fff3cd; color: #856404; }
+  .badge-normal { background: #d4edda; color: #155724; }
+
+  .section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1.5rem; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .section-header { padding: 1rem 1.5rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; transition: background 0.15s; }
+  .section-header:hover { background: #f0f4f8; }
+  .section-header h2 { font-size: 1.1rem; color: var(--conagua-blue); display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .section-header .counter { font-size: 0.8rem; color: var(--text-muted); background: #e9ecef; padding: 0.15rem 0.5rem; border-radius: 10px; }
+  .section-header .chevron { font-size: 1.2rem; color: var(--text-muted); transition: transform 0.2s; }
+  .section.collapsed .section-body { display: none; }
+  .section.collapsed .chevron { transform: rotate(-90deg); }
+  .section-body { padding: 0 1.5rem 1.5rem; }
+
+  .gantt-context { background: var(--gantt-bg); border: 1px solid var(--gantt-border); border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 1rem; font-size: 0.85rem; font-style: italic; color: #1565c0; }
+
+  .question-row { display: flex; gap: 1rem; padding: 0.7rem 0; border-bottom: 1px solid #f0f0f0; align-items: flex-start; }
+  .question-row:last-child { border-bottom: none; }
+  .q-number { font-weight: 700; color: var(--conagua-light); min-width: 28px; font-size: 0.85rem; padding-top: 0.15rem; }
+  .q-text { flex: 1; font-size: 0.9rem; }
+  .q-text .critical-tag { display: inline-block; font-size: 0.65rem; padding: 0.1rem 0.35rem; border-radius: 3px; background: var(--critical-bg); border: 1px solid var(--critical-border); color: #856404; font-weight: 600; margin-left: 0.2rem; vertical-align: middle; }
+  .q-answer { flex: 1.2; }
+  .q-answer textarea { width: 100%; min-height: 55px; border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; font-family: inherit; font-size: 0.85rem; resize: vertical; transition: border-color 0.15s, box-shadow 0.15s; line-height: 1.5; }
+  .q-answer textarea:focus { outline: none; border-color: var(--conagua-light); box-shadow: 0 0 0 3px rgba(0,102,204,0.15); }
+  .q-answer textarea.has-content { border-color: var(--normal); background: #f8fff8; }
+
+  .checklist-section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .checklist-section h2 { font-size: 1.1rem; color: var(--conagua-blue); margin-bottom: 0.5rem; }
+  .checklist-section h3 { font-size: 0.95rem; color: var(--conagua-light); margin: 1rem 0 0.5rem; padding-top: 0.5rem; border-top: 1px solid #eee; }
+  .checklist-section h3:first-of-type { border-top: none; margin-top: 0.5rem; }
+  .checklist-item { display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0; font-size: 0.9rem; }
+  .checklist-item input[type="checkbox"] { width: 17px; height: 17px; cursor: pointer; accent-color: var(--conagua-light); }
+  .checklist-item.checked label { text-decoration: line-through; color: var(--text-muted); }
+
+  .priority-section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .priority-section h2 { font-size: 1.1rem; color: var(--conagua-blue); margin-bottom: 1rem; }
+  .priority-block { padding: 0.8rem 1rem; border-radius: 6px; margin-bottom: 0.6rem; font-size: 0.88rem; }
+  .priority-block h3 { font-size: 0.92rem; margin-bottom: 0.3rem; }
+  .priority-block ul { margin-left: 1.2rem; }
+  .priority-today { background: #f8d7da; border-left: 4px solid var(--urgent); }
+  .priority-tomorrow { background: #fff3cd; border-left: 4px solid var(--important); }
+  .priority-week { background: #d4edda; border-left: 4px solid var(--normal); }
+
+  .actions-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--border); padding: 0.7rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+  .actions-bar button { padding: 0.45rem 1.1rem; border: none; border-radius: 6px; font-size: 0.88rem; cursor: pointer; font-weight: 600; transition: opacity 0.15s; }
+  .actions-bar button:hover { opacity: 0.85; }
+  .btn-save { background: var(--conagua-light); color: white; }
+  .btn-export { background: var(--normal); color: white; }
+  .btn-download { background: #6f42c1; color: white; }
+  .btn-clear { background: #e9ecef; color: var(--text); }
+  .save-status { font-size: 0.85rem; color: var(--text-muted); }
+  .footer-spacer { height: 65px; }
+
+  @media print {
+    .progress-bar-container, .actions-bar, .footer-spacer { display: none; }
+    .section.collapsed .section-body { display: block !important; }
+    .q-answer textarea { border: 1px solid #ccc; min-height: 35px; }
+    .container { max-width: 100%; }
+  }
+  @media (max-width: 768px) {
+    .question-row { flex-direction: column; gap: 0.3rem; }
+    .q-answer { width: 100%; }
+    .header .meta { flex-direction: column; gap: 0.2rem; }
+    .toc-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Cuestionario Post-Licitacion — SCADA SOA / CONAGUA</h1>
+  <div class="subtitle">Basado en GANTT v4 (15 enero 2026) — Preguntas informadas por avance real</div>
+  <div class="meta">
+    <span>Fecha: 26 febrero 2026</span>
+    <span>Equipo Tecnico PlayTelecom</span>
+    <span>128 preguntas en 20 secciones</span>
+  </div>
+</div>
+
+<div class="progress-bar-container">
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  <div class="progress-text" id="progressText">0 / 128 respondidas</div>
+</div>
+
+<div class="container">
+
+  <!-- GANTT SUMMARY -->
+  <div class="gantt-summary">
+    <h2>Estado del Proyecto segun GANTT</h2>
+    <table class="gantt-table">
+      <tr><th>Modulo</th><th>Deadline</th><th>Avance</th><th>Riesgo</th></tr>
+      <tr><td>1. Admin y Gobierno</td><td>30 ene</td><td>~60%</td><td class="risk-medio">Medio</td></tr>
+      <tr><td>2. Ingesta de datos</td><td>30 ene</td><td>~87%</td><td class="risk-bajo">Bajo</td></tr>
+      <tr><td>3. Visualizacion</td><td>30 ene</td><td>~55%</td><td class="risk-medio">Medio</td></tr>
+      <tr><td>4. Sinopticos</td><td>1 abr</td><td>~11%</td><td class="risk-alto">ALTO</td></tr>
+      <tr><td>5. GIS</td><td>27 feb</td><td>~70%</td><td class="risk-alto">ALTO (vence manana)</td></tr>
+      <tr><td>6. Alarmas</td><td>29 abr</td><td>~1%</td><td class="risk-alto">ALTO</td></tr>
+      <tr><td>7. Reportes</td><td>29 abr</td><td>~1%</td><td class="risk-alto">ALTO</td></tr>
+      <tr><td>8. Usuarios (graficas)</td><td>29 abr</td><td>~1%</td><td class="risk-alto">ALTO</td></tr>
+      <tr><td>9. Diccionarios</td><td>29 abr</td><td>~1%</td><td class="risk-alto">ALTO</td></tr>
+      <tr><td>10. Analiticas/ML/Gemelo</td><td>29 abr</td><td>~1%</td><td class="risk-alto">ALTO</td></tr>
+      <tr><td>11. Control Remoto</td><td>29 abr</td><td>~50%</td><td class="risk-medio">Medio</td></tr>
+      <tr><td>12. Integraciones</td><td>29 abr</td><td>~1%</td><td class="risk-alto">ALTO</td></tr>
+    </table>
+    <div class="gantt-note"><strong>Discrepancia en roles:</strong> El GANTT define (Administrador, Editor de sinopticos, Operador, Consulta/directivos). Nosotros implementamos (Administrador, Supervisor, Operador, Tecnico). Necesitamos alinear urgentemente.</div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <h2>Indice de Secciones</h2>
+    <div class="toc-grid">
+      <a href="#sec1" class="toc-item">1. Contrato y Alcance (1-10) <span class="toc-badge badge-important">Semana</span></a>
+      <a href="#sec2" class="toc-item">2. Roles y Permisos (11-19) <span class="toc-badge badge-urgent">Hoy</span></a>
+      <a href="#sec3" class="toc-item">3. Sinopticos (20-27) <span class="toc-badge badge-important">Semana</span></a>
+      <a href="#sec4" class="toc-item">4. GIS (28-33) <span class="toc-badge badge-urgent">Hoy</span></a>
+      <a href="#sec5" class="toc-item">5. Alarmas (34-42) <span class="toc-badge badge-important">Semana</span></a>
+      <a href="#sec6" class="toc-item">6. Reportes (43-48) <span class="toc-badge badge-important">Semana</span></a>
+      <a href="#sec7" class="toc-item">7. Ingesta — Variables faltantes (49-53) <span class="toc-badge badge-important">Semana</span></a>
+      <a href="#sec8" class="toc-item">8. Visualizacion — Renders (54-57) <span class="toc-badge badge-normal">2 sem</span></a>
+      <a href="#sec9" class="toc-item">9. Control Remoto (58-63) <span class="toc-badge badge-normal">2 sem</span></a>
+      <a href="#sec10" class="toc-item">10. Diccionarios (64-66) <span class="toc-badge badge-normal">2 sem</span></a>
+      <a href="#sec11" class="toc-item">11. Analiticas/ML/Gemelo (67-73) <span class="toc-badge badge-normal">2 sem</span></a>
+      <a href="#sec12" class="toc-item">12. Integraciones (74-79) <span class="toc-badge badge-important">Semana</span></a>
+      <a href="#sec13" class="toc-item">13. Seguridad y Hosting (80-90) <span class="toc-badge badge-urgent">Hoy</span></a>
+      <a href="#sec14" class="toc-item">14. Usuarios/Graficas avanzadas (91-93) <span class="toc-badge badge-normal">2 sem</span></a>
+      <a href="#sec15" class="toc-item">15. Infraestructura IoT (94-101) <span class="toc-badge badge-normal">2 sem</span></a>
+      <a href="#sec16" class="toc-item">16. Datos y Migracion (102-105) <span class="toc-badge badge-normal">2 sem</span></a>
+      <a href="#sec17" class="toc-item">17. Proceso Scrum (106-115) <span class="toc-badge badge-urgent">Hoy</span></a>
+      <a href="#sec18" class="toc-item">18. UX y Soporte (116-121) <span class="toc-badge badge-normal">2 sem</span></a>
+      <a href="#sec19" class="toc-item">19. Proactivas (122-128) <span class="toc-badge badge-normal">2 sem</span></a>
+    </div>
+  </div>
+
+  <!-- PRIORITIES -->
+  <div class="priority-section">
+    <h2>Prioridad de Respuesta</h2>
+    <div class="priority-block priority-today">
+      <h3>HOY (bloquean desarrollo)</h3>
+      <ul>
+        <li>Preguntas 11-19: Roles y permisos — discrepancia critica con GANTT</li>
+        <li>Preguntas 28-33: GIS — modulo vence manana</li>
+        <li>Preguntas 80-90: Seguridad y hosting — config OCI pendiente</li>
+        <li>Preguntas 106-115: Proceso Scrum</li>
+      </ul>
+    </div>
+    <div class="priority-block priority-tomorrow">
+      <h3>ESTA SEMANA (modulos con 0% avance)</h3>
+      <ul>
+        <li>Preguntas 1-10: Contrato y alcance</li>
+        <li>Preguntas 20-27: Sinopticos — modulo mas atrasado</li>
+        <li>Preguntas 34-42: Alarmas</li>
+        <li>Preguntas 43-48: Reportes</li>
+        <li>Preguntas 49-53: Variables faltantes (lluvia, niveles)</li>
+        <li>Preguntas 74-79: Integraciones (Neptuno, Neza Crece, ICH)</li>
+      </ul>
+    </div>
+    <div class="priority-block priority-week">
+      <h3>PROXIMAS 2 SEMANAS</h3>
+      <ul>
+        <li>Preguntas 54-57: Visualizacion/renders</li>
+        <li>Preguntas 58-73: Control, Diccionarios, Analiticas</li>
+        <li>Preguntas 91-105: Graficas, Infraestructura, Datos</li>
+        <li>Preguntas 116-128: UX, Soporte, Proactivas</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SEC 1: CONTRATO -->
+  <div class="section" id="sec1">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>1. Contrato y Alcance <span class="toc-badge badge-important">Semana</span></h2>
+      <div><span class="counter" data-section="1">0/10</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="gantt-context">GANTT: 12 modulos con 8.33% cada uno. Deadline final 29 abril. Necesitamos entender como se mide el avance oficialmente.</div>
+      <div class="question-row"><span class="q-number">1</span><div class="q-text">Necesitamos el TDR/SOW completo en PDF. Quien nos lo proporciona?</div><div class="q-answer"><textarea data-q="1" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">2</span><div class="q-text">El GANTT muestra deadline 29 abril para 7 modulos. Es esa la fecha contractual final? Hay entrega parcial antes?</div><div class="q-answer"><textarea data-q="2" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">3</span><div class="q-text">Hay penalizaciones por retraso? Cuales son los SLAs comprometidos?</div><div class="q-answer"><textarea data-q="3" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">4</span><div class="q-text">Los porcentajes del GANTT (col G) — quien los valida? CONAGUA los acepta o tienen criterio propio?</div><div class="q-answer"><textarea data-q="4" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">5</span><div class="q-text">Cuantas fases de pago? Ligadas a modulos especificos o porcentaje global?</div><div class="q-answer"><textarea data-q="5" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">6</span><div class="q-text">Hay periodo de garantia post-entrega? De cuanto tiempo?</div><div class="q-answer"><textarea data-q="6" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">7</span><div class="q-text">Quien firma la aceptacion por parte de CONAGUA? Nombre y puesto.</div><div class="q-answer"><textarea data-q="7" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">8</span><div class="q-text">Se requiere transferencia de conocimiento/capacitacion a CONAGUA? En que formato?</div><div class="q-answer"><textarea data-q="8" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">9</span><div class="q-text">El codigo es propiedad de CONAGUA o PlayTelecom? Clausulas de IP?</div><div class="q-answer"><textarea data-q="9" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">10</span><div class="q-text">La columna "Comentarios 4 PlayTelecom" del GANTT — hay documento de retroalimentacion mas detallado?</div><div class="q-answer"><textarea data-q="10" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 2: ROLES -->
+  <div class="section" id="sec2">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>2. Roles y Permisos <span class="toc-badge badge-urgent">Hoy</span></h2>
+      <div><span class="counter" data-section="2">0/9</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="gantt-context">DISCREPANCIA: GANTT define (Administrador, Editor de sinopticos, Operador, Consulta/directivos). Nosotros implementamos (Administrador, Supervisor, Operador, Tecnico). Esto bloquea multiples modulos.</div>
+      <div class="question-row"><span class="q-number">11</span><div class="q-text">Cual es la lista oficial de roles? GANTT vs nuestra implementacion. <span class="critical-tag">CRITICO</span></div><div class="q-answer"><textarea data-q="11" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">12</span><div class="q-text">"Editor de sinopticos" — es un rol de sistema con permisos fijos, o un permiso granular asignable a cualquier rol?</div><div class="q-answer"><textarea data-q="12" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">13</span><div class="q-text">"Consulta/directivos" — es solo lectura en todos los modulos? Ve telemetria, GIS, alarmas pero no opera ni edita?</div><div class="q-answer"><textarea data-q="13" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">14</span><div class="q-text">Existe el rol "Supervisor" que nosotros implementamos? Si no, debemos eliminarlo?</div><div class="q-answer"><textarea data-q="14" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">15</span><div class="q-text">Necesitamos la matriz de permisos completa: cada rol x cada modulo (ver, crear, editar, eliminar, operar, exportar). <span class="critical-tag">CRITICO</span></div><div class="q-answer"><textarea data-q="15" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">16</span><div class="q-text">Cuantos usuarios totales? Desglose por rol?</div><div class="q-answer"><textarea data-q="16" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">17</span><div class="q-text">Operador de Ecatepec puede ver datos de Chalco? Aislamiento por municipio es estricto?</div><div class="q-answer"><textarea data-q="17" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">18</span><div class="q-text">Un usuario puede tener multiples roles? (ej: Operador + Editor de sinopticos)</div><div class="q-answer"><textarea data-q="18" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">19</span><div class="q-text">GANTT modulo 11: "Permisos de control" al 1%. Que permisos especificos para bombas? Quien puede encender/apagar?</div><div class="q-answer"><textarea data-q="19" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 3: SINOPTICOS -->
+  <div class="section" id="sec3">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>3. Sinopticos <span class="toc-badge badge-important">Semana</span></h2>
+      <div><span class="counter" data-section="3">0/8</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="gantt-context">GANTT: Modulo mas atrasado (1% en 4/5 actividades). Deadline 1 abril. Necesitamos definicion clara para empezar ya.</div>
+      <div class="question-row"><span class="q-number">20</span><div class="q-text">Que es un "sinoptico" para CONAGUA? Diagrama P&amp;ID? Dashboard configurable? Canvas interactivo? Hay ejemplo visual? <span class="critical-tag">CRITICO</span></div><div class="q-answer"><textarea data-q="20" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">21</span><div class="q-text">"Herramientas de creacion" — editor drag-and-drop para el usuario? O el equipo dev los crea y el usuario consulta?</div><div class="q-answer"><textarea data-q="21" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">22</span><div class="q-text">"Objetos, imagenes, textos, graficas, alarmas, variables" — canvas tipo SCADA clasico (WinCC, Ignition Vision)? Que complejidad?</div><div class="q-answer"><textarea data-q="22" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">23</span><div class="q-text">"Vista de variables con funciones aritmeticas y condicionales" — mini-lenguaje de scripting? O formulas simples tipo Excel?</div><div class="q-answer"><textarea data-q="23" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">24</span><div class="q-text">"Bitacora con recuperacion" — versionamiento tipo Git (diff, rollback)? O solo log de quien edito cuando?</div><div class="q-answer"><textarea data-q="24" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">25</span><div class="q-text">Cuantos sinopticos se esperan crear? 1 por pozo? 1 por municipio? 1 general?</div><div class="q-answer"><textarea data-q="25" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">26</span><div class="q-text">"Grafico avanzado" (50%) — que falta para 100%? Zoom? Calendarios? Exportar?</div><div class="q-answer"><textarea data-q="26" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">27</span><div class="q-text">Hay mockups/wireframes de como debe verse un sinoptico terminado? Necesitamos referencia visual urgente.</div><div class="q-answer"><textarea data-q="27" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 4: GIS -->
+  <div class="section" id="sec4">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>4. GIS <span class="toc-badge badge-urgent">Hoy</span></h2>
+      <div><span class="counter" data-section="4">0/6</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="gantt-context">GANTT: Deadline 27 feb (MANANA). Capas 80%, Geoserver 1%. Necesitamos saber criterio de aceptacion.</div>
+      <div class="question-row"><span class="q-number">28</span><div class="q-text">GIS vence manana. Que se necesita para aceptacion? Es negociable la fecha? <span class="critical-tag">CRITICO</span></div><div class="q-answer"><textarea data-q="28" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">29</span><div class="q-text">"Falta agregar nuevas capas" — cuales capas faltan exactamente?</div><div class="q-answer"><textarea data-q="29" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">30</span><div class="q-text">Geoserver (1%) — CONAGUA tiene Geoserver existente? O debemos levantar uno desde cero?</div><div class="q-answer"><textarea data-q="30" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">31</span><div class="q-text">Quien proporciona shapefiles/capas GIS? CONAGUA tiene equipo de geomatica? Archivos listos?</div><div class="q-answer"><textarea data-q="31" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">32</span><div class="q-text">Carga/actualizacion de capas — la hace el usuario o solo el equipo tecnico?</div><div class="q-answer"><textarea data-q="32" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">33</span><div class="q-text">"Mapa embebido en sinoptico" — el mapa GIS se inserta dentro de un sinoptico como componente?</div><div class="q-answer"><textarea data-q="33" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 5: ALARMAS -->
+  <div class="section" id="sec5">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>5. Alarmas <span class="toc-badge badge-important">Semana</span></h2>
+      <div><span class="counter" data-section="5">0/9</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="gantt-context">GANTT: 0% avance en las 4 actividades. Deadline 29 abril. Necesitamos especificaciones para empezar desarrollo inmediatamente.</div>
+      <div class="question-row"><span class="q-number">34</span><div class="q-text">Alarmas de comunicacion: cuanto sin reportar = alarma? (5min? 30min? 1hr?) <span class="critical-tag">CRITICO</span></div><div class="q-answer"><textarea data-q="34" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">35</span><div class="q-text">Alarmas por umbral: tabla completa de umbrales por variable. Ej: presion > X = critica. Quien define estos valores?</div><div class="q-answer"><textarea data-q="35" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">36</span><div class="q-text">Umbrales iguales para todos los pozos o varian por sitio?</div><div class="q-answer"><textarea data-q="36" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">37</span><div class="q-text">Historico de alarmas: por cuanto tiempo se conserva?</div><div class="q-answer"><textarea data-q="37" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">38</span><div class="q-text">Notificaciones WhatsApp: ya tienen WhatsApp Business API? Proveedor? (Twilio, Meta, otro?)</div><div class="q-answer"><textarea data-q="38" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">39</span><div class="q-text">A quienes van las notificaciones? Hay cadena de escalamiento? (tecnico -> supervisor -> director?)</div><div class="q-answer"><textarea data-q="39" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">40</span><div class="q-text">Se necesita reconocimiento (acknowledge) de alarmas?</div><div class="q-answer"><textarea data-q="40" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">41</span><div class="q-text">Supresion de alarmas por mantenimiento programado?</div><div class="q-answer"><textarea data-q="41" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">42</span><div class="q-text">Las alarmas generan tickets automaticos? En que sistema? (Neptuno, Neza Crece?)</div><div class="q-answer"><textarea data-q="42" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 6: REPORTES -->
+  <div class="section" id="sec6">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>6. Reportes <span class="toc-badge badge-important">Semana</span></h2>
+      <div><span class="counter" data-section="6">0/6</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="gantt-context">GANTT: 3 actividades al 1%: reportes configurables, exportacion, reporte base de operacion. Deadline 29 abril.</div>
+      <div class="question-row"><span class="q-number">43</span><div class="q-text">"Reportes configurables" — lista de reportes con: nombre, datos, frecuencia, destinatario. <span class="critical-tag">CRITICO</span></div><div class="q-answer"><textarea data-q="43" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">44</span><div class="q-text">"Exportar graficas, Excel, PDF, imagenes" — boton de exportar en graficas actuales? O modulo separado?</div><div class="q-answer"><textarea data-q="44" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">45</span><div class="q-text">"Reporte base de operacion" — hay formato existente (papel/Excel) que debamos digitalizar? Necesitamos copia.</div><div class="q-answer"><textarea data-q="45" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">46</span><div class="q-text">Generacion automatica periodica (diaria, semanal, mensual) que se envie por email?</div><div class="q-answer"><textarea data-q="46" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">47</span><div class="q-text">Los reportes incluyen datos de alarmas y control, o solo telemetria?</div><div class="q-answer"><textarea data-q="47" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">48</span><div class="q-text">Hay reportes regulatorios para otra dependencia (CNA, SEMARNAT)? Formato?</div><div class="q-answer"><textarea data-q="48" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 7: INGESTA VARIABLES -->
+  <div class="section" id="sec7">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>7. Ingesta — Variables Faltantes <span class="toc-badge badge-important">Semana</span></h2>
+      <div><span class="counter" data-section="7">0/5</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="gantt-context">GANTT espera: Gasto, Presion, Niveles, Lluvia, Estados. Actualmente tenemos: Gasto, Presion, Carrier, Estado bomba, Senales. Faltan Niveles y Lluvia.</div>
+      <div class="question-row"><span class="q-number">49</span><div class="q-text">Datos de lluvia: de donde vienen? Pluviometros en sitios (LoRaWAN)? O estaciones meteorologicas externas (SMN)?</div><div class="q-answer"><textarea data-q="49" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">50</span><div class="q-text">Datos de niveles: nivel de que? (freatico, tanque, cisterna?) Hay sensores instalados? En cuantos sitios?</div><div class="q-answer"><textarea data-q="50" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">51</span><div class="q-text">"Almacenamiento en Nube y Servidores CONAGUA" — hay servidores propios donde replicar? En adicion a nuestra nube?</div><div class="q-answer"><textarea data-q="51" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">52</span><div class="q-text">"Migracion de informacion" — datos historicos de que sistema? Formato? Rango de fechas?</div><div class="q-answer"><textarea data-q="52" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">53</span><div class="q-text">Frecuencia: actualmente cada 5min, GANTT dice 15min. Cual es la requerida?</div><div class="q-answer"><textarea data-q="53" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 8: VISUALIZACION -->
+  <div class="section collapsed" id="sec8">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>8. Visualizacion — Renders <span class="toc-badge badge-normal">2 sem</span></h2>
+      <div><span class="counter" data-section="8">0/4</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="gantt-context">GANTT: Render de sitios al 2% (solo 5 pozos). Graficas basicas al 100%.</div>
+      <div class="question-row"><span class="q-number">54</span><div class="q-text">"Digitalizar fotografia en un render" — diagrama 2D? Modelo 3D? Foto anotada? Necesitamos ejemplo visual. <span class="critical-tag">CRITICO</span></div><div class="q-answer"><textarea data-q="54" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">55</span><div class="q-text">Cuantos pozos necesitan render? Todos los ~46 o un subconjunto?</div><div class="q-answer"><textarea data-q="55" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">56</span><div class="q-text">Quien proporciona las fotografias? Ya estan tomadas? Formato?</div><div class="q-answer"><textarea data-q="56" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">57</span><div class="q-text">"Estado de bomba (Pendiente ajuste)" — que ajuste falta? Problema de datos o de visualizacion?</div><div class="q-answer"><textarea data-q="57" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 9: CONTROL -->
+  <div class="section collapsed" id="sec9">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>9. Control Remoto <span class="toc-badge badge-normal">2 sem</span></h2>
+      <div><span class="counter" data-section="9">0/6</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="gantt-context">GANTT: Encendido/apagado 100%, Estado 100%. Bitacora 1%, Permisos 1%.</div>
+      <div class="question-row"><span class="q-number">58</span><div class="q-text">Ademas de START/STOP, hay otros comandos? (velocidad, valvulas?)</div><div class="q-answer"><textarea data-q="58" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">59</span><div class="q-text">"Bitacora de cambios" — ya tenemos audit_logs. Es suficiente o se necesita algo adicional?</div><div class="q-answer"><textarea data-q="59" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">60</span><div class="q-text">Solo Operador controla bombas? Administrador tambien? Consulta/directivos ve bitacora sin operar?</div><div class="q-answer"><textarea data-q="60" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">61</span><div class="q-text">Se necesita programar horarios de encendido/apagado automatico?</div><div class="q-answer"><textarea data-q="61" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">62</span><div class="q-text">Logica de interlocks? (no arrancar si presion > X, o si 3 bombas ya activas?)</div><div class="q-answer"><textarea data-q="62" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">63</span><div class="q-text">Confirmacion dual (two-man rule) para comandos criticos?</div><div class="q-answer"><textarea data-q="63" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 10: DICCIONARIOS -->
+  <div class="section collapsed" id="sec10">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>10. Diccionarios <span class="toc-badge badge-normal">2 sem</span></h2>
+      <div><span class="counter" data-section="10">0/3</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="gantt-context">GANTT: 0% en las 3 actividades. Deadline 29 abril.</div>
+      <div class="question-row"><span class="q-number">64</span><div class="q-text">"Explorador de variables desde BD" — panel donde usuario selecciona variable y ve datos crudos? Tipo query builder?</div><div class="q-answer"><textarea data-q="64" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">65</span><div class="q-text">"Clasificacion por categoria" — arbol jerarquico navegable? Ya tenemos entidades (Federal>Estatal>Municipal). Es eso?</div><div class="q-answer"><textarea data-q="65" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">66</span><div class="q-text">"Diccionario de variables" — tabla de referencia (nombre, unidad, rango, descripcion)? CONAGUA da catalogo inicial?</div><div class="q-answer"><textarea data-q="66" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 11: ANALITICAS -->
+  <div class="section collapsed" id="sec11">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>11. Analiticas / ML / Gemelo Digital <span class="toc-badge badge-normal">2 sem</span></h2>
+      <div><span class="counter" data-section="11">0/7</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="gantt-context">GANTT: 0% avance. "Redes neuronales, deteccion de anomalias, predicciones, gemelo digital" — todo deadline 29 abril. 2 meses para todo esto es ambicioso.</div>
+      <div class="question-row"><span class="q-number">67</span><div class="q-text">"Redes neuronales, anomalias, predicciones, pronosticos" — es requerimiento contractual para abril? O vision futura? <span class="critical-tag">CRITICO</span></div><div class="q-answer"><textarea data-q="67" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">68</span><div class="q-text">Si es contractual: hay datos historicos suficientes? Desde cuando? Cuantos meses/anos?</div><div class="q-answer"><textarea data-q="68" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">69</span><div class="q-text">Que anomalias detectar? (consumo inusual, fuga, robo de agua, sensor roto?)</div><div class="q-answer"><textarea data-q="69" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">70</span><div class="q-text">"Alertas predictivas" — dashboard aparte o integrado al modulo de alarmas?</div><div class="q-answer"><textarea data-q="70" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">71</span><div class="q-text">"Gemelo Digital" — modelo hidraulico simulable (EPANET)? O representacion visual?</div><div class="q-answer"><textarea data-q="71" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">72</span><div class="q-text">Hay modelos hidraulicos existentes? (archivos EPANET, WaterGEMS?)</div><div class="q-answer"><textarea data-q="72" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">73</span><div class="q-text">Quien interpreta resultados de ML? Hay personal de datos en CONAGUA?</div><div class="q-answer"><textarea data-q="73" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 12: INTEGRACIONES -->
+  <div class="section" id="sec12">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>12. Integraciones <span class="toc-badge badge-important">Semana</span></h2>
+      <div><span class="counter" data-section="12">0/6</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="gantt-context">GANTT: 5 integraciones concretas al 1%: APIs ICH, Neptuno, Neza Crece, nuevas variables, otros sistemas.</div>
+      <div class="question-row"><span class="q-number">74</span><div class="q-text"><strong>APIs ICH:</strong> que es ICH? Sistema de CONAGUA? API documentada? URL, credenciales? <span class="critical-tag">CRITICO</span></div><div class="q-answer"><textarea data-q="74" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">75</span><div class="q-text"><strong>Neptuno:</strong> que es? Plataforma interna de CONAGUA? Que datos enviar/recibir? Tiene API?</div><div class="q-answer"><textarea data-q="75" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">76</span><div class="q-text"><strong>Neza Crece:</strong> que es? Es solo para municipio de Neza? API? Formato de datos?</div><div class="q-answer"><textarea data-q="76" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">77</span><div class="q-text">"Nuevas variables por municipio" — cada municipio tiene plan de crecimiento? Documento con variables futuras?</div><div class="q-answer"><textarea data-q="77" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">78</span><div class="q-text">"Otros sistemas institucionales" — cuales son? APIs? Solo lectura o bidireccionales?</div><div class="q-answer"><textarea data-q="78" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">79</span><div class="q-text">Integracion con CFE para consumo energetico?</div><div class="q-answer"><textarea data-q="79" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 13: SEGURIDAD -->
+  <div class="section" id="sec13">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>13. Seguridad y Hosting <span class="toc-badge badge-urgent">Hoy</span></h2>
+      <div><span class="counter" data-section="13">0/11</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="gantt-context">GANTT: "Terminar configuracion de OCI" en control de acceso (90%). Falta definir infraestructura de produccion.</div>
+      <div class="question-row"><span class="q-number">80</span><div class="q-text">"Terminar config OCI" — que falta? Red, firewall, DNS, SSL, otro? <span class="critical-tag">CRITICO</span></div><div class="q-answer"><textarea data-q="80" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">81</span><div class="q-text">Tenemos acceso al tenant OCI? Credenciales? Quien administra la cuenta?</div><div class="q-answer"><textarea data-q="81" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">82</span><div class="q-text">Se requiere ambiente staging/QA separado de produccion?</div><div class="q-answer"><textarea data-q="82" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">83</span><div class="q-text">Normas de seguridad aplicables? (MAAGTICSI, ISO 27001, NMX-I-27001?)</div><div class="q-answer"><textarea data-q="83" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">84</span><div class="q-text">2FA ya funciona (email + TOTP). Obligatoria para TODOS o solo Administrador?</div><div class="q-answer"><textarea data-q="84" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">85</span><div class="q-text">Integracion con Active Directory / LDAP de CONAGUA?</div><div class="q-answer"><textarea data-q="85" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">86</span><div class="q-text">Politica de complejidad/rotacion de contrasenas de CONAGUA?</div><div class="q-answer"><textarea data-q="86" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">87</span><div class="q-text">Cierre de sesion automatico por inactividad? Tiempo? (actualmente JWT 8hrs)</div><div class="q-answer"><textarea data-q="87" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">88</span><div class="q-text">Se requiere WAF, DDoS protection, cifrado at rest? O TLS/HTTPS basta?</div><div class="q-answer"><textarea data-q="88" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">89</span><div class="q-text">Pentest por tercero? Cuando?</div><div class="q-answer"><textarea data-q="89" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">90</span><div class="q-text">CONAGUA tiene CISO o equipo de ciberseguridad?</div><div class="q-answer"><textarea data-q="90" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 14: USUARIOS AVANZADOS -->
+  <div class="section collapsed" id="sec14">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>14. Usuarios / Graficas Avanzadas <span class="toc-badge badge-normal">2 sem</span></h2>
+      <div><span class="counter" data-section="14">0/3</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="gantt-context">GANTT modulo 8: "Guardado de graficos" y "Vistas por usuarios" — ambos 1%.</div>
+      <div class="question-row"><span class="q-number">91</span><div class="q-text">"Guardado de graficos" — usuario guarda graficas personalizadas? (ej: "mi presion pozo 23, 30 dias")</div><div class="q-answer"><textarea data-q="91" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">92</span><div class="q-text">"Vistas por usuarios" — dashboard personalizado por usuario o por rol?</div><div class="q-answer"><textarea data-q="92" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">93</span><div class="q-text">Esto se relaciona con sinopticos? Un sinoptico ES una vista personalizada? O son separados?</div><div class="q-answer"><textarea data-q="93" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 15: INFRAESTRUCTURA -->
+  <div class="section collapsed" id="sec15">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>15. Infraestructura IoT <span class="toc-badge badge-normal">2 sem</span></h2>
+      <div><span class="counter" data-section="15">0/8</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="question-row"><span class="q-number">94</span><div class="q-text">Total de pozos/estaciones? (~46 actualmente) Se agregan mas en los proximos 6 meses?</div><div class="q-answer"><textarea data-q="94" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">95</span><div class="q-text">Todos los municipios en alcance? (Ecatepec, Chalco, Chicoloapan, Tlalnepantla, Valle de Chalco, La Paz — faltan?)</div><div class="q-answer"><textarea data-q="95" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">96</span><div class="q-text">Solo EdoMex o expansion a otros estados?</div><div class="q-answer"><textarea data-q="96" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">97</span><div class="q-text">Hay estaciones no-pozo? (tanques, potabilizadoras, presas, carcamos?)</div><div class="q-answer"><textarea data-q="97" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">98</span><div class="q-text">Listado completo de sitios con coordenadas GPS y equipos. Quien lo tiene?</div><div class="q-answer"><textarea data-q="98" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">99</span><div class="q-text">Gateways LoRaWAN: cuantos, donde, modelo, cobertura, zonas sin senal?</div><div class="q-answer"><textarea data-q="99" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">100</span><div class="q-text">Dispositivos Ignition/ICH: cuantos, en que sitios? Se mantiene dual o se migra?</div><div class="q-answer"><textarea data-q="100" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">101</span><div class="q-text">Actualizacion remota de firmware (FUOTA) disponible?</div><div class="q-answer"><textarea data-q="101" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 16: DATOS -->
+  <div class="section collapsed" id="sec16">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>16. Datos y Migracion <span class="toc-badge badge-normal">2 sem</span></h2>
+      <div><span class="counter" data-section="16">0/4</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="question-row"><span class="q-number">102</span><div class="q-text">"Definir migracion" (pendiente GANTT) — datos historicos de otro sistema? Formato? Timeline?</div><div class="q-answer"><textarea data-q="102" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">103</span><div class="q-text">Datos en loranet.playtelecom.com:8080 — todo migra a OCI? Cuando?</div><div class="q-answer"><textarea data-q="103" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">104</span><div class="q-text">Politica de retencion: cuanto tiempo datos crudos? Requisito legal?</div><div class="q-answer"><textarea data-q="104" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">105</span><div class="q-text">Backup en ubicacion geografica diferente?</div><div class="q-answer"><textarea data-q="105" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 17: SCRUM -->
+  <div class="section" id="sec17">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>17. Proceso Scrum <span class="toc-badge badge-urgent">Hoy</span></h2>
+      <div><span class="counter" data-section="17">0/10</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="question-row"><span class="q-number">106</span><div class="q-text">Duracion del sprint?</div><div class="q-answer"><textarea data-q="106" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">107</span><div class="q-text">Herramienta de backlog? (el GANTT Excel es la unica fuente?)</div><div class="q-answer"><textarea data-q="107" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">108</span><div class="q-text">Frecuencia de demos/revisiones con CONAGUA?</div><div class="q-answer"><textarea data-q="108" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">109</span><div class="q-text">Product Owner designado por CONAGUA? Quien es?</div><div class="q-answer"><textarea data-q="109" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">110</span><div class="q-text">GANTT — quien lo actualiza? Cada cuanto?</div><div class="q-answer"><textarea data-q="110" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">111</span><div class="q-text">Canal de comunicacion principal? (Slack, Teams, WhatsApp, email?)</div><div class="q-answer"><textarea data-q="111" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">112</span><div class="q-text">Equipo completo? Solo PlayTelecom o hay otros proveedores?</div><div class="q-answer"><textarea data-q="112" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">113</span><div class="q-text">"Equipo Dev" del GANTT (col H) — somos nosotros? Alguien mas contribuye codigo?</div><div class="q-answer"><textarea data-q="113" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">114</span><div class="q-text">Quien valida criterios de aceptacion de cada modulo?</div><div class="q-answer"><textarea data-q="114" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">115</span><div class="q-text">Hay ambiente UAT donde CONAGUA prueba antes de aceptar?</div><div class="q-answer"><textarea data-q="115" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 18: UX -->
+  <div class="section collapsed" id="sec18">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>18. UX y Soporte <span class="toc-badge badge-normal">2 sem</span></h2>
+      <div><span class="counter" data-section="18">0/6</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="question-row"><span class="q-number">116</span><div class="q-text">Dispositivos de usuarios? (desktop, tablet, celular?) App nativa necesaria o responsive basta?</div><div class="q-answer"><textarea data-q="116" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">117</span><div class="q-text">Funcionalidad offline para tecnicos en campo?</div><div class="q-answer"><textarea data-q="117" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">118</span><div class="q-text">Lineamientos de identidad grafica de CONAGUA? (colores, logo, tipografia)</div><div class="q-answer"><textarea data-q="118" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">119</span><div class="q-text">Manual de usuario necesario? Impreso o digital? Para cuantas personas?</div><div class="q-answer"><textarea data-q="119" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">120</span><div class="q-text">Modelo de soporte post-entrega? (24/7, horario laboral?)</div><div class="q-answer"><textarea data-q="120" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">121</span><div class="q-text">Mesa de ayuda / helpdesk necesaria?</div><div class="q-answer"><textarea data-q="121" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- SEC 19: PROACTIVAS -->
+  <div class="section collapsed" id="sec19">
+    <div class="section-header" onclick="toggleSection(this)">
+      <h2>19. Proactivas — Valor Agregado <span class="toc-badge badge-normal">2 sem</span></h2>
+      <div><span class="counter" data-section="19">0/7</span> <span class="chevron">&#9660;</span></div>
+    </div>
+    <div class="section-body">
+      <div class="gantt-context">Propuestas del equipo tecnico para agregar valor al proyecto.</div>
+      <div class="question-row"><span class="q-number">122</span><div class="q-text">Para alarmas WhatsApp — han considerado push notifications via PWA? Mas barato, sin depender de proveedor.</div><div class="q-answer"><textarea data-q="122" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">123</span><div class="q-text">Gemelo digital: EPANET (open source) vs WaterGEMS (licencia)?</div><div class="q-answer"><textarea data-q="123" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">124</span><div class="q-text">Optimizar bombeo segun tarifas CFE (peak vs off-peak)? Ahorro energetico significativo.</div><div class="q-answer"><textarea data-q="124" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">125</span><div class="q-text">Sinopticos: editor tipo draw.io con componentes SCADA predefinidos? O approach mas simple?</div><div class="q-answer"><textarea data-q="125" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">126</span><div class="q-text">Edge computing para sitios sin buena conectividad?</div><div class="q-answer"><textarea data-q="126" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">127</span><div class="q-text">Si escala a nivel nacional — arquitectura multi-tenant?</div><div class="q-answer"><textarea data-q="127" oninput="onAnswer(this)"></textarea></div></div>
+      <div class="question-row"><span class="q-number">128</span><div class="q-text">Conformidad con NOM-012-CONAGUA (medicion de agua)?</div><div class="q-answer"><textarea data-q="128" oninput="onAnswer(this)"></textarea></div></div>
+    </div>
+  </div>
+
+  <!-- DOCUMENTS CHECKLIST -->
+  <div class="checklist-section" id="secDocs">
+    <h2>20. Documentos que Necesitamos Recibir</h2>
+    <h3>HOY</h3>
+    <div class="checklist-item"><input type="checkbox" id="doc1" onchange="onChecklistChange(this)"><label for="doc1">TDR / Statement of Work completo (PDF)</label></div>
+    <div class="checklist-item"><input type="checkbox" id="doc2" onchange="onChecklistChange(this)"><label for="doc2">Matriz de permisos por rol aprobada (la oficial, no la del GANTT)</label></div>
+    <div class="checklist-item"><input type="checkbox" id="doc3" onchange="onChecklistChange(this)"><label for="doc3">Credenciales de OCI (Oracle Cloud)</label></div>
+    <div class="checklist-item"><input type="checkbox" id="doc4" onchange="onChecklistChange(this)"><label for="doc4">Shapefiles/capas GIS faltantes (modulo vence manana)</label></div>
+    <h3>ESTA SEMANA</h3>
+    <div class="checklist-item"><input type="checkbox" id="doc5" onchange="onChecklistChange(this)"><label for="doc5">Catalogo de alarmas con umbrales por variable y por sitio</label></div>
+    <div class="checklist-item"><input type="checkbox" id="doc6" onchange="onChecklistChange(this)"><label for="doc6">Mockup/ejemplo visual de sinoptico terminado</label></div>
+    <div class="checklist-item"><input type="checkbox" id="doc7" onchange="onChecklistChange(this)"><label for="doc7">Fotografias de pozos para renders (modulo Visualizacion)</label></div>
+    <div class="checklist-item"><input type="checkbox" id="doc8" onchange="onChecklistChange(this)"><label for="doc8">Documentacion de APIs: Neptuno, Neza Crece, ICH</label></div>
+    <div class="checklist-item"><input type="checkbox" id="doc9" onchange="onChecklistChange(this)"><label for="doc9">Formato de "reporte base de operacion" actual (papel/Excel)</label></div>
+    <div class="checklist-item"><input type="checkbox" id="doc10" onchange="onChecklistChange(this)"><label for="doc10">Listado completo de sitios con coordenadas y equipos</label></div>
+    <div class="checklist-item"><input type="checkbox" id="doc11" onchange="onChecklistChange(this)"><label for="doc11">Especificaciones de sensores de lluvia y niveles</label></div>
+    <h3>PROXIMAS 2 SEMANAS</h3>
+    <div class="checklist-item"><input type="checkbox" id="doc12" onchange="onChecklistChange(this)"><label for="doc12">Modelos hidraulicos existentes (EPANET, WaterGEMS)</label></div>
+    <div class="checklist-item"><input type="checkbox" id="doc13" onchange="onChecklistChange(this)"><label for="doc13">Diccionario de variables (nomenclaturas, rangos, unidades)</label></div>
+    <div class="checklist-item"><input type="checkbox" id="doc14" onchange="onChecklistChange(this)"><label for="doc14">Datos historicos para migracion</label></div>
+    <div class="checklist-item"><input type="checkbox" id="doc15" onchange="onChecklistChange(this)"><label for="doc15">Politicas de seguridad informatica de CONAGUA</label></div>
+    <div class="checklist-item"><input type="checkbox" id="doc16" onchange="onChecklistChange(this)"><label for="doc16">Organigrama de CONAGUA relevante</label></div>
+    <div class="checklist-item"><input type="checkbox" id="doc17" onchange="onChecklistChange(this)"><label for="doc17">SLAs requeridos</label></div>
+  </div>
+
+  <div class="footer-spacer"></div>
+</div>
+
+<div class="actions-bar">
+  <div>
+    <button class="btn-save" onclick="saveToStorage()">Guardar progreso</button>
+    <button class="btn-download" onclick="downloadWithAnswers()">Descargar con respuestas</button>
+    <button class="btn-export" onclick="exportJSON()">Exportar JSON</button>
+    <button class="btn-clear" onclick="clearAll()">Limpiar todo</button>
+  </div>
+  <div class="save-status" id="saveStatus">Sin cambios guardados</div>
+</div>
+
+<script>
+  const TOTAL_QUESTIONS = 128;
+  const sectionRanges = {
+    1:[1,10], 2:[11,19], 3:[20,27], 4:[28,33], 5:[34,42], 6:[43,48],
+    7:[49,53], 8:[54,57], 9:[58,63], 10:[64,66], 11:[67,73], 12:[74,79],
+    13:[80,90], 14:[91,93], 15:[94,101], 16:[102,105], 17:[106,115],
+    18:[116,121], 19:[122,128]
+  };
+
+  function toggleSection(h) { h.parentElement.classList.toggle('collapsed'); }
+
+  function onAnswer(el) {
+    el.classList.toggle('has-content', el.value.trim().length > 0);
+    updateProgress();
+    autoSave();
+  }
+
+  function onChecklistChange(el) {
+    el.parentElement.classList.toggle('checked', el.checked);
+    autoSave();
+  }
+
+  function updateProgress() {
+    const all = document.querySelectorAll('textarea[data-q]');
+    let answered = 0;
+    const sc = {};
+    all.forEach(ta => {
+      const q = parseInt(ta.dataset.q);
+      if (ta.value.trim().length > 0) answered++;
+      for (const [s,[a,b]] of Object.entries(sectionRanges)) {
+        if (q >= a && q <= b) {
+          if (!sc[s]) sc[s] = {a:0, t:0};
+          sc[s].t++;
+          if (ta.value.trim().length > 0) sc[s].a++;
+        }
+      }
+    });
+    const pct = (answered / TOTAL_QUESTIONS * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressText').textContent = answered + ' / ' + TOTAL_QUESTIONS + ' respondidas (' + Math.round(pct) + '%)';
+    for (const [s,c] of Object.entries(sc)) {
+      const el = document.querySelector('[data-section="'+s+'"]');
+      if (el) el.textContent = c.a + '/' + c.t;
+    }
+  }
+
+  let ast = null;
+  function autoSave() { clearTimeout(ast); ast = setTimeout(() => saveToStorage(true), 2000); }
+
+  function saveToStorage(silent) {
+    const d = {}, ch = {};
+    document.querySelectorAll('textarea[data-q]').forEach(t => { if (t.value.trim()) d['q'+t.dataset.q] = t.value; });
+    document.querySelectorAll('.checklist-item input[type="checkbox"]').forEach(c => { if (c.checked) ch[c.id] = true; });
+    localStorage.setItem('cuestionario_scada_v2', JSON.stringify({answers:d, checklist:ch, savedAt:new Date().toISOString()}));
+    const st = document.getElementById('saveStatus');
+    st.textContent = 'Guardado: ' + new Date().toLocaleTimeString();
+    if (!silent) { st.style.color = '#28a745'; setTimeout(() => { st.style.color = ''; }, 2000); }
+  }
+
+  function loadFromStorage() {
+    const r = localStorage.getItem('cuestionario_scada_v2');
+    if (!r) return;
+    try {
+      const o = JSON.parse(r);
+      if (o.answers) for (const [k,v] of Object.entries(o.answers)) {
+        const ta = document.querySelector('textarea[data-q="'+k.replace('q','')+'"]');
+        if (ta) { ta.value = v; ta.classList.add('has-content'); }
+      }
+      if (o.checklist) for (const [id,c] of Object.entries(o.checklist)) {
+        const cb = document.getElementById(id);
+        if (cb) { cb.checked = c; cb.parentElement.classList.toggle('checked', c); }
+      }
+      if (o.savedAt) document.getElementById('saveStatus').textContent = 'Cargado: ' + new Date(o.savedAt).toLocaleString();
+    } catch(e) {}
+    updateProgress();
+  }
+
+  function exportJSON() {
+    const d = {};
+    document.querySelectorAll('textarea[data-q]').forEach(t => {
+      if (t.value.trim()) d[t.dataset.q] = { question: t.closest('.question-row').querySelector('.q-text').textContent.trim(), answer: t.value.trim() };
+    });
+    const ch = [];
+    document.querySelectorAll('.checklist-item input[type="checkbox"]').forEach(c => {
+      ch.push({ document: c.nextElementSibling.textContent.trim(), received: c.checked });
+    });
+    const blob = new Blob([JSON.stringify({
+      title:'Cuestionario SCADA SOA v2 (GANTT-informed)', exportedAt:new Date().toISOString(),
+      totalQuestions:TOTAL_QUESTIONS, answered:Object.keys(d).length, answers:d, documentChecklist:ch
+    }, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'cuestionario_scada_v2_' + new Date().toISOString().split('T')[0] + '.json';
+    a.click();
+  }
+
+  function downloadWithAnswers() {
+    // Clone the entire document
+    const clone = document.documentElement.cloneNode(true);
+
+    // Bake textarea values into the HTML as default content
+    const origTextareas = document.querySelectorAll('textarea[data-q]');
+    const cloneTextareas = clone.querySelectorAll('textarea[data-q]');
+    origTextareas.forEach((orig, i) => {
+      cloneTextareas[i].textContent = orig.value;
+      if (orig.value.trim()) {
+        cloneTextareas[i].classList.add('has-content');
+      }
+    });
+
+    // Bake checkbox states
+    const origChecks = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+    const cloneChecks = clone.querySelectorAll('.checklist-item input[type="checkbox"]');
+    origChecks.forEach((orig, i) => {
+      if (orig.checked) {
+        cloneChecks[i].setAttribute('checked', 'checked');
+        cloneChecks[i].parentElement.classList.add('checked');
+      } else {
+        cloneChecks[i].removeAttribute('checked');
+      }
+    });
+
+    // Expand all sections so answers are visible
+    clone.querySelectorAll('.section.collapsed').forEach(s => s.classList.remove('collapsed'));
+
+    // Build full HTML
+    const html = '<!DOCTYPE html><html lang="es">' + clone.innerHTML + '</html>';
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'CUESTIONARIO_SCADA_respondido_' + new Date().toISOString().split('T')[0] + '.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+
+    const st = document.getElementById('saveStatus');
+    st.textContent = 'Archivo descargado con respuestas incrustadas';
+    st.style.color = '#6f42c1';
+    setTimeout(() => { st.style.color = ''; }, 3000);
+  }
+
+  function clearAll() {
+    if (!confirm('Borrar TODAS las respuestas?')) return;
+    document.querySelectorAll('textarea[data-q]').forEach(t => { t.value=''; t.classList.remove('has-content'); });
+    document.querySelectorAll('.checklist-item input[type="checkbox"]').forEach(c => { c.checked=false; c.parentElement.classList.remove('checked'); });
+    localStorage.removeItem('cuestionario_scada_v2');
+    updateProgress();
+  }
+
+  // On load: first check if textareas have baked-in content (from "Descargar con respuestas")
+  document.querySelectorAll('textarea[data-q]').forEach(ta => {
+    if (ta.textContent.trim()) {
+      ta.value = ta.textContent.trim();
+      ta.classList.add('has-content');
+    }
+  });
+  // Then overlay any localStorage data (localStorage wins if both exist)
+  loadFromStorage();
+  updateProgress();
+</script>
+</body>
+</html>

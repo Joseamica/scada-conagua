@@ -1,0 +1,184 @@
+<app-header-bar></app-header-bar>
+
+<div class="shell">
+  <main class="page">
+
+
+    <!-- CARD PRINCIPAL -->
+    <section class="card">
+
+      <!-- TOOLBAR -->
+      <div class="toolbar">
+
+        <!-- IZQUIERDA -->
+     
+  <div class="tool-actions">
+    <div class="time-selector">
+            <button [class.active]="timePreset() === '15m'" (click)="setTimePreset('15m')">15m</button>
+            <button [class.active]="timePreset() === '1h'"  (click)="setTimePreset('1h')">1h</button>
+            <button [class.active]="timePreset() === '6h'"  (click)="setTimePreset('6h')">6h</button>
+            <button [class.active]="timePreset() === '12h'" (click)="setTimePreset('12h')">12h</button>
+            <button [class.active]="timePreset() === '1d'"  (click)="setTimePreset('1d')">1d</button>
+            <button [class.active]="timePreset() === '1sem'"(click)="setTimePreset('1sem')">1sem</button>
+          </div>
+  </div>
+        <!-- DERECHA -->
+        <div class="tool-actions">
+
+          <!-- PRESETS -->
+          
+
+           <div class="date-range-inline">
+            <label for="">Fecha personalizada</label>
+      <input type="date" title="Desde">
+      <span class="date-sep">–</span>
+      <input type="date" title="Hasta">
+
+      <button class="btn btn-primary btn-sm">
+      Aplicar
+    </button>
+    </div>
+
+
+          <button class="btn btn-outline" (click)="exportPDF()">
+            <ng-icon
+          name="heroDocumentArrowDown"
+          size="20"></ng-icon> Exportar
+          </button>
+
+             <button class="btn btn-outline" (click)="goBack()">
+          <ng-icon
+          name="heroArrowLeftStartOnRectangle"
+          size="20"> </ng-icon>Regresar
+        </button>
+
+        </div>
+      </div>
+
+      <!-- GRID -->
+      <div class="grid">
+
+        <!-- PANEL IZQUIERDO -->
+        <aside class="card">
+
+          <div class="table-title">
+            Listado de sitios
+          </div>
+
+          <div class="filters">
+
+            <!-- SERIES -->
+            <div class="field">
+              <label>Variables</label>
+              <div class="checkbox-list">
+                <label>
+                  <input type="checkbox"
+                    [checked]="selectedSeries().caudal"
+                    (change)="onToggleSeries('caudal', $any($event.target).checked)">
+                  Caudal (L/s)
+                </label>
+                <label>
+                  <input type="checkbox"
+                    [checked]="selectedSeries().presion"
+                    (change)="onToggleSeries('presion', $any($event.target).checked)">
+                  Presión (Kg/cm²)
+                </label>
+                <label>
+                  <input type="checkbox"
+                    [checked]="selectedSeries().comunicacion"
+                    (change)="onToggleSeries('comunicacion', $any($event.target).checked)">
+                  Señal (dBm)
+                </label>
+              </div>
+            </div>
+
+            <!-- SITIOS -->
+            <div class="field">
+              <label>Sitios</label>
+              <div *ngIf="sitesDisponibles.length === 0" class="tree-empty">
+                Cargando sitios...
+              </div>
+              <div class="checkbox-list" *ngIf="sitesDisponibles.length > 0">
+                <label *ngFor="let s of sitesDisponibles">
+                  <input
+                    type="checkbox"
+                    [checked]="selectedSites().includes(s.devEUI)"
+                    (change)="toggleSite(s.devEUI)">
+                  {{ s.name }}
+                </label>
+              </div>
+            </div>
+
+          </div>
+          
+        </aside>
+
+
+        <!-- GRÁFICA -->
+        <section class="card">
+
+          <div class="table-title">
+            Lecturas
+          </div>
+
+          <div
+            #chart
+            style="height:420px; width:100%;">
+          </div>
+
+          <!-- ===================== -->
+<!-- LECTURAS OPERATIVAS -->
+<!-- ===================== -->
+<div class="readings-panel">
+  <div class="reading-grid">
+
+    <!-- CAUDAL -->
+    <div class="reading-card">
+      <h4>Caudal (L/s)</h4>
+      <div class="metrics">
+        <div><span>Min</span><b>--</b></div>
+        <div><span>Med</span><b>--</b></div>
+        <div><span>Prom</span><b>--</b></div>
+        <div><span>Max</span><b>--</b></div>
+      </div>
+      <div class="accumulated">
+        Gasto semanal: <b>-- m³</b>
+      </div>
+    </div>
+
+    <!-- PRESIÓN -->
+    <div class="reading-card">
+      <h4>Presión (Kg/cm²)</h4>
+      <div class="metrics">
+        <div><span>Min</span><b>--</b></div>
+        <div><span>Med</span><b>--</b></div>
+        <div><span>Prom</span><b>--</b></div>
+        <div><span>Max</span><b>--</b></div>
+      </div>
+    </div>
+
+    <!-- COMUNICACIONES -->
+    <div class="reading-card">
+      <h4>Comunicaciones</h4>
+      <div class="comm-row">
+        <div class="comm-availability">
+          Disponibilidad:
+          <b> %</b>
+        </div>
+       
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+        </section>
+
+      </div>
+    </section>
+
+  </main>
+
+  <app-footer-tabs></app-footer-tabs>
+</div>

@@ -1,0 +1,115 @@
+<app-header-bar></app-header-bar>
+
+<div class="dashboard-shell">
+
+  <!-- ===== HERO SECTION ===== -->
+  <section class="hero">
+    <div class="hero-inner">
+
+      <div class="logos-row">
+        <img src="assets/img/logo-conagua.png" class="logo" alt="CONAGUA" />
+        <div class="logo-divider"></div>
+        <img src="assets/img/logo-soa.png" class="logo" alt="SOA" />
+      </div>
+
+      <h1 class="hero-title">Sistema Operativo del Agua</h1>
+      <p class="hero-subtitle">
+        Plataforma de monitoreo, control y gestion de infraestructura hidraulica
+      </p>
+
+    </div>
+
+    <!-- decorative gradient bar -->
+    <div class="hero-accent"></div>
+  </section>
+
+  <!-- ===== NAVIGATION CARDS ===== -->
+  <section class="bento-grid">
+
+    <!-- Card 1: Telemetria (wide) -->
+    <div class="bento-card bento-wide" routerLink="/telemetria">
+      <div class="card-content">
+        <div class="card-icon-wrap">
+          <ng-icon name="heroPresentationChartBar" class="card-icon"></ng-icon>
+        </div>
+        <div class="card-text">
+          <h2 class="card-title">Telemetria y Panel de Operaciones</h2>
+          <p class="card-desc">
+            Monitoreo en tiempo real de pozos, presion, caudal y estado de bombas.
+            Graficas historicas y control de dispositivos.
+          </p>
+        </div>
+      </div>
+      <div class="card-arrow">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Card 2: GIS -->
+    <div class="bento-card" routerLink="/modulo-gis">
+      <div class="card-content">
+        <div class="card-icon-wrap accent-teal">
+          <ng-icon name="heroMap" class="card-icon"></ng-icon>
+        </div>
+        <div class="card-text">
+          <h2 class="card-title">Modulo SIG</h2>
+          <p class="card-desc">
+            Visualizacion geoespacial de sitios, pozos y redes de distribucion.
+          </p>
+        </div>
+      </div>
+      <div class="card-arrow">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Card 3: Usuarios (solo Admin) -->
+    <div class="bento-card" routerLink="/usuarios" *ngIf="isAdmin()">
+      <div class="card-content">
+        <div class="card-icon-wrap accent-amber">
+          <ng-icon name="heroUser" class="card-icon"></ng-icon>
+        </div>
+        <div class="card-text">
+          <h2 class="card-title">Gestion de Usuarios</h2>
+          <p class="card-desc">
+            Administracion de cuentas, roles, permisos y bitacora de auditoria.
+          </p>
+        </div>
+      </div>
+      <div class="card-arrow">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Card 4: Proyectos (wide) -->
+    <div class="bento-card bento-wide" (click)="go('alarmas')">
+      <div class="card-content">
+        <div class="card-icon-wrap accent-slate">
+          <ng-icon name="heroDocumentText" class="card-icon"></ng-icon>
+        </div>
+        <div class="card-text">
+          <h2 class="card-title">Administracion de Proyectos</h2>
+          <p class="card-desc">
+            Configuracion de sinopticos, carpetas y estructura organizacional
+            por dependencia y nivel de gobierno.
+          </p>
+        </div>
+      </div>
+      <div class="card-arrow">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+
+  </section>
+
+</div>
+
+<app-footer-tabs></app-footer-tabs>

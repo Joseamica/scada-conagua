@@ -1,0 +1,86 @@
+// src/services/influx-query-service.ts
+
+import { InfluxDB, FluxTableMetaData, QueryApi } from '@influxdata/influxdb-client';
+import 'dotenv/config';
+import { SiteTelemetryResponse, TimeSeriesData } from '../interfaces/query';
+import { pool } from '../services/db-service';
+
+// --- Configuración de Conexión ---
+const url: string = process.env.INFLUX_URL || 'http://10.0.0.119:8086';
+const token: string = process.env.INFLUX_TOKEN || 'gdE53nr2YSXICZ8aahinopzn-xzwXzD6U2dm9QGDX4dRsYrleOdm6oaSg9FXd-ay_0ykJUbKnMgJq2AVh289zw==';
+const org: string = process.env.INFLUX_ORG || 'CONAGUA';
+const bucket: string = process.env.INFLUX_BUCKET || 'telemetria_sitios';
+
+const influxDB: InfluxDB = new InfluxDB({ url, token });
+const queryApi: QueryApi = influxDB.getQueryApi(org);
+
+export async function getTelemetryData(
+    devEUI: string,
+    measurementField: string,
+    range: string = '-24h',
+    every: string = '1m'
+): Promise<SiteTelemetryResponse> {
+
+    let siteName = 'Unknown Site';
+
+    try {
+        // 1. Buscar el nombre del sitio en PostgreSQL
+        const pgQuery = 'SELECT site_name FROM inventory WHERE dev_eui = $1 LIMIT 1';
+        const pgResult = await pool.query(pgQuery, [devEUI]);
+
+        if (pgResult.rows.length > 0) {
+            siteName = pgResult.rows[0].site_name;
+        }
+
+        // 2. Consultar InfluxDB
+        const fluxQuery = `
+                from(bucket: "${bucket}")
+                  |> range(start: ${range})
+                  |> filter(fn: (r) => r["_measurement"] == "mediciones_pozos")
+                  |> filter(fn: (r) => r["devEui"] == "${devEUI}")
+                  |> filter(fn: (r) => r["_field"] == "${measurementField}")
+                  |> aggregateWindow(every: ${every}, fn: mean, createEmpty: false)
+                  |> yield(name: "mean")
+        `;
+
+        const data: TimeSeriesData[] = [];
+
+        // Ejecutamos la consulta InfluxDB
+        await new Promise<void>((resolve, reject) => {
+            queryApi.queryRows(fluxQuery, {
+                next: (row: string[], tableMeta: FluxTableMetaData) => {
+                    const o = tableMeta.toObject(row);
+                    data.push({
+                        timestamp: o._time,
+                        value: o._value,
+                        unit: o.unit || '',
+                    });
+                },
+                error: (error: Error) => {
+                    console.error('🛑 InfluxDB Query Error:', error);
+                    reject(error);
+                },
+                complete: () => {
+                    resolve();
+                },
+            });
+        });
+
+        return {
+            siteName: siteName,
+            devEui: devEUI,
+            measurement: measurementField,
+            data: data,
+        };
+
+    } catch (error) {
+        const errorMessage = (error instanceof Error) ? error.message : 'An unknown error occurred.';
+        console.error('❌ Failed to execute Telemetry Service:', errorMessage);
+        return {
+            siteName: 'Error',
+            devEui: devEUI,
+            measurement: measurementField,
+            data: []
+        };
+    }
+}

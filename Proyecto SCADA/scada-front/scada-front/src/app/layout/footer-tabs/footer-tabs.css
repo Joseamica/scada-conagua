@@ -1,0 +1,130 @@
+/* =========================================
+   FOOTER NAV — SCADA SOA
+   ========================================= */
+
+.footer-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: #6d002b;
+  display: flex;
+  align-items: stretch;
+  z-index: 1000;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ===== TAB ===== */
+.nav-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  position: relative;
+  text-decoration: none;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.6);
+  transition: color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  padding: 6px 4px;
+}
+
+.nav-tab:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.nav-tab:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
+/* ===== ACTIVE STATE ===== */
+.nav-tab.is-active {
+  color: #fff;
+}
+
+/* Active indicator bar */
+.tab-indicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) scaleX(0);
+  width: 32px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: #fff;
+  transition: transform 0.2s ease;
+}
+
+.nav-tab.is-active .tab-indicator {
+  transform: translateX(-50%) scaleX(1);
+}
+
+/* ===== ICON ===== */
+.tab-icon {
+  width: 22px;
+  height: 22px;
+  transition: transform 0.15s ease;
+}
+
+.nav-tab.is-active .tab-icon {
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.3));
+}
+
+/* ===== LABEL ===== */
+.tab-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
+
+.nav-tab.is-active .tab-label {
+  font-weight: 700;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (min-width: 769px) {
+  .tab-label {
+    font-size: 11px;
+  }
+
+  .footer-nav {
+    height: 56px;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-nav {
+    height: 58px;
+  }
+
+  .tab-label {
+    font-size: 9px;
+  }
+
+  .tab-icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+  .nav-tab,
+  .tab-indicator,
+  .tab-icon {
+    transition: none;
+  }
+}

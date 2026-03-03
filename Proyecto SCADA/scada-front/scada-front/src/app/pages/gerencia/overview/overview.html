@@ -1,0 +1,109 @@
+<app-header-bar></app-header-bar>
+
+<div class="shell">
+  <main class="page">
+
+    <!-- ===== PAGE HEADER ===== -->
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Resumen de Gasto Producido</h1>
+        <p class="page-subtitle">Vista general del gasto hidraulico por municipio y estado operativo</p>
+      </div>
+      <button class="btn-ghost" type="button" (click)="goBack()">
+        <ng-icon name="heroArrowLeft" size="16"></ng-icon>
+        Regresar
+      </button>
+    </div>
+
+    <!-- ===== KPI CARDS ===== -->
+    <div class="kpi-row">
+
+      <!-- Main KPI: Gasto total -->
+      <div class="kpi-card kpi-main">
+        <div class="kpi-icon-wrap">
+          <ng-icon name="heroBeaker" size="22"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ gastoTotalGlobal | number:'1.0-0' }}</span>
+          <span class="kpi-unit">l/s</span>
+        </div>
+        <span class="kpi-label">Gasto producido total</span>
+        <span class="kpi-hint">Pozos activos en operacion</span>
+      </div>
+
+      <!-- Pozos activos -->
+      <div class="kpi-card">
+        <div class="kpi-icon-wrap accent-teal">
+          <ng-icon name="heroCheckCircle" size="20"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ pozosActivos }}</span>
+        </div>
+        <span class="kpi-label">Pozos activos</span>
+        <span class="kpi-hint">de {{ totalPozos }} registrados</span>
+      </div>
+
+      <!-- Municipios monitoreados -->
+      <div class="kpi-card">
+        <div class="kpi-icon-wrap accent-amber">
+          <ng-icon name="heroMapPin" size="20"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ municipiosCount }}</span>
+        </div>
+        <span class="kpi-label">Municipios</span>
+        <span class="kpi-hint">con instrumentacion activa</span>
+      </div>
+
+      <!-- Promedio por pozo -->
+      <div class="kpi-card">
+        <div class="kpi-icon-wrap accent-blue">
+          <ng-icon name="heroChartBar" size="20"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ promedioPorPozo | number:'1.1-1' }}</span>
+          <span class="kpi-unit">l/s</span>
+        </div>
+        <span class="kpi-label">Promedio por pozo</span>
+        <span class="kpi-hint">gasto medio por unidad</span>
+      </div>
+
+    </div>
+
+    <!-- ===== CONTENT GRID: CHART + MAP ===== -->
+    <div class="content-grid">
+
+      <!-- Chart Card -->
+      <div class="content-card">
+        <div class="content-header">
+          <div class="content-header-icon">
+            <ng-icon name="heroPresentationChartLine" size="18"></ng-icon>
+          </div>
+          <div>
+            <h2 class="content-title">Tendencia de gasto total</h2>
+            <p class="content-desc">Suma acumulada por dia — ultimos 30 dias</p>
+          </div>
+        </div>
+        <div id="chartOverview" class="chart-container"></div>
+      </div>
+
+      <!-- Map Card -->
+      <div class="content-card map-wrapper">
+        <div class="content-header">
+          <div class="content-header-icon accent-teal">
+            <ng-icon name="heroGlobeAmericas" size="18"></ng-icon>
+          </div>
+          <div>
+            <h2 class="content-title">Distribucion geografica</h2>
+            <p class="content-desc">Clic en un municipio para ver detalle</p>
+          </div>
+        </div>
+        <div id="mapOverview" class="map-container"></div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<app-footer-tabs></app-footer-tabs>

@@ -1,0 +1,155 @@
+@import "leaflet/dist/leaflet.css";
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif !important;
+}
+
+.leaflet-top {
+    top: 100px;
+}
+
+/* Contenedor de cada item */
+.leaflet-control-layers label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Checkbox real de Leaflet */
+.leaflet-control-layers-selector {
+  position: relative;
+  top: 0;                 /* 👈 neutraliza el offset interno */
+  margin: 0;
+  align-self: center;  
+  margin-right: 6px;   /* 👈 fuerza centrado vertical */
+}
+
+/* Span que envuelve icono + texto */
+.leaflet-control-layers label > span {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Tu label con icono */
+.layer-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1;
+}
+
+/* ===== SCADA POPUP (GLOBAL) ===== */
+
+.scada-popup {
+  width: 260px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #020617;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scada-popup-render img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #f1f5f9;
+  border-radius: 6px;
+}
+
+.scada-popup-header {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.scada-popup-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.scada-popup-metrics .metric {
+  display: flex;
+  justify-content: space-between;
+}
+
+.scada-popup-meta {
+  font-size: 11px;
+  color: #475569;
+}
+
+.scada-popup-alert {
+  font-size: 11px;
+  color: #b45309;
+  background: #fff7ed;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.scada-popup-btn {
+  margin-top: 4px;
+  width: 100%;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 6px 0;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.scada-popup-btn:hover {
+  background: #1e40af;
+}
+
+/* Ajuste Leaflet */
+.leaflet-popup-content {
+  margin: 8px 12px;
+}
+
+
+.leaflet-container a.leaflet-popup-close-button {
+    position: absolute;
+    top: 6px;
+    right: 15px;
+    border: none;
+    text-align: center;
+    width: 24px;
+    height: 24px;
+    font: 16px / 24px Tahoma, Verdana, sans-serif;
+    color: #fff;
+    text-decoration: none;
+    background: transparent;
+}
+
+.leaflet-interactive:focus {
+  outline: none !important;
+}
+
+/* =========================
+   DOTS DE ESTADO
+========================= */
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-dot.blue {
+  background-color: #5f9fe5; /* Operativo */
+}
+
+.legend-dot.yellow {
+  background-color: #facc15; /* En intervención */
+}
+
+.legend-dot.gray {
+  background-color: #9ca3af; /* Sin intervención */
+}
+
+
+

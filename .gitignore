@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+.npm
+
+# Build outputs
+dist/
+build/
+.angular/
+
+# Environment files — NEVER commit these
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+__MACOSX/
+
+# IDE
+.vscode/
+.idea/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Angular cache
+.angular/cache/
+
+# Proxy config (local dev only)
+proxy.conf.json
+
+# Playwright screenshots
+.playwright-mcp/
+
+# Internal docs (not production code)
+CLAUDE.md
+AUDITORIA-SCADA.md
+
+# Binary / office files
+*.xlsx
+*.xls
+*.docx
+
+# Local dev data files
+*.old
+
+# Local Docker init scripts
+influx-init.sh

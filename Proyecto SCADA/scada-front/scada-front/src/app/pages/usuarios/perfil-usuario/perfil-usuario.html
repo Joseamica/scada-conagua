@@ -1,0 +1,254 @@
+<app-header-bar></app-header-bar>
+
+<div class="shell">
+  <main class="page">
+
+    <!-- PROFILE HEADER -->
+    <section class="profile-hero">
+      <div class="hero-avatar" [attr.aria-label]="'Avatar de ' + user.nombre">
+        {{ userInitials() }}
+      </div>
+      <div class="hero-info">
+        <h1 class="hero-name">{{ user.nombre }}</h1>
+        <p class="hero-email">{{ user.email }}</p>
+        <div class="hero-tags">
+          <span class="role-badge" [ngClass]="'role-badge--' + user.rolId">
+            {{ user.rol }}
+          </span>
+          <span class="scope-badge" *ngIf="user.nivel">
+            <ng-icon name="heroBuildingOffice2" size="12"></ng-icon>
+            {{ user.nivel }}
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- TWO-COLUMN LAYOUT -->
+    <div class="profile-grid">
+
+      <!-- LEFT: Account Info -->
+      <section class="card">
+        <div class="card-header">
+          <ng-icon name="heroIdentification" size="18"></ng-icon>
+          <h2 class="card-title">Informacion de cuenta</h2>
+        </div>
+
+        <div class="info-list">
+          <div class="info-row">
+            <div class="info-icon">
+              <ng-icon name="heroUser" size="16"></ng-icon>
+            </div>
+            <div class="info-content">
+              <span class="info-label">Nombre completo</span>
+              <span class="info-value">{{ user.nombre }}</span>
+            </div>
+          </div>
+
+          <div class="info-row">
+            <div class="info-icon">
+              <ng-icon name="heroEnvelope" size="16"></ng-icon>
+            </div>
+            <div class="info-content">
+              <span class="info-label">Correo electronico</span>
+              <span class="info-value mono">{{ user.email }}</span>
+            </div>
+          </div>
+
+          <div class="info-row">
+            <div class="info-icon">
+              <ng-icon name="heroShieldCheck" size="16"></ng-icon>
+            </div>
+            <div class="info-content">
+              <span class="info-label">Rol asignado</span>
+              <span class="info-value">{{ user.rol }}</span>
+            </div>
+          </div>
+
+          <div class="info-row">
+            <div class="info-icon">
+              <ng-icon name="heroBuildingOffice2" size="16"></ng-icon>
+            </div>
+            <div class="info-content">
+              <span class="info-label">Nivel / Alcance</span>
+              <span class="info-value">{{ user.nivel || '—' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <button class="btn btn-outline" type="button" (click)="goToChangePassword()"
+                  aria-label="Cambiar contrasena">
+            <ng-icon name="heroKey" size="16"></ng-icon>
+            Cambiar contrasena
+          </button>
+        </div>
+      </section>
+
+      <!-- RIGHT: Security / 2FA -->
+      <section class="card">
+        <div class="card-header">
+          <ng-icon name="heroLockClosed" size="18"></ng-icon>
+          <h2 class="card-title">Seguridad</h2>
+        </div>
+
+        <!-- Success / Error messages -->
+        <div class="toast toast--ok" *ngIf="totpMsg">
+          <ng-icon name="heroCheckCircle" size="16"></ng-icon>
+          <span>{{ totpMsg }}</span>
+        </div>
+        <div class="toast toast--error" *ngIf="totpError">
+          <ng-icon name="heroExclamationTriangle" size="16"></ng-icon>
+          <span>{{ totpError }}</span>
+        </div>
+
+        <!-- ═══ STATE: Not enabled, not setting up ═══ -->
+        <div *ngIf="!totpEnabled && !showTotpSetup" class="security-block">
+          <div class="security-header">
+            <div class="security-icon security-icon--inactive">
+              <ng-icon name="heroDevicePhoneMobile" size="22"></ng-icon>
+            </div>
+            <div class="security-info">
+              <h3 class="security-title">Google Authenticator</h3>
+              <p class="security-desc">
+                Protege tu cuenta con un codigo de 6 digitos generado por la app cada vez que inicies sesion.
+              </p>
+            </div>
+          </div>
+          <div class="security-status">
+            <span class="pill pill--inactive">
+              <span class="pill-dot" aria-hidden="true"></span>
+              Desactivado
+            </span>
+          </div>
+          <button class="btn btn-primary" type="button" (click)="startTotpSetup()"
+                  aria-label="Activar Google Authenticator">
+            <ng-icon name="heroLockClosed" size="16"></ng-icon>
+            Activar Google Authenticator
+          </button>
+        </div>
+
+        <!-- ═══ STATE: QR Setup Flow ═══ -->
+        <div *ngIf="showTotpSetup" class="totp-setup">
+
+          <!-- Steps -->
+          <div class="setup-steps">
+            <div class="step">
+              <span class="step-num">1</span>
+              <span class="step-text">Abre <strong>Google Authenticator</strong> en tu telefono</span>
+            </div>
+            <div class="step">
+              <span class="step-num">2</span>
+              <span class="step-text">Escanea el codigo QR</span>
+            </div>
+            <div class="step">
+              <span class="step-num">3</span>
+              <span class="step-text">Ingresa el codigo de 6 digitos</span>
+            </div>
+          </div>
+
+          <!-- QR Code -->
+          <div class="qr-container">
+            <div class="qr-frame">
+              <img [src]="qrCode" alt="Codigo QR para Google Authenticator" class="qr-image" />
+            </div>
+          </div>
+
+          <!-- Manual key -->
+          <div class="manual-key">
+            <span class="manual-key-label">Clave manual:</span>
+            <div class="manual-key-row">
+              <code class="manual-key-value">{{ totpSecret }}</code>
+              <button class="btn-icon" type="button" (click)="copySecret()"
+                      [attr.aria-label]="secretCopied ? 'Copiado' : 'Copiar clave'"
+                      title="Copiar clave">
+                <ng-icon [name]="secretCopied ? 'heroCheckCircle' : 'heroClipboardDocument'" size="16"></ng-icon>
+              </button>
+            </div>
+          </div>
+
+          <!-- Verify input -->
+          <div class="verify-group">
+            <label for="totpVerify" class="verify-label">Codigo de verificacion</label>
+            <div class="verify-row">
+              <input
+                id="totpVerify"
+                type="text"
+                inputmode="numeric"
+                maxlength="6"
+                placeholder="000000"
+                class="totp-input"
+                [(ngModel)]="verifyCode"
+                autocomplete="one-time-code"
+              />
+              <button class="btn btn-primary" type="button" (click)="confirmTotpSetup()">
+                <ng-icon name="heroCheckCircle" size="16"></ng-icon>
+                Verificar y activar
+              </button>
+              <button class="btn btn-ghost" type="button" (click)="cancelTotpSetup()">
+                <ng-icon name="heroXMark" size="16"></ng-icon>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ STATE: Enabled ═══ -->
+        <div *ngIf="totpEnabled && !showTotpSetup" class="security-block">
+          <div class="security-header">
+            <div class="security-icon security-icon--active">
+              <ng-icon name="heroDevicePhoneMobile" size="22"></ng-icon>
+            </div>
+            <div class="security-info">
+              <h3 class="security-title">Google Authenticator</h3>
+              <p class="security-desc">
+                Tu cuenta esta protegida con verificacion en dos pasos.
+              </p>
+            </div>
+          </div>
+          <div class="security-status">
+            <span class="pill pill--ok">
+              <span class="pill-dot" aria-hidden="true"></span>
+              Activo
+            </span>
+          </div>
+
+          <div *ngIf="!showDisableForm">
+            <button class="btn btn-danger-outline" type="button"
+                    (click)="showDisableForm = true"
+                    aria-label="Desactivar Google Authenticator">
+              <ng-icon name="heroLockOpen" size="16"></ng-icon>
+              Desactivar 2FA
+            </button>
+          </div>
+
+          <div *ngIf="showDisableForm" class="disable-form">
+            <label for="totpDisable" class="verify-label">Ingresa tu codigo actual para confirmar</label>
+            <div class="verify-row">
+              <input
+                id="totpDisable"
+                type="text"
+                inputmode="numeric"
+                maxlength="6"
+                placeholder="000000"
+                class="totp-input"
+                [(ngModel)]="disableCode"
+                autocomplete="one-time-code"
+              />
+              <button class="btn btn-danger" type="button" (click)="confirmDisableTotp()">
+                Confirmar
+              </button>
+              <button class="btn btn-ghost" type="button"
+                      (click)="showDisableForm = false; disableCode = ''">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+  </main>
+
+<app-footer-tabs></app-footer-tabs>

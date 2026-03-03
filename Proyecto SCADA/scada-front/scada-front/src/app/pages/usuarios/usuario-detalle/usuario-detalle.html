@@ -1,0 +1,248 @@
+<app-header-bar></app-header-bar>
+
+<div class="shell">
+  <main class="page">
+
+    <!-- Page header -->
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">{{ mode === 'edit' ? 'Editar usuario' : 'Nuevo usuario' }}</h1>
+        <p class="page-subtitle">{{ mode === 'edit' ? 'Modifica los datos del usuario' : 'Completa los datos para crear una nueva cuenta' }}</p>
+      </div>
+      <button class="btn-ghost" type="button" (click)="cancelar()">
+        <ng-icon name="heroArrowLeft" size="16"></ng-icon>
+        Volver
+      </button>
+    </div>
+
+    <!-- Form card -->
+    <form [formGroup]="form" (ngSubmit)="guardar()" autocomplete="off" class="form-card">
+
+      <!-- ═══════ SECTION: Datos basicos ═══════ -->
+      <section class="form-section">
+        <div class="section-header">
+          <div class="section-icon">
+            <ng-icon name="heroUser" size="18"></ng-icon>
+          </div>
+          <div>
+            <h2 class="section-title">Datos basicos</h2>
+            <p class="section-desc">Informacion personal del usuario</p>
+          </div>
+        </div>
+
+        <div class="fields-grid cols-2">
+          <div class="field">
+            <label class="field-label" for="uNombre">Nombre <span class="required">*</span></label>
+            <input id="uNombre" type="text" formControlName="nombre" placeholder="Ej. Juan" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="uApellido">Apellido</label>
+            <input id="uApellido" type="text" formControlName="apellido" placeholder="Ej. Garcia" autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="fields-grid cols-3">
+          <div class="field">
+            <label class="field-label" for="uUsuario">Usuario <span class="required">*</span></label>
+            <input id="uUsuario" type="text" formControlName="usuario" placeholder="Nombre de usuario" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="uCorreo">Correo electronico <span class="required">*</span></label>
+            <input id="uCorreo" type="email" formControlName="correo" placeholder="usuario@ejemplo.com" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="uTelefono">Telefono</label>
+            <input id="uTelefono" type="tel" formControlName="telefono" placeholder="55 1234 5678" autocomplete="off" />
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════ SECTION: Seguridad ═══════ -->
+      <section class="form-section">
+        <div class="section-header">
+          <div class="section-icon accent-red">
+            <ng-icon name="heroLockClosed" size="18"></ng-icon>
+          </div>
+          <div>
+            <h2 class="section-title">Seguridad</h2>
+            <p class="section-desc">{{ mode === 'edit' ? 'Dejar en blanco para mantener la contrasena actual' : 'Establece la contrasena inicial' }}</p>
+          </div>
+        </div>
+
+        <div class="fields-grid cols-2">
+          <div class="field">
+            <label class="field-label" for="uPassword">Contrasena {{ mode === 'create' ? '' : '(opcional)' }}</label>
+            <div class="input-wrap">
+              <input
+                id="uPassword"
+                [type]="showPassword ? 'text' : 'password'"
+                formControlName="password"
+                placeholder="Minimo 8 caracteres"
+                autocomplete="new-password"
+              />
+              <button type="button" class="input-action" (click)="showPassword = !showPassword" tabindex="-1"
+                [attr.aria-label]="showPassword ? 'Ocultar' : 'Mostrar'">
+                <ng-icon [name]="showPassword ? 'heroEyeSlash' : 'heroEye'" size="16"></ng-icon>
+              </button>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="uConfirm">Confirmar contrasena</label>
+            <div class="input-wrap">
+              <input
+                id="uConfirm"
+                [type]="showConfirm ? 'text' : 'password'"
+                formControlName="confirmPassword"
+                placeholder="Repite la contrasena"
+                autocomplete="new-password"
+              />
+              <button type="button" class="input-action" (click)="showConfirm = !showConfirm" tabindex="-1">
+                <ng-icon [name]="showConfirm ? 'heroEyeSlash' : 'heroEye'" size="16"></ng-icon>
+              </button>
+            </div>
+            <p class="field-error"
+               *ngIf="form.hasError('mismatch') && form.get('confirmPassword')?.touched">
+              Las contrasenas no coinciden
+            </p>
+          </div>
+        </div>
+
+        <div class="toggle-card">
+          <div class="toggle-info">
+            <span class="toggle-label">Requerir doble verificacion (2FA)</span>
+            <span class="toggle-hint">El usuario debera ingresar un codigo adicional al iniciar sesion</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" formControlName="is_2fa_enabled" />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- ═══════ SECTION: Rol y alcance ═══════ -->
+      <section class="form-section">
+        <div class="section-header">
+          <div class="section-icon accent-teal">
+            <ng-icon name="heroShieldCheck" size="18"></ng-icon>
+          </div>
+          <div>
+            <h2 class="section-title">Rol y alcance</h2>
+            <p class="section-desc">Define el nivel de acceso y la dependencia del usuario</p>
+          </div>
+        </div>
+
+        <div class="fields-grid cols-3">
+          <div class="field">
+            <label class="field-label" for="uRol">Rol <span class="required">*</span></label>
+            <select id="uRol" formControlName="rol">
+              <option value="">Selecciona Rol</option>
+              <option *ngFor="let r of roleOptions" [value]="r.name">{{ r.name }}</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="uNivel">Nivel <span class="required">*</span></label>
+            <select id="uNivel" formControlName="nivel">
+              <option value="">Selecciona Nivel</option>
+              <option value="Federal">Federal</option>
+              <option value="Estatal">Estatal</option>
+              <option value="Municipal">Municipal</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="uEntity">Dependencia</label>
+            <select id="uEntity" formControlName="entity_id">
+              <option value="">Selecciona Dependencia</option>
+              <option *ngFor="let e of entities()" [value]="e.id">
+                {{ e.name }} ({{ e.level }})
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="fields-grid cols-2">
+          <div class="field">
+            <label class="field-label" for="uEstado">Estado</label>
+            <select id="uEstado" formControlName="estado">
+              <option value="">Selecciona estado</option>
+              <option *ngFor="let e of estados; trackBy: trackByValue" [value]="e">
+                {{ e === 'FEDERAL' ? 'Federal (todos)' : e }}
+              </option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="uMunicipio">Municipio</label>
+            <select id="uMunicipio" formControlName="municipio">
+              <option value="">Selecciona municipio</option>
+              <option *ngFor="let m of municipios(); trackBy: trackByValue" [value]="m">
+                {{ m === 'ALL' ? 'Todos' : m }}
+              </option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════ SECTION: Permisos ═══════ -->
+      <section class="form-section">
+        <div class="section-header">
+          <div class="section-icon accent-amber">
+            <ng-icon name="heroKey" size="18"></ng-icon>
+          </div>
+          <div>
+            <h2 class="section-title">Permisos</h2>
+            <p class="section-desc">Acciones permitidas independientemente del rol</p>
+          </div>
+        </div>
+
+        <div class="permissions-grid">
+          <label class="perm-card" [class.perm-active]="form.get('can_view')?.value">
+            <input type="checkbox" formControlName="can_view" hidden />
+            <div class="perm-icon perm-icon--view">
+              <ng-icon name="heroEye" size="20"></ng-icon>
+            </div>
+            <span class="perm-name">Ver</span>
+            <span class="perm-desc">Consultar datos</span>
+          </label>
+
+          <label class="perm-card" [class.perm-active]="form.get('can_edit')?.value">
+            <input type="checkbox" formControlName="can_edit" hidden />
+            <div class="perm-icon perm-icon--edit">
+              <ng-icon name="heroPencilSquare" size="20"></ng-icon>
+            </div>
+            <span class="perm-name">Editar</span>
+            <span class="perm-desc">Modificar registros</span>
+          </label>
+
+          <label class="perm-card" [class.perm-active]="form.get('can_export')?.value">
+            <input type="checkbox" formControlName="can_export" hidden />
+            <div class="perm-icon perm-icon--export">
+              <ng-icon name="heroArrowDownTray" size="20"></ng-icon>
+            </div>
+            <span class="perm-name">Exportar</span>
+            <span class="perm-desc">Descargar reportes</span>
+          </label>
+
+          <label class="perm-card" [class.perm-active]="form.get('can_block')?.value">
+            <input type="checkbox" formControlName="can_block" hidden />
+            <div class="perm-icon perm-icon--block">
+              <ng-icon name="heroNoSymbol" size="20"></ng-icon>
+            </div>
+            <span class="perm-name">Bloquear</span>
+            <span class="perm-desc">Desactivar cuentas</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- ═══════ FOOTER ═══════ -->
+      <footer class="form-footer">
+        <button class="btn-secondary" type="button" (click)="cancelar()">Cancelar</button>
+        <button class="btn-primary" type="submit" [disabled]="form.invalid">
+          <ng-icon [name]="mode === 'edit' ? 'heroCheck' : 'heroPlus'" size="16"></ng-icon>
+          {{ mode === 'edit' ? 'Guardar cambios' : 'Crear usuario' }}
+        </button>
+      </footer>
+
+    </form>
+  </main>
+</div>
+
+<app-footer-tabs></app-footer-tabs>

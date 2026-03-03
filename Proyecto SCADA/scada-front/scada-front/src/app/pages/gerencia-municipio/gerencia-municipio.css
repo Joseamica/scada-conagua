@@ -1,0 +1,125 @@
+.gerencia-container{
+
+  display:grid;
+  grid-template-columns: 480px 1fr;
+  height:100vh;
+  background:#f5f7fa;
+
+}
+
+/* LEFT */
+
+.panel-left{
+  padding:30px;
+  background:white;
+}
+
+.gasto-circle-wrapper{
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+
+}
+
+/* 🔥 círculo institucional */
+.gasto-circle{
+
+  width:180px;
+  height:180px;
+
+  border-radius:50%;
+
+  background:white;
+
+  /* doble borde como dashboard real */
+  border:8px solid #2f6f64;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+}
+
+/* contenido centrado PERFECTO */
+.gasto-content{
+
+  text-align:center;
+
+}
+
+.gasto-number{
+
+  font-size:42px;
+  font-weight:700;
+  color:#111827;
+
+}
+
+.gasto-title{
+
+  font-size:18px;
+  font-weight:600;
+  color:#111827;
+
+}
+
+.title{
+  margin-top:10px;
+  font-weight:600;
+  font-size: 20px;
+}
+
+.chart-card{
+
+  margin-top:30px;
+  background:#f8fafc;
+  padding:20px;
+  border-radius:10px;
+
+}
+
+.chart-card h3 {
+    font-size: 15px;
+}
+
+/* RIGHT */
+
+.panel-right{
+  position:relative;
+}
+
+#mapDetalle{
+  width:100%;
+  height:100%;
+}
+
+.chart-container{
+
+  width:100%;
+  height:320px;   /* 👈 cambia esto y verás la magia */
+
+}
+
+.metric-delta{
+
+  margin-top:20px;
+  font-weight:600;
+  font-size:16px;
+  text-align: center;
+
+}
+
+.delta{
+
+  margin-bottom:6px;
+
+}
+
+.delta.up{
+
+  color:#16a34a;
+
+}
+

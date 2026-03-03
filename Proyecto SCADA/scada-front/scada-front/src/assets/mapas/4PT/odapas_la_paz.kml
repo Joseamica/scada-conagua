@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Folder>
+	<name>Opdapas La Paz</name>
+	<Placemark>
+		<name>Pozo R25</name>
+		<Point>
+			<coordinates>-98.97341666666667,19.36069444444444,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Pozo TX 310</name>
+		<Point>
+			<coordinates>-98.96925,19.36927777777778,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Pozo TX 311</name>
+		<Point>
+			<coordinates>-98.96366666666668,19.36597222222222,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Pozo TX 316</name>
+		<Point>
+			<coordinates>-98.96063888888889,19.36361111111111,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Pozo Tecamachalco</name>
+		<Point>
+			<coordinates>-98.9568888888889,19.36202777777778,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Pozo TX 332</name>
+		<Point>
+			<coordinates>-98.95377777777779,19.35388888888889,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Pozo TX 333</name>
+		<Point>
+			<coordinates>-98.95144444444445,19.34847222222222,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Pozo Hank Gonzalez</name>
+		<Point>
+			<coordinates>-98.93900000000001,19.37119444444444,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Pozo Sin Nombre</name>
+		<Point>
+			<coordinates>-98.91447222222223,19.36516666666667,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Pozo TX 319</name>
+		<Point>
+			<coordinates>-98.92622222222222,19.38058333333333,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Pozo La Paz</name>
+		<Point>
+			<coordinates>-98.96649999999998,19.350775,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Pozo 10 Colonias</name>
+		<Point>
+			<coordinates>-98.9448888888889,19.37772222222222,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Jacaranda y Rio Candelaria Presion 1 </name>
+		<Point>
+			<coordinates>-98.95697222222223,19.37155555555556,0</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark>
+		<name>Niño Campesino Presion 2</name>
+		<Point>
+			<coordinates>-98.95108333333332,19.3795,0</coordinates>
+		</Point>
+	</Placemark>
+	<atom:link rel="app" href="https://www.google.com/earth/about/versions/#earth-pro" title="Google Earth Pro 7.3.6.10441"></atom:link>
+</Folder>
+</kml>

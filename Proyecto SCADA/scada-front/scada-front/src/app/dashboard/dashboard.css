@@ -1,0 +1,289 @@
+/* ═══════════════════════════════════════════
+   SCADA-SOA Dashboard — Enterprise Bento Grid
+   ═══════════════════════════════════════════ */
+
+/* ── Reset & Shell ── */
+
+.dashboard-shell {
+  min-height: 100vh;
+  background: #f4f5f7;
+  padding-bottom: 90px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+/* ── Hero Section ── */
+
+.hero {
+  position: relative;
+  background: linear-gradient(135deg, #4d002b 0%, #6b0027 40%, #8a1040 100%);
+  padding: 48px 24px 56px;
+  text-align: center;
+  overflow: hidden;
+}
+
+/* subtle grid pattern overlay */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.hero-accent {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #fbbf24, #f97316, #ef4444, #6b0027);
+}
+
+/* ── Logos ── */
+
+.logos-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+  margin-bottom: 28px;
+}
+
+.logo {
+  height: 64px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+  opacity: .92;
+}
+
+.logo-divider {
+  width: 1px;
+  height: 48px;
+  background: rgba(255,255,255,.25);
+}
+
+/* ── Hero text ── */
+
+.hero-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 8px;
+  letter-spacing: -0.3px;
+}
+
+.hero-subtitle {
+  font-size: 15px;
+  color: rgba(255,255,255,.7);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Bento Grid ── */
+
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  max-width: 920px;
+  margin: -32px auto 0;
+  padding: 0 20px;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Card Base ── */
+
+.bento-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  box-shadow:
+    0 1px 3px rgba(0,0,0,.06),
+    0 4px 12px rgba(0,0,0,.04);
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
+  border: 1px solid rgba(0,0,0,.04);
+}
+
+.bento-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 4px 8px rgba(0,0,0,.06),
+    0 12px 28px rgba(0,0,0,.08);
+}
+
+.bento-card:active {
+  transform: translateY(-1px);
+}
+
+/* wide card spans 2 columns */
+.bento-wide {
+  grid-column: span 2;
+}
+
+/* ── Card Internals ── */
+
+.card-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* icon wrap */
+.card-icon-wrap {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(107, 0, 39, .08);
+  color: #6b0027;
+  transition: background 200ms ease;
+}
+
+.bento-card:hover .card-icon-wrap {
+  background: rgba(107, 0, 39, .14);
+}
+
+.card-icon {
+  font-size: 24px;
+}
+
+/* accent variants */
+.card-icon-wrap.accent-teal {
+  background: rgba(13, 148, 136, .08);
+  color: #0d9488;
+}
+.bento-card:hover .accent-teal {
+  background: rgba(13, 148, 136, .14);
+}
+
+.card-icon-wrap.accent-amber {
+  background: rgba(217, 119, 6, .08);
+  color: #d97706;
+}
+.bento-card:hover .accent-amber {
+  background: rgba(217, 119, 6, .14);
+}
+
+.card-icon-wrap.accent-slate {
+  background: rgba(71, 85, 105, .08);
+  color: #475569;
+}
+.bento-card:hover .accent-slate {
+  background: rgba(71, 85, 105, .14);
+}
+
+/* text */
+.card-text {
+  min-width: 0;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px;
+  line-height: 1.3;
+}
+
+.card-desc {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* arrow */
+.card-arrow {
+  flex-shrink: 0;
+  color: #cbd5e1;
+  transition: color 200ms ease, transform 200ms ease;
+}
+
+.bento-card:hover .card-arrow {
+  color: #6b0027;
+  transform: translateX(3px);
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 700px) {
+  .hero {
+    padding: 36px 20px 48px;
+  }
+
+  .hero-title {
+    font-size: 22px;
+  }
+
+  .hero-subtitle {
+    font-size: 14px;
+  }
+
+  .logos-row {
+    gap: 20px;
+  }
+
+  .logo {
+    height: 48px;
+  }
+
+  .logo-divider {
+    height: 36px;
+  }
+
+  .bento-grid {
+    grid-template-columns: 1fr;
+    margin-top: -24px;
+    padding: 0 16px;
+  }
+
+  .bento-wide {
+    grid-column: span 1;
+  }
+
+  .bento-card {
+    padding: 20px;
+  }
+}
+
+@media (min-width: 701px) and (max-width: 1024px) {
+  .bento-grid {
+    max-width: 720px;
+  }
+}
+
+/* ── Reduced Motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .bento-card {
+    transition: none;
+  }
+  .card-arrow {
+    transition: none;
+  }
+  .card-icon-wrap {
+    transition: none;
+  }
+}

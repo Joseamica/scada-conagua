@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document id="root_doc">
+<Schema name="sitios__sitios_chalcokmz" id="sitios__sitios_chalcokmz">
+	<SimpleField name="id" type="string"></SimpleField>
+	<SimpleField name="timestamp" type="string"></SimpleField>
+	<SimpleField name="begin" type="string"></SimpleField>
+	<SimpleField name="end" type="string"></SimpleField>
+	<SimpleField name="altitudeMode" type="string"></SimpleField>
+	<SimpleField name="tessellate" type="int"></SimpleField>
+	<SimpleField name="extrude" type="int"></SimpleField>
+	<SimpleField name="visibility" type="int"></SimpleField>
+	<SimpleField name="drawOrder" type="int"></SimpleField>
+	<SimpleField name="icon" type="string"></SimpleField>
+</Schema>
+<Folder><name>sitios__sitios_chalcokmz</name>
+  <Placemark id="sitios__sitios_chalcokmz.1">
+	<name>CAUDAL_01</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.900379,19.259146,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.2">
+	<name>PLUVIOMETRO_01</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.955845,19.193038,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.3">
+	<name>PLUVIOMETRO_02</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.807753,19.273689,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.4">
+	<name>POZ0 PUEBLO NUEVO 1</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.854536,19.272836,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.5">
+	<name>POZO 10 CHALCO</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.908793,19.286942,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.6">
+	<name>POZO 11 CHALCO</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.909936,19.259551,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.7">
+	<name>POZO 12 CASERIO</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.948233,19.207033,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.8">
+	<name>POZO 13 CHIMALPA 2</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.918762,19.236883,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.9">
+	<name>POZO 14 AYOTZINGO 2</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.940989,19.208295,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.10">
+	<name>POZO 18 CHIMALPA</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.915093,19.231338,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.11">
+	<name>POZO 3</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.9072,19.265505,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.12">
+	<name>POZO 7 CHALCO</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.899118,19.280846,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.13">
+	<name>POZO 8 CHALCO</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.88789,19.281159,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.14">
+	<name>POZO ALAMOS</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.858289,19.242337,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.15">
+	<name>POZO AYOTZINGO</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.92241,19.215462,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.16">
+	<name>POZO HACIENDA GUADALUPE</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.842691,19.247971,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.17">
+	<name>POZO HACIENDA SAN JUAN</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.839094,19.269502,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.18">
+	<name>POZO HEROES I</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.843978,19.26354,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.19">
+	<name>POZO HEROES II</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.833711,19.261927,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.20">
+	<name>POZO HEROES III</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.845888,19.259333,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.21">
+	<name>POZO HEROES IV</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.838065,19.257715,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.22">
+	<name>POZO HEROES V</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.848019,19.26281,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.23">
+	<name>POZO HUILTZIZINGO</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.934551,19.234415,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.24">
+	<name>POZO LA SÉPTIMA SAN MARCOS</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.853643,19.303035,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.25">
+	<name>POZO PUEBLO NUEVO 2</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.851079,19.277355,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.26">
+	<name>POZO SAN JUAN DE DIOS</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.892919,19.226076,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.27">
+	<name>POZO VILLAS DE SAN MARTIN</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.8327,19.26856,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.28">
+	<name>POZO XICO NUEVO</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.911838,19.236331,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.29">
+	<name>PRESION_01</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.926302,19.230686,0</coordinates></Point>
+  </Placemark>
+  <Placemark id="sitios__sitios_chalcokmz.30">
+	<name>PRESION_02</name>
+	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
+		<SimpleData name="tessellate">-1</SimpleData>
+		<SimpleData name="extrude">0</SimpleData>
+		<SimpleData name="visibility">-1</SimpleData>
+	</SchemaData></ExtendedData>
+      <Point><coordinates>-98.88393,19.271205,0</coordinates></Point>
+  </Placemark>
+</Folder>
+</Document></kml>

@@ -1,0 +1,90 @@
+<div class="login-wrapper">
+  <div class="login-card">
+
+    <!-- LOGOS -->
+    <div class="logos">
+      <div class="logo-block">
+        <img src="assets/img/logo-conagua.png" class="logo" alt="CONAGUA" />
+      </div>
+      <div class="logo-divider" aria-hidden="true"></div>
+      <div class="logo-block">
+        <img src="assets/img/logo-soa.png" class="logo" alt="SOA - Sistema de Operacion del Agua" />
+      </div>
+    </div>
+
+    <!-- TITLE -->
+    <h1 class="title">Iniciar sesion</h1>
+    <p class="subtitle">Ingresa tus credenciales para acceder al sistema</p>
+
+    <!-- FORM -->
+    <form class="login-form" (ngSubmit)="onSubmit()" autocomplete="on">
+
+      <!-- Email field -->
+      <div class="field">
+        <label for="loginEmail" class="field-label">Correo electronico</label>
+        <div class="input-wrap">
+          <span class="input-icon" aria-hidden="true">
+            <ng-icon name="heroEnvelope" size="18"></ng-icon>
+          </span>
+          <input
+            id="loginEmail"
+            type="email"
+            placeholder="usuario@ejemplo.com"
+            required
+            autocomplete="email"
+            [(ngModel)]="username"
+            name="username"
+          />
+        </div>
+      </div>
+
+      <!-- Password field -->
+      <div class="field">
+        <label for="loginPassword" class="field-label">Contrasena</label>
+        <div class="input-wrap">
+          <span class="input-icon" aria-hidden="true">
+            <ng-icon name="heroLockClosed" size="18"></ng-icon>
+          </span>
+          <input
+            id="loginPassword"
+            [type]="showPassword ? 'text' : 'password'"
+            placeholder="Ingresa tu contrasena"
+            required
+            autocomplete="current-password"
+            [(ngModel)]="password"
+            name="password"
+          />
+          <button
+            type="button"
+            class="toggle-password"
+            (click)="showPassword = !showPassword"
+            [attr.aria-label]="showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+            tabindex="-1">
+            <ng-icon [name]="showPassword ? 'heroEyeSlash' : 'heroEye'" size="18"></ng-icon>
+          </button>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div class="toast toast--error" *ngIf="errorMsg" role="alert">
+        {{ errorMsg }}
+      </div>
+
+      <!-- Submit -->
+      <button type="submit" class="btn-submit" [disabled]="isLoading">
+        <ng-icon name="heroArrowRightOnRectangle" size="18" *ngIf="!isLoading"></ng-icon>
+        <span class="spinner" *ngIf="isLoading" aria-hidden="true"></span>
+        {{ isLoading ? 'Ingresando...' : 'Entrar' }}
+      </button>
+
+    </form>
+
+    <!-- FOOTER -->
+    <div class="card-footer">
+      <a class="forgot-link" routerLink="/auth/forgot-password">
+        ¿Olvidaste tu contrasena?
+      </a>
+    </div>
+
+  </div>
+</div>

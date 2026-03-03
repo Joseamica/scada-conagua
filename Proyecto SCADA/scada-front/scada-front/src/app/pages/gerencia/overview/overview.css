@@ -1,0 +1,333 @@
+/* ═══════════════════════════════════════════
+   GERENCIA OVERVIEW — SCADA SOA
+   ═══════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+.shell {
+  min-height: 100vh;
+  background: #f4f5f7;
+  padding-bottom: 90px;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 20px 0;
+}
+
+/* ===== PAGE HEADER ===== */
+
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-ghost:hover {
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+/* ===== KPI CARDS ROW ===== */
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.kpi-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+}
+
+/* Main KPI (total gasto) */
+.kpi-main {
+  border-left: 4px solid #6b0027;
+}
+
+/* Icon wrap */
+.kpi-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(107, 0, 39, 0.08);
+  color: #6b0027;
+  margin-bottom: 8px;
+}
+
+.kpi-icon-wrap.accent-teal {
+  background: rgba(13, 148, 136, 0.08);
+  color: #0d9488;
+}
+
+.kpi-icon-wrap.accent-amber {
+  background: rgba(217, 119, 6, 0.08);
+  color: #d97706;
+}
+
+.kpi-icon-wrap.accent-blue {
+  background: rgba(59, 130, 246, 0.08);
+  color: #3b82f6;
+}
+
+/* KPI values */
+.kpi-body {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.kpi-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+.kpi-main .kpi-value {
+  font-size: 36px;
+}
+
+.kpi-unit {
+  font-size: 16px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.kpi-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+  margin-top: 4px;
+}
+
+.kpi-hint {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* ===== CONTENT GRID (Chart + Map) ===== */
+
+.content-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 16px;
+}
+
+.content-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Card headers */
+.content-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.content-header-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(107, 0, 39, 0.08);
+  color: #6b0027;
+  flex-shrink: 0;
+}
+
+.content-header-icon.accent-teal {
+  background: rgba(13, 148, 136, 0.08);
+  color: #0d9488;
+}
+
+.content-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 2px;
+}
+
+.content-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* Chart */
+.chart-container {
+  width: 100%;
+  height: 360px;
+  padding: 16px;
+  flex: 1;
+}
+
+/* Map */
+.map-wrapper {
+  min-height: 460px;
+}
+
+.map-container {
+  width: 100%;
+  flex: 1;
+  min-height: 380px;
+}
+
+/* Leaflet label overrides */
+.municipio-label {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.municipio-label-wrapper {
+  text-align: center;
+  font-size: 12px;
+}
+
+.municipio-name {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.municipio-gasto {
+  color: #0284c7;
+  font-weight: 700;
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media (max-width: 1024px) {
+  .kpi-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .map-wrapper {
+    min-height: 400px;
+  }
+
+  .map-container {
+    min-height: 340px;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 16px 12px 0;
+  }
+
+  .page-head {
+    flex-direction: column-reverse;
+    gap: 12px;
+  }
+
+  .btn-ghost {
+    align-self: flex-start;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .kpi-row {
+    grid-template-columns: 1fr;
+  }
+
+  .kpi-value {
+    font-size: 28px;
+  }
+
+  .kpi-main .kpi-value {
+    font-size: 32px;
+  }
+
+  .content-header {
+    padding: 16px;
+  }
+
+  .chart-container {
+    height: 280px;
+    padding: 12px;
+  }
+
+  .map-wrapper {
+    min-height: 350px;
+  }
+
+  .map-container {
+    min-height: 280px;
+  }
+}
+
+/* ===== REDUCED MOTION ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi-card,
+  .btn-ghost {
+    transition: none;
+  }
+}

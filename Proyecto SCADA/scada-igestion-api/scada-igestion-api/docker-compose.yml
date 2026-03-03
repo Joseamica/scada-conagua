@@ -1,0 +1,38 @@
+# /home/ska/scada-ingestion-api/docker-compose.yml
+# /home/ska/docker-compose.yml (Archivo de Orquestación Global)
+version: '3.8'
+services:
+  postgres-db-dev:
+    image: postgres:15-alpine
+    container_name: postgres_metadata_dev
+    restart: always
+    environment:
+      - POSTGRES_USER=scada_user
+      - POSTGRES_PASSWORD=${PG_PASSWORD:-changeme}
+      - POSTGRES_DB=scada_metadata
+    ports:
+      - "5440:5432"
+    volumes:
+      - ./init_scripts:/docker-entrypoint-initdb.d
+      - postgres_data_dev:/var/lib/postgresql/data
+
+  influxdb-dev:
+    image: influxdb:2.7-alpine
+    container_name: influxdb_scada_dev
+    restart: always
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data_dev:/var/lib/influxdb2
+      - ./influx-init.sh:/docker-entrypoint-initdb.d/influx-init.sh
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUX_INIT_PASSWORD:-changeme}
+      - DOCKER_INFLUXDB_INIT_ORG=CONAGUA
+      - DOCKER_INFLUXDB_INIT_BUCKET=telemetria_sitios
+
+volumes:
+  postgres_data_dev:
+  influxdb_data_dev:
+

@@ -1,0 +1,84 @@
+<app-header-bar></app-header-bar>
+
+<div class="gis-container">
+
+  <!-- ── Barra de leyenda ── -->
+  <div class="gis-legend-wrapper">
+
+    <!-- Tipos de sitio -->
+    <div class="gis-legend-section">
+      <h4>Sitios</h4>
+      <div class="legend-item">
+        <img src="assets/icons/map/well.svg" alt="Pozo" />
+        <span>Pozo</span>
+      </div>
+      <div class="legend-item">
+        <img src="assets/icons/map/block-water.svg" alt="Agua en bloque" />
+        <span>Agua en bloque</span>
+      </div>
+      <div class="legend-item">
+        <img src="assets/icons/map/tank.svg" alt="Estanque" />
+        <span>Estanque</span>
+      </div>
+      <div class="legend-item">
+        <img src="assets/icons/map/drainage.svg" alt="Drenaje" />
+        <span>Drenaje</span>
+      </div>
+      <div class="legend-item">
+        <img src="assets/icons/map/rain-gauge.svg" alt="Pluviómetro" />
+        <span>Pluviómetro</span>
+      </div>
+    </div>
+
+    <!-- Estado operativo -->
+    <div class="gis-legend-section">
+      <h4>Estado</h4>
+      <div class="legend-item">
+        <span class="legend-dot blue"></span>
+        <span>Activo</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot yellow"></span>
+        <span>En obra</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot gray"></span>
+        <span>No integrado</span>
+      </div>
+    </div>
+
+    <!-- Acción -->
+    <div class="gis-legend-section">
+      <button class="btn btn-primary" (click)="goToOverview()">
+        <ng-icon name="heroPresentationChartLine" size="18"></ng-icon>
+        Resumen gasto
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ── Mapa ── -->
+  <div class="gis-map-wrapper">
+
+    <!-- Buscador flotante -->
+    <div class="gis-search">
+      <div class="gis-search-inner">
+        <span class="gis-search-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+        </span>
+        <input
+          type="text"
+          placeholder="Buscar municipio o pozo…"
+          (input)="searchGlobal($any($event.target).value)"
+        />
+      </div>
+    </div>
+
+    <div id="map" class="gis-map"></div>
+  </div>
+
+</div>
+
+<app-footer-tabs></app-footer-tabs>

@@ -1,0 +1,321 @@
+<app-header-bar></app-header-bar>
+
+<div class="shell">
+  <main class="page">
+
+    <!-- KPI SUMMARY -->
+    <section class="kpi-strip">
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--total">
+          <ng-icon name="heroSignal" size="20"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ sites().length }}</span>
+          <span class="kpi-label">Total sitios</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--ok">
+          <ng-icon name="heroCheckCircle" size="20"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ sitesActivos() }}</span>
+          <span class="kpi-label">Con gasto</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--warn">
+          <ng-icon name="heroExclamationTriangle" size="20"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ sitesSinSenal() }}</span>
+          <span class="kpi-label">Sin señal</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--info">
+          <ng-icon name="heroFunnel" size="20"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ sitesFiltrados().length }}</span>
+          <span class="kpi-label">Filtrados</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- CARD PRINCIPAL -->
+    <section class="card">
+
+      <!-- TOOLBAR -->
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div class="search">
+            <span class="search-ico" aria-hidden="true">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+            </span>
+            <input
+              type="text"
+              placeholder="Buscar sitio..."
+              aria-label="Buscar sitio por nombre o clave"
+              [value]="busqueda()"
+              (input)="busqueda.set($any($event.target).value)"
+            />
+            <span class="search-hint" *ngIf="!busqueda()">nombre o clave</span>
+          </div>
+
+          <div class="updated-badge" title="Última actualización">
+            <ng-icon name="heroClock" size="14"></ng-icon>
+            {{ lastUpdated() }}
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-outline" (click)="goToAdvancedCharts()" aria-label="Ver gráficas avanzadas">
+            <ng-icon name="heroChartBarSquare" size="16"></ng-icon>
+            <span class="btn-label">Gráficas avanzadas</span>
+          </button>
+
+          <button class="btn btn-ghost" disabled title="Próximamente" aria-label="Analíticos — próximamente">
+            <ng-icon name="heroCog8Tooth" size="16"></ng-icon>
+            <span class="btn-label">Analíticos</span>
+          </button>
+
+          <button class="btn btn-primary" (click)="crearNuevoSitio()" aria-label="Crear nuevo sitio">
+            <ng-icon name="heroPlus" size="16"></ng-icon>
+            <span class="btn-label">Nuevo sitio</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTROS -->
+      <div class="filters" [class.filters--collapsed]="filtersCollapsed()">
+        <div class="filters-header" (click)="filtersCollapsed.set(!filtersCollapsed())">
+          <span class="filters-toggle-label">
+            <ng-icon name="heroAdjustmentsHorizontal" size="16"></ng-icon>
+            Filtros
+            <span class="filters-count" *ngIf="activeFilterCount() > 0">{{ activeFilterCount() }}</span>
+          </span>
+          <ng-icon
+            [name]="filtersCollapsed() ? 'heroChevronDown' : 'heroChevronUp'"
+            size="16"
+            class="filters-chevron">
+          </ng-icon>
+        </div>
+
+        <div class="filter-body" *ngIf="!filtersCollapsed()">
+          <div class="filter-grid">
+
+            <!-- ESTADO -->
+            <div class="field">
+              <label for="filterEstado">Estado</label>
+              <select
+                id="filterEstado"
+                [value]="estadoSel()"
+                (change)="estadoSel.set($any($event.target).value); municipioSel.set('')">
+                <option value="">Todos</option>
+                <option *ngFor="let e of estados" [value]="e">{{ e }}</option>
+              </select>
+            </div>
+
+            <!-- MUNICIPIO -->
+            <div class="field">
+              <label for="filterMunicipio">Municipio</label>
+              <select
+                id="filterMunicipio"
+                [disabled]="!estadoSel()"
+                [value]="municipioSel()"
+                (change)="municipioSel.set($any($event.target).value)">
+                <option value="">Todos</option>
+                <option *ngFor="let m of municipios()" [value]="m">{{ m }}</option>
+              </select>
+            </div>
+
+            <!-- TIPO DE SITIO -->
+            <div class="field">
+              <label for="filterTipo">Tipo de sitio</label>
+              <select
+                id="filterTipo"
+                [value]="tipoSel()"
+                (change)="tipoSel.set($any($event.target).value)">
+                <option value="">Todos</option>
+                <option *ngFor="let t of tiposSitio" [value]="t">{{ t }}</option>
+              </select>
+            </div>
+
+            <div class="tool-actions">
+              <button
+                class="btn btn-outline btn-sm"
+                (click)="resetFiltros()"
+                [disabled]="activeFilterCount() === 0"
+                aria-label="Limpiar filtros">
+                <ng-icon name="heroArrowPath" size="14"></ng-icon>
+                Limpiar
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- GRID CONTENIDO -->
+      <div class="grid">
+
+        <!-- PANEL IZQUIERDO (ÁRBOL) -->
+        <aside class="tree" role="navigation" aria-label="Navegación geográfica">
+          <div class="tree-head">
+            <ng-icon name="heroMapPin" size="14"></ng-icon>
+            {{ estadoSel() ? 'Municipios' : 'Estados' }}
+          </div>
+
+          <div class="tree-body">
+
+            <button class="tree-item"
+              [class.active]="!estadoSel() && !municipioSel()"
+              (click)="estadoSel.set(''); municipioSel.set('')">
+              <span>Todos</span>
+              <span class="tree-count">{{ sites().length }}</span>
+            </button>
+
+            <!-- Sin estado: muestra lista de estados -->
+            <ng-container *ngIf="!estadoSel()">
+              <button class="tree-item"
+                *ngFor="let e of estados"
+                (click)="estadoSel.set(e); municipioSel.set('')">
+                <span>{{ e }}</span>
+                <ng-icon name="heroChevronRight" size="14" class="tree-arrow"></ng-icon>
+              </button>
+            </ng-container>
+
+            <!-- Con estado: muestra municipios -->
+            <ng-container *ngIf="estadoSel()">
+              <button class="tree-item tree-item--back"
+                (click)="estadoSel.set(''); municipioSel.set('')">
+                <ng-icon name="heroArrowLeft" size="14"></ng-icon>
+                <span>{{ estadoSel() }}</span>
+              </button>
+
+              <div class="tree-children">
+                <button class="tree-item"
+                  [class.active]="municipioSel() === ''"
+                  (click)="municipioSel.set('')">
+                  <span>Todos los municipios</span>
+                  <span class="tree-count">{{ sites().length }}</span>
+                </button>
+
+                <button class="tree-item"
+                  *ngFor="let m of municipios()"
+                  [class.active]="municipioSel() === m"
+                  (click)="municipioSel.set(m)">
+                  <span>{{ m }}</span>
+                  <span class="tree-count">{{ countByMunicipio(m) }}</span>
+                </button>
+              </div>
+            </ng-container>
+
+          </div>
+        </aside>
+
+        <!-- TABLA -->
+        <div class="tables">
+
+          <div class="table-wrap">
+            <div class="table-title">
+              <span>Listado de sitios</span>
+              <span class="muted">({{ sitesFiltrados().length }} de {{ sites().length }})</span>
+            </div>
+
+            <div class="table-scroll">
+              <table class="table" role="grid">
+                <thead>
+                  <tr>
+                    <th scope="col">Sitio</th>
+                    <th scope="col">Tipo</th>
+                    <th scope="col">Zona</th>
+                    <th scope="col" class="col-numeric">Valor</th>
+                    <th scope="col">Unidad</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col" class="col-date">Última lectura</th>
+                    <th scope="col" class="col-actions">Acciones</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr *ngFor="let site of sitesFiltrados(); let i = index; let odd = odd"
+                    [class.row-alt]="odd">
+                    <td class="cell-name">
+                      <span class="site-dot"
+                        [class.site-dot--ok]="site.status === 'ok'"
+                        [class.site-dot--warn]="site.status === 'no-signal'"
+                        aria-hidden="true">
+                      </span>
+                      {{ site.name }}
+                    </td>
+                    <td>
+                      <span class="type-badge">{{ site.type }}</span>
+                    </td>
+                    <td>{{ site.zone }}</td>
+                    <td class="mono col-numeric">{{ site.value }}</td>
+                    <td class="mono-unit">{{ site.unit }}</td>
+                    <td>
+                      <span class="pill"
+                        [ngClass]="{
+                          'pill--ok':   site.status === 'ok',
+                          'pill--warn': site.status === 'no-signal'
+                        }">
+                        <span class="pill-dot" aria-hidden="true"></span>
+                        {{ site.status === 'ok' ? 'Con gasto' : 'Sin señal' }}
+                      </span>
+                    </td>
+                    <td class="mono cell-date">{{ site.timestamp }}</td>
+                    <td>
+                      <div class="col-actions-cell">
+                        <button
+                          class="btn-action btn-action--chart"
+                          (click)="openAdvancedCharts(site)"
+                          title="Ver gráficas"
+                          aria-label="Ver gráficas de {{ site.name }}">
+                          <ng-icon name="heroChartBarSquare" size="16"></ng-icon>
+                        </button>
+
+                        <button
+                          class="btn-action btn-action--edit"
+                          (click)="editarSitio(site, i)"
+                          title="Editar sitio"
+                          aria-label="Editar {{ site.name }}">
+                          <ng-icon name="heroPencilSquare" size="16"></ng-icon>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <tr *ngIf="sitesFiltrados().length === 0">
+                    <td colspan="8" class="empty">
+                      <div class="empty-state">
+                        <ng-icon name="heroMagnifyingGlass" size="32"></ng-icon>
+                        <p class="empty-title">Sin resultados</p>
+                        <p class="empty-desc">No hay sitios para los filtros seleccionados</p>
+                        <button class="btn btn-outline btn-sm" (click)="resetFiltros()">
+                          Limpiar filtros
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<app-footer-tabs></app-footer-tabs>

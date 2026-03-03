@@ -1,0 +1,62 @@
+<app-header-bar></app-header-bar>
+
+<div class="gerencia-container">
+
+  <!-- PANEL IZQUIERDO -->
+  <div class="panel-left">
+
+    <!-- CIRCULO GASTO -->
+   <div class="gasto-circle-wrapper">
+
+  <div class="gasto-circle">
+
+      <div class="gasto-content">
+
+          <div class="gasto-number">
+              {{ gastoTotal | number:'1.0-0' }} l/s
+          </div>
+
+      </div>
+
+  </div>
+
+  <div class="gasto-title">
+      Gasto producido {{ municipioNombre }}
+  </div>
+
+</div>
+
+<div class="metric-delta">
+
+  <div class="delta up">
+     ▲ +42 l/s (+1.97 % ayer)
+  </div>
+
+  <div class="delta up">
+     ▲ +57 l/s (+2.68 % mes)
+  </div>
+
+</div>
+
+    <!-- GRAFICA -->
+    <div class="chart-card">
+
+      <h3>Suma pozos {{ municipioNombre }}</h3>
+
+     <div id="chartMunicipio" class="chart-container"></div>
+
+    </div>
+
+  </div>
+
+
+  <!-- PANEL DERECHO -->
+  <div class="panel-right">
+
+    <div id="mapDetalle"></div>
+
+  </div>
+
+</div>
+
+<app-footer-tabs></app-footer-tabs>

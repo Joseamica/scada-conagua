@@ -1,0 +1,492 @@
+// src/app/pages/pozos/pozo-detalle/pozo-detalle.ts
+
+import { Component, computed, signal, ViewChild, ElementRef, AfterViewInit, OnInit, inject, DestroyRef, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
+import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
+import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { POZOS_DATA } from '../pozos-data';
+import { POZOS_LAYOUT } from '../pozos-layout';
+import { TIME_RANGES, TimeRange } from '../../../shared/time-ranges';
+import { TelemetryService } from '../../../core/services/telemetry';
+import { timer, forkJoin } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import * as echarts from 'echarts';
+
+// ICONOS
+import { NgIconComponent, provideIcons } from '@ng-icons/core';
+import { heroChartBarSquare, heroBolt } from '@ng-icons/heroicons/outline';
+import { bootstrapBatteryFull, bootstrapBatteryHalf, bootstrapBatteryLow } from '@ng-icons/bootstrap-icons';
+
+type AlertLevel = 'info' | 'warning' | 'critical';
+
+export interface LiveStatusResponse {
+    site_name: string;
+    devEui: string;
+    municipality: string;
+    site_type: string;
+    last_flow_value: number;
+    last_pressure_value: number;
+    battery_level: number;
+    is_cfe_on: boolean | string;  // Soportar boolean y 't'/'f'
+    last_updated_at: string;
+    rssi: number;
+    snr: number;
+    // 🚀 Nuevos campos para Ixtapaluca e interlocking
+    bomba_activa: boolean | string;
+    fallo_arrancador: boolean | string;
+    last_total_flow: number;
+}
+
+export interface TelemetryPoint {
+  timestamp: string;
+  value: number;
+  unit: string;
+}
+
+export interface TelemetryHistoryResponse {
+  siteName: string;
+  devEui: string;
+  measurement: string;
+  data: TelemetryPoint[];
+}
+
+interface TelemetryReading {
+  flow: number;     // Lt/s
+  pressure: number; // bar
+  timestamp: Date;  
+}
+
+@Component({
+  selector: 'app-pozo-detalle',
+  standalone: true,
+  imports: [CommonModule, HeaderBarComponent, FooterTabsComponent, NgIconComponent],
+  providers: [
+    provideIcons({ heroChartBarSquare, heroBolt, bootstrapBatteryFull, bootstrapBatteryHalf, bootstrapBatteryLow })
+  ],
+  templateUrl: './pozo-detalle.html',
+  styleUrl: './pozo-detalle.css'
+})
+export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
+  // Inyecciones
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private telemetryService = inject(TelemetryService);
+  private destroyRef = inject(DestroyRef);
+  public liveStatus = signal<LiveStatusResponse | null>(null);
+
+  // 1. Estado para evitar el efecto del refresh de 60s
+  public isCommandPending = signal<boolean>(false);
+
+  // 2. Lógica de Interbloqueo (Computed para los botones)
+  public controlsDisabled = computed(() => {
+    const status = this.liveStatus(); // ✅ Ahora sí existe el nombre
+    if (!status) return true;
+
+    // REGLAS DE ANÍBAL:
+    const isCfeOff = status.is_cfe_on === false || status.is_cfe_on === 'f';
+    const hasStarterFault = status.fallo_arrancador === true || status.fallo_arrancador === 't';
+    
+    return isCfeOff || hasStarterFault || this.isCommandPending();
+  });
+
+  goToAdvanced() {
+    this.router.navigate(['/telemetria/avanzadas']);
+  }
+
+  // VIEWCHILD - Ajustado a 'mainChart'
+  @ViewChild('mainChart') mainChartRef!: ElementRef<HTMLDivElement>;
+  mainChart!: echarts.ECharts;
+
+  // =========================
+  // RANGOS
+  // =========================
+  timeRanges = TIME_RANGES;
+  range = signal<TimeRange>('24h');
+
+  setRange(r: TimeRange) {
+    this.range.set(r);
+    this.loadCharts();
+  }
+
+  // =========================
+  // ESTADO GENERAL (HTML)
+  // =========================
+  pozoId = signal<string>('');
+  pozoNombre = signal('Cargando...');
+  alertLevel = signal<AlertLevel>('warning');
+  alertText = signal('');
+  isOnline = signal(true);
+  loading = signal(false);
+  lat = signal<number>(0);
+  lng = signal<number>(0);
+
+  layout = signal<any>(null);
+  datos = signal<any>({
+    caudal: 0,
+    presion: 0,
+    nivel: 0,
+    nombre: 'Cargando...',
+    alerta: 'Sincronizando...',
+    lte: { rssi: 0, snr: 0 }
+  });
+  
+  // SEÑALES DE ESTADÍSTICAS (Requeridas por el HTML)
+  statsFlow = signal({ min: 0, max: 0, avg: 0, accumulated: 0 });
+  statsPressure = signal({ min: 0, max: 0, avg: 0 });
+
+  // DATOS OPERATIVOS
+  commStats = signal({ lteRssi: 0, snr: 0 });
+  batteryLevel = signal<number>(0);
+  estadoBomba = signal<'on' | 'off'>('on');
+  estadoEnergia = signal<'on' | 'off'>('on');
+  fallaArrancador = signal<'on' | 'off'>('off');
+
+  // =========================
+  // LOGICA DEL ARRANCADOR
+  // =========================
+  // Verde: Listo para arrancar (Bomba parada)
+  readonly pilotStartReady = computed(() => this.estadoBomba() === 'off');
+
+  // Rojo: En operación (Bomba corriendo)
+  readonly pilotStopReady = computed(() => this.estadoBomba() === 'on');
+
+  // Amarillo: Falla técnica
+  readonly pilotFault = computed(() => this.fallaArrancador() === 'on');
+  // DETERMINA SI EL BOTÓN DE "ARRANCAR" PUEDE CLIQUEARSE (Solo arranca si: parada + sin falla + hay CFE)
+  readonly canStart = computed(() => {
+    // Regla: Solo si está parada, NO hay falla y hay energía CFE
+    return this.estadoBomba() === 'off' && 
+         this.fallaArrancador() === 'off' && 
+         this.estadoEnergia() === 'on';
+  });
+
+  // DETERMINA SI EL BOTÓN DE "PARAR" PUEDE CLIQUEARSE
+  readonly canStop = computed(() => {
+    // Regla: Solo si está operando y NO hay falla
+    return this.estadoBomba() === 'on' && 
+         this.fallaArrancador() === 'off';
+  });
+
+  // =========================
+  // COMPUTED SIGNALS (Resuelven error TS2339)
+  // =========================
+  
+  statusPill = computed(() =>
+    this.isOnline() ? { text: 'On line', cls: 'pill pill--ok' } : { text: 'Off line', cls: 'pill pill--critical' }
+  );
+
+  batteryIcon = computed(() => {
+    const lvl = this.batteryLevel();
+    if (lvl >= 70) return 'bootstrapBatteryFull';
+    if (lvl >= 25) return 'bootstrapBatteryHalf';
+    return 'bootstrapBatteryLow';
+  });
+
+  batteryClass = computed(() => {
+    const lvl = this.batteryLevel();
+    if (lvl >= 70) return 'battery--full';
+    if (lvl >= 25) return 'battery--medium';
+    return 'battery--critical';
+  });
+
+  // ✅ Resuelve: Property 'commQualityLabel' does not exist
+  commQualityLabel = computed(() => {
+    const rssi = this.commStats().lteRssi;
+    if (rssi >= -70) return 'Excelente';
+    if (rssi >= -85) return 'Bueno';
+    return 'Malo';
+  });
+
+  // ✅ Resuelve: Property 'commQualityClass' does not exist
+  commQualityClass = computed(() => {
+    const rssi = this.commStats().lteRssi;
+    if (rssi >= -70) return 'comm-excellent';
+    if (rssi >= -85) return 'comm-good';
+    return 'comm-bad';
+  });
+
+  // =========================
+  // OVERLAY LTE
+  // =========================
+  overlayVisible = signal(false);
+
+  toggleOverlay() {
+    this.overlayVisible.set(!this.overlayVisible());
+  }
+
+  cerrarOverlay() {
+    this.overlayVisible.set(false);
+  }
+
+  // =========================
+  // CONFIRMACIÓN
+  // =========================
+  accionPendiente = signal<'start' | 'stop' | null>(null);
+
+  abrirConfirmacion(a: 'start' | 'stop') {
+    // Validación de seguridad antes de abrir el modal
+    if (a === 'start' && !this.canStart()) {
+      console.warn('Acción bloqueada: Condiciones inseguras para arranque.');
+      return;
+    }
+  
+    if (a === 'stop' && !this.canStop()) {
+      console.warn('Acción bloqueada: Condiciones inseguras para paro.');
+      return;
+    }
+
+    this.accionPendiente.set(a);
+  }
+
+  cancelarAccion() {
+    this.accionPendiente.set(null);
+  }
+
+  confirmarAccion() {
+    const action = this.accionPendiente();
+    
+    // 🛡️ Seguridad: No procedemos si no hay acción o si los controles están bloqueados (CFE/Fallo)
+    if (!action || this.controlsDisabled()) {
+      console.warn('Acción de control abortada por interbloqueo de seguridad.');
+      return;
+    }
+
+    const command = action === 'start' ? 'START' : 'STOP';
+    
+    // 🔒 Activamos el bloqueo de 90 segundos para ignorar el refresh de la página
+    this.isCommandPending.set(true);
+
+    // 📡 Enviamos el payload con site_name para que el backend construya el tópico de Ignition
+    this.telemetryService.sendControlCommand({
+      devEUI: this.pozoId(),
+      command: command,
+      siteName: this.liveStatus()?.site_name 
+    }).subscribe({
+      next: () => {
+        // 💡 Optimistic UI Update: Reflejamos el cambio en la UI de inmediato
+        this.estadoBomba.set(action === 'start' ? 'on' : 'off');
+        
+        // Si ya tenemos el status cargado, actualizamos su valor local para ser consistentes
+        const currentStatus = this.liveStatus();
+        if (currentStatus) {
+          this.liveStatus.set({
+            ...currentStatus,
+            bomba_activa: action === 'start'
+          });
+        }
+
+        this.accionPendiente.set(null);
+
+        // ⏱️ Desbloqueamos después de 90 segundos (superior al refresh de 60s)
+        setTimeout(() => {
+          this.isCommandPending.set(false);
+          console.log(`[SCADA] Lockout finalizado para ${this.pozoId()}`);
+        }, 90000);
+      },
+      error: (err) => {
+        this.isCommandPending.set(false);
+        console.error('🛑 Control command failed:', err);
+        alert('Error al enviar el comando. Por favor, verifique la conexión con el sitio.');
+      }
+    });
+  }
+
+  // =========================
+  // CICLO DE VIDA
+  // =========================
+  ngOnInit() {
+    const slug = this.route.snapshot.paramMap.get('id')!;
+    const staticData = POZOS_DATA[slug];
+
+    if (staticData?.devEui) {
+      this.pozoId.set(staticData.devEui);
+      this.lat.set(staticData.lat);
+      this.lng.set(staticData.lng);
+      this.layout.set(POZOS_LAYOUT[slug]);
+      this.startAutoRefresh(staticData.devEui);
+    }
+  }
+
+  ngAfterViewInit() {
+    this.mainChart = echarts.init(this.mainChartRef.nativeElement);
+    this.loadCharts();
+    window.addEventListener('resize', () => this.mainChart?.resize());
+  }
+
+  ngOnDestroy() {
+    if (this.mainChart) this.mainChart.dispose();
+  }
+
+  private startAutoRefresh(devEui: string) {
+    timer(0, 60000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.loadLiveStatus(devEui);
+        if (this.mainChart) this.loadCharts();
+      });
+  }
+
+  // =========================
+  // LÓGICA DE DATOS
+  // =========================
+  loadLiveStatus(devEUI: string) {
+    this.telemetryService.getSiteStatus(devEUI).subscribe({
+      next: (data: any) => {
+        if (this.isCommandPending()) {
+          console.warn(`[SCADA] Refresh ignorado para ${devEUI} debido a comando en proceso.`);
+          return;
+        }
+
+        this.liveStatus.set(data as LiveStatusResponse);
+
+        // Sincronizamos el estado visual de la bomba
+        const isActive = data.bomba_activa === true || data.bomba_activa === 't';
+        this.estadoBomba.set(isActive ? 'on' : 'off');
+
+        const flowVal = Number(data.last_flow_value) || 0;
+        const pressureVal = Number(data.last_pressure_value) || 0;
+        const batteryVal = Number(data.battery_level) || 0;
+
+        // 1. Sincronización básica de UI
+        this.pozoNombre.set(data.site_name);
+        this.isOnline.set(data.is_cfe_on);
+        this.batteryLevel.set(batteryVal);
+        this.estadoBomba.set(flowVal > 0 ? 'on' : 'off');
+        this.estadoEnergia.set(data.is_cfe_on ? 'on' : 'off');
+        this.commStats.set({ lteRssi: Number(data.rssi), snr: Number(data.snr) });
+
+        // ✅ 2. Actualizamos 'datos' para que el HTML encuentre los valores
+        this.datos.set({
+          caudal: flowVal,
+          presion: pressureVal,
+          nivel: batteryVal
+        });
+      }
+    });
+  }
+
+  loadCharts() {
+  const devEUI = this.pozoId();
+  let rangeStr = `-${this.range()}`;
+  if (this.range() === '1m') rangeStr = '-1mo';
+  
+  this.loading.set(true);
+
+  forkJoin({
+    flow: this.telemetryService.getHistory(devEUI, 'caudal_lts', rangeStr),
+    pressure: this.telemetryService.getHistory(devEUI, 'presion_kg', rangeStr),
+    rssi: this.telemetryService.getHistory(devEUI, 'rssi', rangeStr)
+  }).subscribe({
+    next: (res: any) => {
+      // 1. Transformamos los datos a TelemetryReading[] para las estadísticas
+      // Usamos el flujo como base para el mapeo
+      const readings: TelemetryReading[] = res.flow.data.map((p: any, i: number) => ({
+        flow: p.value,
+        // Buscamos el valor de presión en el mismo índice (asumiendo sincronía de InfluxDB)
+        pressure: res.pressure.data[i]?.value ?? 0,
+        timestamp: new Date(p.timestamp)
+      }));
+
+      // 2. Preparamos arreglos simples solo para la visualización de ECharts
+      const labels = readings.map(r => this.formatLabel(r.timestamp, this.range()));
+      const flows = readings.map(r => r.flow);
+      const pressures = readings.map(r => r.pressure);
+      const rssis = res.rssi.data.map((p: any) => p.value);
+
+      // 3. Ahora enviamos el objeto unificado (Corrige el error TS)
+      this.calculateStatistics(readings);
+      
+      this.updateMainChart(labels, flows, pressures, rssis);
+      this.loading.set(false);
+    },
+    error: (err) => {
+      console.error('Error loading history:', err);
+      this.loading.set(false);
+    }
+  });
+}
+
+  private calculateStatistics(readings: TelemetryReading[]): void {
+  if (readings.length < 2) return;
+
+  const MAX_SIGNAL_GAP_SECONDS = 600; // 10 minutes threshold
+  let totalAccumulatedLiters = 0;
+  let validIntervalsCount = 0;
+  let totalValidTimeSeconds = 0;
+
+  // 1. Precise integration using point-to-point intervals
+  for (let i = 1; i < readings.length; i++) {
+    const durationSeconds = (readings[i].timestamp.getTime() - readings[i - 1].timestamp.getTime()) / 1000;
+
+    if (durationSeconds > 0 && durationSeconds <= MAX_SIGNAL_GAP_SECONDS) {
+      // Use the average flow between two points for better precision (Trapezoidal rule)
+      const averageFlow = (readings[i].flow + readings[i - 1].flow) / 2;
+      totalAccumulatedLiters += averageFlow * durationSeconds;
+      
+      totalValidTimeSeconds += durationSeconds;
+      validIntervalsCount++;
+    } else {
+      // Logic for LTE Interruption: We skip this volume to avoid false accumulation
+      console.warn(`Signal interruption detected: ${durationSeconds}s gap at ${readings[i].timestamp}`);
+    }
+  }
+
+  // 2. Standard stats for Flow and Pressure
+  const getStats = (values: number[]) => {
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    return { min, max, avg };
+  };
+
+  const f = getStats(readings.map(r => r.flow));
+  const p = getStats(readings.map(r => r.pressure));
+
+  // Final conversion to m3
+  const accumulatedM3 = totalAccumulatedLiters / 1000;
+
+  this.statsFlow.set({ 
+    min: f.min, 
+    max: f.max, 
+    avg: f.avg, 
+    accumulated: accumulatedM3 
+  });
+
+  this.statsPressure.set({ 
+    min: p.min, 
+    max: p.max, 
+    avg: p.avg 
+  });
+
+  // Tip: You could also expose the "real" average interval if needed
+  // const avgInterval = validIntervalsCount > 0 ? totalValidTimeSeconds / validIntervalsCount : 0;
+}
+
+  private updateMainChart(labels: string[], flows: number[], pressures: number[], rssis: number[]) {
+    const option: echarts.EChartsOption = {
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['Caudal', 'Presión', 'Señal'], top: 0 },
+      grid: { left: 50, right: 110, bottom: 60, top: 40 },
+      xAxis: { type: 'category', data: labels, axisLabel: { rotate: 45 } },
+      yAxis: [
+        { type: 'value', name: 'Lt/s', position: 'left' },
+        { type: 'value', name: 'Kg/cm²', position: 'right' },
+        { type: 'value', name: 'dBm', position: 'right', offset: 55, min: -120, max: -40 }
+      ],
+      series: [
+        { name: 'Caudal', type: 'line', yAxisIndex: 0, data: flows, itemStyle: { color: '#007bff' } },
+        { name: 'Presión', type: 'line', yAxisIndex: 1, data: pressures, itemStyle: { color: '#28a745' } },
+        { name: 'Señal', type: 'line', yAxisIndex: 2, data: rssis, lineStyle: { type: 'dashed' }, itemStyle: { color: '#ffc107' }, }
+      ]
+    };
+    this.mainChart.setOption(option, true);
+  }
+
+  private formatLabel(d: Date, r: TimeRange): string {
+    const locale = 'es-MX';
+    if (r === '7d') return d.toLocaleDateString(locale, { weekday: 'short', hour: '2-digit' });
+    return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+
+}

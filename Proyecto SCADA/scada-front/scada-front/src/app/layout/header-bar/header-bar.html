@@ -1,0 +1,183 @@
+<header class="header" role="banner">
+
+  <!-- ========= IZQUIERDA: LOGO + TÍTULO ========= -->
+  <div class="header-left">
+    <button class="logo-btn" (click)="goHome()" aria-label="Ir al inicio">
+      <div class="logo-mark">SOA</div>
+    </button>
+
+    <div class="header-divider" aria-hidden="true"></div>
+
+    <div class="header-title">
+      <span class="header-title-text">
+        {{ headerTitleService.title() || pageTitle }}
+      </span>
+      <span
+        *ngIf="headerTitleService.status()"
+        [class]="'status-pill ' + headerTitleService.status()!.cls">
+        {{ headerTitleService.status()!.text }}
+      </span>
+    </div>
+  </div>
+
+  <!-- ========= DERECHA: ACCIONES ========= -->
+  <div class="header-right">
+
+    <!-- ALERTAS -->
+    <button
+      class="header-pill-btn header-pill-btn--danger"
+      [class.is-active]="alertsOpen"
+      (click)="toggleAlerts()"
+      aria-label="Alertas activas"
+      aria-haspopup="true"
+      [attr.aria-expanded]="alertsOpen">
+      <ng-icon name="heroBellAlertSolid" size="16"></ng-icon>
+      <span>4 Alertas</span>
+    </button>
+
+    <!-- MENSAJES -->
+    <button
+      class="header-pill-btn header-pill-btn--info"
+      [class.is-active]="inboxOpen"
+      (click)="toggleInbox()"
+      aria-label="Mensajes del sistema"
+      aria-haspopup="true"
+      [attr.aria-expanded]="inboxOpen">
+      <ng-icon name="heroEnvelopeSolid" size="16"></ng-icon>
+      <span>2 Mensajes</span>
+    </button>
+
+    <div class="header-divider" aria-hidden="true"></div>
+
+    <!-- USUARIO -->
+    <button
+      class="user-chip"
+      [class.is-active]="menuOpen"
+      (click)="toggleMenu()"
+      aria-label="Menú de usuario"
+      aria-haspopup="true"
+      [attr.aria-expanded]="menuOpen">
+      <div class="user-avatar">
+        {{ userInitials() }}
+      </div>
+      <div class="user-info">
+        <span class="user-name">{{ userName() }}</span>
+        <span class="user-role">{{ userRole() }}</span>
+      </div>
+      <ng-icon name="heroChevronDown" size="16" class="user-chevron"></ng-icon>
+    </button>
+
+  </div>
+
+  <!-- ========= PANEL DE ALERTAS ========= -->
+  <div class="dropdown alerts-dropdown" *ngIf="alertsOpen" role="menu">
+    <div class="dropdown-header">
+      <span class="dropdown-title">Alertas activas</span>
+      <span class="dropdown-count">3</span>
+    </div>
+
+    <div class="dropdown-body">
+      <div class="alert-item alert-item--critical" role="menuitem">
+        <div class="alert-indicator" aria-hidden="true"></div>
+        <div class="alert-content">
+          <div class="alert-title">Pozo 1</div>
+          <div class="alert-text">Caída abrupta de presión (1.75 bar)</div>
+          <div class="alert-time">Hoy · 10:32</div>
+        </div>
+      </div>
+
+      <div class="alert-item alert-item--warning" role="menuitem">
+        <div class="alert-indicator" aria-hidden="true"></div>
+        <div class="alert-content">
+          <div class="alert-title">Red Primaria 1</div>
+          <div class="alert-text">Disminución de caudal</div>
+          <div class="alert-time">Hoy · 09:58</div>
+        </div>
+      </div>
+
+      <div class="alert-item alert-item--info" role="menuitem">
+        <div class="alert-indicator" aria-hidden="true"></div>
+        <div class="alert-content">
+          <div class="alert-title">Pozo 2</div>
+          <div class="alert-text">Sitio sin comunicación</div>
+          <div class="alert-time">Ayer · 23:12</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dropdown-footer">
+      <button class="dropdown-footer-btn">Ver todas las alertas</button>
+    </div>
+  </div>
+
+  <!-- ========= PANEL DE MENSAJES ========= -->
+  <div class="dropdown inbox-dropdown" *ngIf="inboxOpen" role="menu">
+    <div class="dropdown-header">
+      <span class="dropdown-title">Mensajes del sistema</span>
+      <span class="dropdown-count">2</span>
+    </div>
+
+    <div class="dropdown-body">
+      <div class="message-item message-item--unread" role="menuitem">
+        <div class="message-dot" aria-hidden="true"></div>
+        <div class="message-content">
+          <div class="message-title">Mantenimiento programado</div>
+          <div class="message-text">
+            El Pozo 3 entrará en mantenimiento el día de mañana a las 08:00 hrs.
+          </div>
+          <div class="message-time">Hoy · 11:05</div>
+        </div>
+      </div>
+
+      <div class="message-item" role="menuitem">
+        <div class="message-content">
+          <div class="message-title">Actualización de parámetros</div>
+          <div class="message-text">
+            Se actualizaron los límites de presión en Red Primaria 1.
+          </div>
+          <div class="message-time">Ayer · 18:42</div>
+        </div>
+      </div>
+
+      <div class="message-item" role="menuitem">
+        <div class="message-content">
+          <div class="message-title">Cambio de turno</div>
+          <div class="message-text">
+            Operador nocturno asignado correctamente.
+          </div>
+          <div class="message-time">Ayer · 07:15</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dropdown-footer">
+      <button class="dropdown-footer-btn">Ver bitácora completa</button>
+    </div>
+  </div>
+
+  <!-- ========= MENÚ DE USUARIO ========= -->
+  <div class="dropdown user-dropdown" *ngIf="menuOpen" role="menu">
+    <div class="dropdown-user-header">
+      <div class="dropdown-user-avatar">{{ userInitials() }}</div>
+      <div class="dropdown-user-info">
+        <span class="dropdown-user-name">{{ userName() }}</span>
+        <span class="dropdown-user-email">{{ userEmail() }}</span>
+      </div>
+    </div>
+
+    <div class="dropdown-divider"></div>
+
+    <button class="dropdown-menu-item" (click)="goPerfil()" role="menuitem">
+      <ng-icon name="heroIdentification" size="18"></ng-icon>
+      Mi perfil
+    </button>
+
+    <div class="dropdown-divider"></div>
+
+    <button class="dropdown-menu-item dropdown-menu-item--danger" (click)="logout()" role="menuitem">
+      <ng-icon name="heroArrowRightOnRectangle" size="18"></ng-icon>
+      Cerrar sesión
+    </button>
+  </div>
+
+</header>

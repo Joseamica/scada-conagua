@@ -1,0 +1,347 @@
+<app-header-bar></app-header-bar>
+
+<div class="shell">
+  <main class="page">
+
+    <!-- ===== PAGE HEADER ===== -->
+    <div class="page-head">
+      <div>
+        <div class="page-title-row">
+          <h1 class="page-title">{{ pozoNombre() }}</h1>
+          <span [class]="statusPill().cls">{{ statusPill().text }}</span>
+        </div>
+        <p class="page-subtitle">Lat: {{ lat() }} · Lon: {{ lng() }}</p>
+      </div>
+      <button class="btn-ghost" type="button" (click)="goToAdvanced()">
+        <ng-icon name="heroChartBarSquare" size="16"></ng-icon>
+        Gráficas avanzadas
+      </button>
+    </div>
+
+    <!-- ===== KPI CARDS ===== -->
+    <div class="kpi-row">
+
+      <!-- Caudal -->
+      <div class="kpi-card kpi-main">
+        <div class="kpi-icon-wrap">
+          <ng-icon name="heroBeaker" size="22"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ datos().caudal }}</span>
+          <span class="kpi-unit">Lt/s</span>
+        </div>
+        <span class="kpi-label">Caudal</span>
+        <span class="kpi-hint">Lectura en tiempo real</span>
+      </div>
+
+      <!-- Presión -->
+      <div class="kpi-card">
+        <div class="kpi-icon-wrap accent-teal">
+          <ng-icon name="heroChartBar" size="20"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ datos().presion }}</span>
+          <span class="kpi-unit">Kg/cm²</span>
+        </div>
+        <span class="kpi-label">Presión</span>
+        <span class="kpi-hint">Lectura en tiempo real</span>
+      </div>
+
+      <!-- CFE -->
+      <div class="kpi-card">
+        <div class="kpi-icon-wrap"
+             [class.accent-green]="estadoEnergia() === 'on'"
+             [class.accent-amber]="estadoEnergia() === 'off'">
+          <ng-icon name="heroBolt" size="20"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value kpi-value--text">{{ estadoEnergia() === 'on' ? 'PRESENTE' : 'AUSENCIA' }}</span>
+        </div>
+        <span class="kpi-label">Energía CFE</span>
+        <span class="kpi-hint">Estado de alimentación eléctrica</span>
+      </div>
+
+      <!-- Señal LTE -->
+      <div class="kpi-card">
+        <div class="kpi-icon-wrap accent-blue">
+          <ng-icon name="heroSignal" size="20"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ commStats().lteRssi }}</span>
+          <span class="kpi-unit">dBm</span>
+        </div>
+        <span class="kpi-label">Señal LTE</span>
+        <div class="kpi-quality" [ngClass]="commQualityClass()">
+          <span class="kpi-quality-dot"></span>
+          {{ commQualityLabel() }}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===== CONTENT GRID ===== -->
+    <div class="content-grid">
+
+      <!-- LEFT COLUMN -->
+      <div class="content-column">
+
+        <!-- RENDER CARD -->
+        <div class="content-card render-card">
+          <div class="content-body">
+            <div class="iso-canvas">
+              <img
+                *ngIf="layout()"
+                class="iso-render"
+                [src]="'assets/pozos/' + layout().render"
+                alt="Render del pozo"
+              />
+              <!-- COMUNICACIÓN HOTSPOT -->
+              <div class="hotspot"
+                   [style.left.%]="layout().overlays.lteBox.x"
+                   [style.top.%]="layout().overlays.lteBox.y"
+                   (click)="toggleOverlay()">
+                <div class="dot"></div>
+                <div class="tooltip tooltip--panel" *ngIf="overlayVisible()">
+                  <div class="tooltip-row">
+                    <div class="iso-comm">
+                      <div>LTE RSSI: <b>{{ commStats().lteRssi }} dBm</b></div>
+                      <div>SNR: <b>{{ commStats().snr }} dB</b></div>
+                      <div><b>Altan Redes</b></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- PRESIÓN HOTSPOT -->
+              <div class="hotspot"
+                   [style.left.%]="layout().overlays.presion.x"
+                   [style.top.%]="layout().overlays.presion.y">
+                <div class="tooltip3 tooltip--panel">
+                  <div class="tooltip-row">
+                    <span class="label">Presión:</span> <br>
+                    <span class="value">{{ datos().presion }} Kg/cm2</span>
+                  </div>
+                </div>
+              </div>
+              <!-- CAUDAL HOTSPOT -->
+              <div class="hotspot"
+                   [style.left.%]="layout().overlays.caudal.x"
+                   [style.top.%]="layout().overlays.caudal.y">
+                <div class="tooltip2 tooltip--meter">
+                  <div class="meter-body">
+                    <div class="meter-screen">
+                      <div class="flow-main">
+                        <span class="flow-value">{{ datos().caudal }}</span>
+                        <span class="flow-unit">Lt/s</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Overlay para cerrar -->
+              <div class="overlay-click" *ngIf="overlayVisible()" (click)="cerrarOverlay()"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONTROL PANEL CARD -->
+        <div class="content-card">
+          <div class="content-header">
+            <div class="content-header-icon accent-amber">
+              <ng-icon name="heroCog6Tooth" size="18"></ng-icon>
+            </div>
+            <div>
+              <h2 class="content-title">Panel de control</h2>
+              <p class="content-desc">Estado del arrancador y acciones de bomba</p>
+            </div>
+          </div>
+          <div class="content-body">
+            <div class="site-health-bar" *ngIf="batteryLevel() > 0">
+              <div class="health-item battery-status">
+                <ng-icon [name]="batteryIcon()" [class]="batteryClass()"></ng-icon>
+                <span>{{ batteryLevel() }}%</span>
+              </div>
+            </div>
+
+            <div class="starter-lights">
+              <div class="pilot-light-box">
+                <div class="light green" [class.active]="pilotStartReady()"></div>
+                <small>ARRANQUE</small>
+              </div>
+              <div class="pilot-light-box">
+                <div class="light red" [class.active]="pilotStopReady()"></div>
+                <small>EN MARCHA</small>
+              </div>
+              <div class="pilot-light-box">
+                <div class="light yellow" [class.active]="pilotFault()"></div>
+                <small>FALLA</small>
+              </div>
+            </div>
+
+            <div class="control-actions">
+              <button class="btn-scada btn-start"
+                [disabled]="!canStart()"
+                (click)="abrirConfirmacion('start')">
+                ARRANCAR
+              </button>
+              <button class="btn-scada btn-stop"
+                [disabled]="!canStop()"
+                (click)="abrirConfirmacion('stop')">
+                PARAR
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STATISTICS CARD -->
+        <div class="content-card">
+          <div class="content-header">
+            <div class="content-header-icon accent-teal">
+              <ng-icon name="heroChartBarSquare" size="18"></ng-icon>
+            </div>
+            <div>
+              <h2 class="content-title">Estadísticas del periodo</h2>
+              <p class="content-desc">Min, max y promedios del rango seleccionado</p>
+            </div>
+          </div>
+          <div class="content-body">
+            <div class="reading-grid">
+
+              <!-- CAUDAL -->
+              <div class="reading-card">
+                <h4>Caudal (Lt/s)</h4>
+                <div class="metrics">
+                  <div><span>Min</span><b>{{ statsFlow().min }}</b></div>
+                  <div><span>Max</span><b>{{ statsFlow().max }}</b></div>
+                  <div><span>Prom</span><b>{{ statsFlow().avg | number:'1.3-3' }}</b></div>
+                </div>
+                <div class="accumulated">
+                  <span class="accumulated__label">Gasto acumulado</span>
+                  <b class="accumulated__value">{{ statsFlow().accumulated | number:'1.3-3' }} m³</b>
+                </div>
+              </div>
+
+              <!-- PRESIÓN -->
+              <div class="reading-card">
+                <h4>Presión (Kg/cm²)</h4>
+                <div class="metrics">
+                  <div><span>Min</span><b>{{ statsPressure().min }}</b></div>
+                  <div><span>Max</span><b>{{ statsPressure().max }}</b></div>
+                  <div><span>Prom</span><b>{{ statsPressure().avg | number:'1.3-3' }}</b></div>
+                </div>
+              </div>
+
+              <!-- CAUDAL TOTALIZADO -->
+              <div class="reading-card reading-card--full" *ngIf="liveTotalFlow() > 0">
+                <h4>Caudal Totalizado</h4>
+                <div class="accumulated">
+                  <span class="accumulated__label">Lectura actual del totalizador</span>
+                  <b class="accumulated__value">{{ liveTotalFlow() | number:'1.0-0' }} m³</b>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN: CHARTS -->
+      <div class="content-card chart-card-main">
+        <div class="content-header chart-header">
+          <div class="chart-header-left">
+            <div class="content-header-icon">
+              <ng-icon name="heroPresentationChartLine" size="18"></ng-icon>
+            </div>
+            <div>
+              <h2 class="content-title">Gráfica</h2>
+              <p class="content-desc">Lecturas operativas e históricas</p>
+            </div>
+          </div>
+          <div class="chart-header-right">
+            <div class="time-selector">
+              <button
+                *ngFor="let r of timeRanges"
+                (click)="setRange(r.key)"
+                [class.active]="range() === r.key && !customRangeActive()">
+                {{ r.label }}
+              </button>
+            </div>
+            <app-date-range-picker #datePicker
+              (rangeApplied)="onRangeApplied($event)">
+            </app-date-range-picker>
+          </div>
+        </div>
+
+        <!-- PILLS DE FILTROS ACTIVOS -->
+        <div class="active-filters">
+          <span class="filter-pill">
+            <span class="filter-pill__label">Rango</span>
+            <span class="filter-pill__value">{{ activeRangeLabel() }}</span>
+            <button class="filter-pill__clear" *ngIf="customRangeActive()" (click)="setRange('24h')" title="Restaurar a último día">&times;</button>
+          </span>
+          <span class="filter-pill">
+            <span class="filter-pill__label">Muestreo</span>
+            <span class="filter-pill__value">{{ activeIntervalLabel() }}</span>
+            <button class="filter-pill__clear" *ngIf="customRangeActive() && customInterval()" (click)="clearInterval()" title="Restaurar a Auto">&times;</button>
+          </span>
+        </div>
+
+        <div class="content-body chart-body">
+          <div class="charts-grid">
+            <div>
+              <h3 class="chart-section-title">Lecturas operativas</h3>
+              <div #mainChart class="chart"></div>
+            </div>
+            <div class="chart-actions">
+              <button class="btn-ghost btn-sm" type="button" (click)="toggleSignal()">
+                {{ showSignal() ? 'Ocultar Señal LTE' : 'Mostrar Señal LTE' }}
+              </button>
+            </div>
+            <div>
+              <h3 class="chart-section-title">Caudal totalizado</h3>
+              <div #totalizerChart class="chart"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- ===== MODAL CONFIRMACIÓN ===== -->
+<div class="modal-backdrop" *ngIf="accionPendiente()">
+  <div class="modal">
+    <h3>Confirmar acción</h3>
+
+    <p *ngIf="accionPendiente() === 'start'">
+      ¿Está seguro que desea <strong>arrancar</strong> la bomba?
+    </p>
+    <p *ngIf="accionPendiente() === 'stop'">
+      ¿Está seguro que desea <strong>parar</strong> la bomba?
+    </p>
+
+    <div class="modal-warning-banner" *ngIf="pilotFault() || estadoEnergia() === 'off'">
+      <ng-icon name="heroExclamationTriangle"></ng-icon>
+      <span>Acción inhabilitada por condiciones inseguras en el sitio.</span>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" (click)="cancelarAccion()">
+        Cancelar
+      </button>
+      <button
+        class="btn-confirm"
+        [class.start]="accionPendiente() === 'start'"
+        [class.stop]="accionPendiente() === 'stop'"
+        [disabled]="(accionPendiente() === 'start' && !canStart()) || (accionPendiente() === 'stop' && !canStop())"
+        (click)="confirmarAccion()"
+      >
+        Confirmar
+      </button>
+    </div>
+  </div>
+</div>
+
+<app-footer-tabs></app-footer-tabs>

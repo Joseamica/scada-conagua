@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro de Cambios — SCADA SOA v2.0</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #f1f5f9;
+    color: #1e293b;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ===== HEADER ===== */
+  .doc-header {
+    background: linear-gradient(135deg, #4d002b 0%, #720a2d 50%, #5a0020 100%);
+    color: #fff;
+    padding: 48px 32px 40px;
+    text-align: center;
+  }
+  .doc-header h1 {
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+  .doc-header .subtitle {
+    font-size: 15px;
+    opacity: 0.8;
+    font-weight: 400;
+  }
+  .doc-meta {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .doc-meta span {
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.15);
+    padding: 4px 14px;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+  }
+
+  /* Stats strip */
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    text-align: center;
+  }
+  .stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    display: block;
+  }
+  .stat-label {
+    font-size: 11px;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ===== MAIN ===== */
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+
+  /* ===== SECTIONS ===== */
+  h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #6d002b;
+    margin: 40px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #f5c6d0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h2 .section-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: #6d002b;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 20px 0 10px;
+  }
+  h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+    margin: 14px 0 8px;
+  }
+
+  p { margin-bottom: 12px; font-size: 14px; }
+  strong { font-weight: 600; }
+
+  /* ===== CARD ===== */
+  .card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 16px 0;
+  }
+
+  /* ===== CHANGE TAG ===== */
+  .change-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+  .tag-new { background: #ecfdf5; color: #059669; }
+  .tag-improved { background: #eff6ff; color: #2563eb; }
+  .tag-fix { background: #fef3c7; color: #b45309; }
+  .tag-redesign { background: #fdf2f4; color: #6d002b; }
+
+  /* ===== TABLES ===== */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 16px 0;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead { background: #f8fafc; }
+  th {
+    text-align: left;
+    padding: 10px 14px;
+    font-weight: 700;
+    color: #475569;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+  }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
+
+  /* ===== LISTS ===== */
+  ul, ol {
+    margin: 8px 0 12px 20px;
+    font-size: 14px;
+  }
+  li { margin-bottom: 4px; }
+  li::marker { color: #6d002b; }
+
+  /* ===== CODE ===== */
+  code {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #6d002b;
+  }
+
+  /* ===== TREE ===== */
+  .tree {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    line-height: 1.8;
+    color: #334155;
+    white-space: pre;
+  }
+
+  /* ===== NOTE ===== */
+  .note {
+    background: #eff6ff;
+    border-left: 4px solid #3b82f6;
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 12px 0;
+    font-size: 13px;
+    color: #1e40af;
+  }
+
+  /* ===== FILES ===== */
+  .files {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #f1f5f9;
+  }
+  .files strong { color: #475569; }
+
+  hr {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 32px 0;
+  }
+
+  /* ===== RESPONSIVE GRID ===== */
+  .resp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    margin: 16px 0;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    font-size: 12px;
+  }
+  .resp-grid .rg-head {
+    background: #f8fafc;
+    padding: 8px 12px;
+    font-weight: 700;
+    color: #475569;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .resp-grid .rg-cell {
+    padding: 8px 12px;
+    background: #fff;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  /* ===== PRINT ===== */
+  @media print {
+    body { background: #fff; }
+    .doc-header { padding: 24px 16px 20px; }
+    .doc-header h1 { font-size: 22px; }
+    .container { padding: 16px; }
+    h2 { margin-top: 24px; break-after: avoid; }
+    .card { break-inside: avoid; }
+    table { font-size: 11px; }
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 600px) {
+    .doc-header { padding: 32px 16px 28px; }
+    .doc-header h1 { font-size: 22px; }
+    .container { padding: 16px 12px 48px; }
+    h2 { font-size: 18px; }
+    .stats { gap: 16px; }
+    .stat-value { font-size: 22px; }
+    .doc-meta { gap: 8px; }
+    .doc-meta span { font-size: 11px; padding: 3px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="doc-header">
+  <h1>Registro de Cambios</h1>
+  <p class="subtitle">Sistema SCADA-SOA &mdash; Version 2.0</p>
+  <div class="doc-meta">
+    <span>25 febrero 2026</span>
+    <span>Seguridad, Gobernanza RBAC, UI/UX</span>
+    <span>CONAGUA / OCAVM</span>
+  </div>
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-value">76</span>
+      <span class="stat-label">Archivos modificados</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value">+6,313</span>
+      <span class="stat-label">Lineas nuevas</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value">-1,550</span>
+      <span class="stat-label">Lineas eliminadas</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ===== 1. LOGIN ===== -->
+  <h2><span class="section-num">1</span> Pantalla de Inicio de Sesion (Login)</h2>
+
+  <div class="card">
+    <h3><span class="change-tag tag-improved">Mejora</span> Mejoras implementadas</h3>
+    <ul>
+      <li><strong>Campo de correo electronico:</strong> Ahora dice "Correo electronico" (antes "Usuario"). Tipo <code>email</code> para teclado movil con <code>@</code>.</li>
+      <li><strong>Limpieza automatica de espacios:</strong> Elimina espacios al inicio/final y convierte a minusculas.</li>
+      <li><strong>Boton de ojo para ver/ocultar contrasena:</strong> Icono dentro del campo. Click para mostrar/ocultar.</li>
+      <li><strong>Boton "Entrar" deshabilitado mientras carga:</strong> Evita doble click. Muestra "Ingresando...".</li>
+      <li><strong>Autocompletado del navegador:</strong> <code>autocomplete="email"</code> y <code>autocomplete="current-password"</code>.</li>
+    </ul>
+    <div class="files"><strong>Archivos:</strong> login.html, login.ts, login.css</div>
+  </div>
+
+  <!-- ===== 2. 2FA ===== -->
+  <h2><span class="section-num">2</span> Pantalla de Verificacion 2FA (Token)</h2>
+
+  <div class="card">
+    <h3><span class="change-tag tag-new">Nuevo</span> Soporte dual: Email + Google Authenticator</h3>
+    <ul>
+      <li><strong>Deteccion automatica del metodo:</strong> Si usa correo, ve "Ingresa el codigo de tu correo". Si usa TOTP, ve "Ingresa el codigo de Google Authenticator".</li>
+      <li><strong>Reenvio de codigo:</strong> Boton para reenviar (solo metodo email).</li>
+    </ul>
+    <div class="files"><strong>Archivos:</strong> token.html, token.ts</div>
+  </div>
+
+  <!-- ===== 3. DASHBOARD ===== -->
+  <h2><span class="section-num">3</span> Dashboard Principal</h2>
+
+  <div class="card">
+    <h3><span class="change-tag tag-redesign">Rediseno</span> Rediseno completo</h3>
+    <ul>
+      <li><strong>Antes:</strong> Tarjetas simples con texto e icono, fondo blanco plano.</li>
+      <li><strong>Ahora:</strong> Diseno tipo "Bento Grid" con seccion hero (degradado vino, logos blancos), 4 tarjetas de navegacion con iconos a color, titulos, descripciones y flechas animadas.</li>
+      <li><strong>Colores por modulo:</strong> Vino (Telemetria), turquesa (GIS), ambar (Usuarios), gris (Proyectos).</li>
+      <li><strong>Tarjetas "wide":</strong> Telemetria y Proyectos ocupan 2 columnas.</li>
+    </ul>
+
+    <h4>Responsive</h4>
+    <ul>
+      <li><strong>Escritorio (&gt;1024px):</strong> Grid 2 columnas, tarjetas wide de 2 columnas.</li>
+      <li><strong>Tablet (701-1024px):</strong> Grid 2 columnas con ancho reducido.</li>
+      <li><strong>Celular (&lt;700px):</strong> Grid 1 columna, todo apilado.</li>
+    </ul>
+    <div class="files"><strong>Archivos:</strong> dashboard.html, dashboard.css (~290 lineas nuevas)</div>
+  </div>
+
+  <!-- ===== 4. HEADER ===== -->
+  <h2><span class="section-num">4</span> Barra de Navegacion Superior (Header)</h2>
+
+  <div class="card">
+    <h3><span class="change-tag tag-redesign">Rediseno</span> Mejoras implementadas</h3>
+    <ul>
+      <li>Informacion del usuario: nombre y rol del usuario logueado.</li>
+      <li>Menu de usuario: Click en avatar abre dropdown con "Mi Perfil" y "Cerrar Sesion".</li>
+      <li>Botones de alertas y mensajes con etiquetas visibles.</li>
+      <li>Responsive: se adapta reduciendo padding y ocultando elementos secundarios.</li>
+    </ul>
+    <div class="files"><strong>Archivos:</strong> header-bar.html, header-bar.ts, header-bar.css (~630 lineas)</div>
+  </div>
+
+  <!-- ===== 5. FOOTER ===== -->
+  <h2><span class="section-num">5</span> Barra de Navegacion Inferior (Footer Tabs)</h2>
+
+  <div class="card">
+    <h3><span class="change-tag tag-improved">Mejora</span> Mejoras implementadas</h3>
+    <ul>
+      <li>Iconos mas claros, indicador de tab activo con barra superior animada.</li>
+      <li>Labels mas cortos y legibles.</li>
+      <li>Responsive: iconos y labels se ajustan en pantallas pequenas.</li>
+    </ul>
+    <div class="files"><strong>Archivos:</strong> footer-tabs.html, footer-tabs.ts, footer-tabs.css (~130 lineas)</div>
+  </div>
+
+  <!-- ===== 6. TELEMETRIA ===== -->
+  <h2><span class="section-num">6</span> Panel de Telemetria</h2>
+
+  <div class="card">
+    <h3><span class="change-tag tag-redesign">Rediseno</span> Mejoras implementadas</h3>
+    <ul>
+      <li><strong>Strip de KPIs:</strong> 4 tarjetas: Total de pozos, Operando, Alerta, Sin comunicacion.</li>
+      <li><strong>Tabla de pozos mejorada:</strong> Badges de estado con colores semaforo.</li>
+      <li><strong>Panel lateral de detalle:</strong> Informacion en vivo: presion, caudal, bateria, senal.</li>
+      <li><strong>Grafica mejorada:</strong> Lineas finas estilo ECG, sin relleno. Valores &le; 0.01 tratados como nulos.</li>
+      <li><strong>Estadisticas filtradas:</strong> Se excluyen lecturas con bomba apagada.</li>
+    </ul>
+
+    <h4>Responsive</h4>
+    <ul>
+      <li>Escritorio: Grid 4 KPIs, tabla y panel lado a lado.</li>
+      <li>Tablet: Grid 2 KPIs, panel debajo de tabla.</li>
+      <li>Celular: KPIs apilados, tabla scrolleable, panel pantalla completa.</li>
+    </ul>
+    <div class="files"><strong>Archivos:</strong> telemetria-dashboard.html, .ts, .css (~500 lineas nuevas)</div>
+  </div>
+
+  <!-- ===== 7. POZO DETALLE ===== -->
+  <h2><span class="section-num">7</span> Detalle de Pozo (Graficas)</h2>
+
+  <div class="card">
+    <h3><span class="change-tag tag-improved">Mejora</span> Mejoras implementadas</h3>
+    <ul>
+      <li><strong>Carga inmediata del status</strong> al entrar, sin esperar ciclo de 60s.</li>
+      <li><strong>Filtrado de lecturas con bomba apagada:</strong> Valores &le; 0.01 = null.</li>
+      <li><strong>Estilo de graficas mejorado:</strong> Lineas 1.5px, sin relleno, sin step.</li>
+      <li><strong>Estadisticas depuradas:</strong> Promedios excluyen periodos con bomba apagada.</li>
+    </ul>
+    <div class="files"><strong>Archivos:</strong> pozo-detalle.ts, pozo-detalle.css, pozos-data.ts, pozos-layout.ts</div>
+  </div>
+
+  <!-- ===== 8. USUARIOS ===== -->
+  <h2><span class="section-num">8</span> Modulo de Gestion de Usuarios</h2>
+
+  <div class="card">
+    <h3><span class="change-tag tag-new">Nuevo</span> 8.1 Arbol jerarquico de dependencias</h3>
+    <p><strong>Antes:</strong> Labels genericos sin funcionalidad. <strong>Ahora:</strong> Arbol con entidades reales de la base de datos:</p>
+    <div class="tree">Todos
+FEDERAL
+  CONAGUA
+ESTATAL
+  OCAVM
+    Ecatepec, Chalco, Chicoloapan
+  CAEM
+    Tlalnepantla, Valle de Chalco, La Paz</div>
+    <ul>
+      <li>Click para filtrar usuarios por dependencia y sus hijos.</li>
+      <li>Indicador visual "Listado de usuarios &middot; [Entidad]".</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="change-tag tag-improved">Mejora</span> 8.2 Tabla de usuarios mejorada</h3>
+    <ul>
+      <li>Columnas: Nombre, Correo, Rol, Nivel, Dependencia, Estatus.</li>
+      <li>Roles consistentes: Administrador, Supervisor, Operador, Tecnico.</li>
+      <li>Cada usuario muestra su dependencia organizacional.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="change-tag tag-new">Nuevo</span> 8.3 Bitacora de auditoria (Seguridad Log)</h3>
+    <ul>
+      <li><strong>Antes:</strong> 3 registros hardcodeados. <strong>Ahora:</strong> Datos reales de <code>scada.audit_logs</code> via API.</li>
+      <li>Ultimas 10 acciones: Usuario, Accion, IP, Fecha/Hora.</li>
+      <li>Acciones: LOGIN_SUCCESS, CREATE_USER_SUCCESS, TOTP_ENABLED, etc.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="change-tag tag-new">Nuevo</span> 8.4 Reporte completo de auditoria</h3>
+    <ul>
+      <li>Pagina dedicada <code>/reporte</code> con tabla paginada (50 registros/pagina).</li>
+      <li>Filtros por fecha y por usuario.</li>
+      <li><strong>Exportar CSV:</strong> Genera archivo compatible con Excel.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="change-tag tag-improved">Mejora</span> 8.5 Formulario de usuario mejorado</h3>
+    <ul>
+      <li>Selector de dependencia con las 9 entidades y nivel entre parentesis.</li>
+      <li>4 roles SOA en dropdown.</li>
+      <li>Permisos granulares: Ver, Editar, Exportar, Bloquear.</li>
+    </ul>
+    <div class="files"><strong>Archivos:</strong> usuarios.html/ts/css, usuario-detalle.html/ts, reporte-actividad.html/ts/css</div>
+  </div>
+
+  <!-- ===== 9. PERFIL ===== -->
+  <h2><span class="section-num">9</span> Perfil de Usuario</h2>
+
+  <div class="card">
+    <h3><span class="change-tag tag-redesign">Rediseno</span> Mejoras implementadas</h3>
+    <ul>
+      <li>Datos del perfil: Nombre, correo, rol, nivel (del JWT).</li>
+      <li><strong>Google Authenticator:</strong> Flujo completo: generar QR, escanear, verificar codigo 6 digitos.</li>
+      <li>Card con 2 columnas: Informacion de cuenta + Seguridad/2FA.</li>
+    </ul>
+    <div class="files"><strong>Archivos:</strong> perfil-usuario.html, .ts, .css (~625 lineas)</div>
+  </div>
+
+  <!-- ===== 10. GERENCIA ===== -->
+  <h2><span class="section-num">10</span> Gerencia / Overview</h2>
+
+  <div class="card">
+    <h3><span class="change-tag tag-improved">Mejora</span> Ajustes menores</h3>
+    <ul>
+      <li>Ajustes de layout para pantallas grandes.</li>
+      <li>Mejora de espaciado y tipografia.</li>
+    </ul>
+    <div class="files"><strong>Archivos:</strong> overview.html, overview.ts, overview.css</div>
+  </div>
+
+  <!-- ===== 11. BACKEND ===== -->
+  <h2><span class="section-num">11</span> Backend — API de Consulta (scada-query-api)</h2>
+
+  <div class="card">
+    <h3><span class="change-tag tag-new">Nuevo</span> 11.1 Sistema de autenticacion mejorado</h3>
+    <ul>
+      <li><strong>Google Authenticator (TOTP):</strong> Setup, verificacion y desactivacion.</li>
+      <li><strong>Bloqueo por intentos fallidos:</strong> 5 intentos &rarr; 15 min de bloqueo.</li>
+      <li><strong>Token temporal 2FA:</strong> Expira en 5 minutos.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="change-tag tag-new">Nuevo</span> 11.2 Entidades organizacionales</h3>
+    <ul>
+      <li>Tabla <code>scada.entities</code>: CONAGUA (Federal) &rarr; OCAVM/CAEM (Estatal) &rarr; 6 municipios.</li>
+      <li>API: <code>GET /api/v1/entities</code> (autenticados), <code>POST</code> (solo Admin).</li>
+      <li>Filtrado por scope: usuarios estatales solo ven su estado y municipios hijos.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="change-tag tag-improved">Mejora</span> 11.3 Auditoria mejorada</h3>
+    <ul>
+      <li><code>GET /api/v1/audit/logs</code> — Listado paginado con filtros.</li>
+      <li><code>GET /api/v1/audit/logs/export</code> — Descarga CSV.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="change-tag tag-new">Nuevo</span> 11.4 Permisos granulares</h3>
+    <ul>
+      <li>Tabla <code>scada.permissions</code>: can_view, can_edit, can_export, can_block por usuario.</li>
+      <li>API: <code>GET/PUT /api/v1/users/:id/permissions</code> (solo Admin).</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="change-tag tag-improved">Mejora</span> 11.5 Usuarios</h3>
+    <ul>
+      <li>Filtrado por entidad: <code>GET /api/v1/users?entityId=X</code>.</li>
+      <li>Cada usuario tiene <code>entity_id</code> (dependencia asignada).</li>
+      <li>Nombres de roles normalizados.</li>
+    </ul>
+  </div>
+
+  <h3>Archivos nuevos del backend</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Archivo</th><th>Descripcion</th></tr></thead>
+      <tbody>
+        <tr><td><code>migrations/001_add_totp_columns.sql</code></td><td>Columnas TOTP en tabla users</td></tr>
+        <tr><td><code>migrations/002_create_entities_table.sql</code></td><td>Tabla de entidades organizacionales</td></tr>
+        <tr><td><code>migrations/003_users_entity_id_and_roles.sql</code></td><td>FK entity_id + roles normalizados</td></tr>
+        <tr><td><code>migrations/004_seed_user_entities.sql</code></td><td>Asignacion de entidades a usuarios existentes</td></tr>
+        <tr><td><code>migrations/005_create_permissions_table.sql</code></td><td>Tabla de permisos granulares</td></tr>
+        <tr><td><code>src/services/entity-service.ts</code></td><td>CRUD de entidades</td></tr>
+        <tr><td><code>src/services/permission-service.ts</code></td><td>Lectura/escritura de permisos</td></tr>
+        <tr><td><code>src/routes/entity-routes.ts</code></td><td>Rutas de entidades</td></tr>
+        <tr><td><code>src/migrate.ts</code></td><td>Runner de migraciones</td></tr>
+        <tr><td><code>src/__tests__/entity-audit.test.ts</code></td><td>Tests de entidades y auditoria</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== 12. MIGRACIONES ===== -->
+  <h2><span class="section-num">12</span> Base de datos — Migraciones</h2>
+
+  <p>5 migraciones aditivas (no modifican ni borran datos existentes):</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Archivo</th><th>Que hace</th></tr></thead>
+      <tbody>
+        <tr><td>001</td><td><code>001_add_totp_columns.sql</code></td><td>Agrega <code>totp_secret</code> y <code>totp_enabled</code> a tabla users</td></tr>
+        <tr><td>002</td><td><code>002_create_entities_table.sql</code></td><td>Crea tabla <code>scada.entities</code> + datos semilla (9 entidades)</td></tr>
+        <tr><td>003</td><td><code>003_users_entity_id_and_roles.sql</code></td><td>Agrega <code>entity_id</code> a users + normaliza nombres de roles</td></tr>
+        <tr><td>004</td><td><code>004_seed_user_entities.sql</code></td><td>Asigna entidades a usuarios existentes segun scope</td></tr>
+        <tr><td>005</td><td><code>005_create_permissions_table.sql</code></td><td>Crea tabla <code>scada.permissions</code> + permisos por defecto</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>Seguridad:</strong> Todas usan <code>IF NOT EXISTS</code> y se ejecutan en transacciones. Ejecutar multiples veces es seguro.
+  </div>
+
+  <!-- ===== 13. TESTS ===== -->
+  <h2><span class="section-num">13</span> Tests automatizados</h2>
+
+  <div class="card">
+    <ul>
+      <li><strong>40 tests pasando</strong> en 3 archivos: auth.test.ts, email-service.test.ts, entity-audit.test.ts</li>
+      <li>Servicios externos (PostgreSQL, InfluxDB, SMTP) estan mockeados. No se requiere base de datos para correr tests.</li>
+    </ul>
+  </div>
+
+  <!-- ===== 14. OTROS ===== -->
+  <h2><span class="section-num">14</span> Otros cambios</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Cambio</th><th>Descripcion</th></tr></thead>
+      <tbody>
+        <tr><td><code>.gitignore</code></td><td>Actualizado para ignorar archivos de ambiente</td></tr>
+        <tr><td><code>docker-compose.yml</code></td><td>Ajuste de configuracion de contenedores</td></tr>
+        <tr><td><code>angular.json</code></td><td>Configuracion de build actualizada</td></tr>
+        <tr><td><code>package.json</code> (frontend)</td><td>Dependencia agregada</td></tr>
+        <tr><td><code>package.json</code> (backend)</td><td>Dependencias: otplib, qrcode, csv-stringify</td></tr>
+        <tr><td><code>influx-query-service.ts</code></td><td>Correccion menor de query</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr>
+
+  <!-- ===== RESUMEN POR AREA ===== -->
+  <h2>Resumen de archivos por area</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Area</th><th>Nuevos</th><th>Modificados</th><th>Total</th></tr></thead>
+      <tbody>
+        <tr><td>Login / Auth</td><td>0</td><td>5</td><td>5</td></tr>
+        <tr><td>Dashboard</td><td>0</td><td>2</td><td>2</td></tr>
+        <tr><td>Layout (Header + Footer)</td><td>0</td><td>6</td><td>6</td></tr>
+        <tr><td>Telemetria</td><td>0</td><td>3</td><td>3</td></tr>
+        <tr><td>Pozos / Detalle</td><td>0</td><td>4</td><td>4</td></tr>
+        <tr><td>Usuarios (frontend)</td><td>3</td><td>9</td><td>12</td></tr>
+        <tr><td>Perfil de usuario</td><td>0</td><td>3</td><td>3</td></tr>
+        <tr><td>Gerencia</td><td>0</td><td>3</td><td>3</td></tr>
+        <tr><td>Backend API</td><td>6</td><td>8</td><td>14</td></tr>
+        <tr><td>Migraciones BD</td><td>5</td><td>0</td><td>5</td></tr>
+        <tr><td>Tests</td><td>1</td><td>0</td><td>1</td></tr>
+        <tr><td>Config / Otros</td><td>0</td><td>5</td><td>5</td></tr>
+        <tr><td>Imagenes de referencia</td><td>7</td><td>0</td><td>7</td></tr>
+        <tr><td>Documentacion</td><td>2</td><td>0</td><td>2</td></tr>
+        <tr style="font-weight:700; background:#f8fafc;"><td>TOTAL</td><td>24</td><td>43</td><td>76</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr>
+
+  <!-- ===== RESPONSIVE TABLE ===== -->
+  <h2>Soporte responsive completo</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Pantalla</th><th>Escritorio (&gt;1024px)</th><th>Tablet (701-1024px)</th><th>Celular (&lt;700px)</th></tr></thead>
+      <tbody>
+        <tr><td>Login</td><td>Card centrada 480px</td><td>Card 480px</td><td>Card 100%</td></tr>
+        <tr><td>Dashboard</td><td>Bento grid 2 cols</td><td>Grid 2 cols reducido</td><td>Grid 1 columna</td></tr>
+        <tr><td>Header</td><td>Completo con nombre y rol</td><td>Reducido</td><td>Compacto, icono solo</td></tr>
+        <tr><td>Footer tabs</td><td>6 tabs con labels</td><td>6 tabs labels reducidos</td><td>6 tabs iconos</td></tr>
+        <tr><td>Telemetria</td><td>KPIs 4 cols + tabla + panel</td><td>KPIs 2 cols</td><td>KPIs 1 col, apilado</td></tr>
+        <tr><td>Pozo detalle</td><td>Grafica full width</td><td>Grafica adaptada</td><td>Grafica scrolleable</td></tr>
+        <tr><td>Usuarios</td><td>3 columnas (arbol+tabla+log)</td><td>2 columnas</td><td>Todo apilado</td></tr>
+        <tr><td>Perfil</td><td>2 columnas</td><td>2 columnas</td><td>1 columna</td></tr>
+        <tr><td>Reporte</td><td>Tabla con filtros laterales</td><td>Filtros arriba</td><td>Todo apilado</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

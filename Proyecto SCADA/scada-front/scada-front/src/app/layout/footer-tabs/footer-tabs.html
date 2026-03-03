@@ -1,0 +1,16 @@
+<nav class="footer-nav" role="navigation" aria-label="Navegacion principal">
+
+  <a *ngFor="let tab of tabs()"
+     class="nav-tab"
+     [routerLink]="tab.route"
+     [class.is-active]="isActive(tab)"
+     [attr.aria-current]="isActive(tab) ? 'page' : null"
+     [attr.aria-label]="tab.label">
+
+    <span class="tab-indicator" aria-hidden="true"></span>
+    <ng-icon [name]="tab.icon" class="tab-icon" size="20"></ng-icon>
+    <span class="tab-label">{{ tab.label }}</span>
+
+  </a>
+
+</nav>
