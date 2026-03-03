@@ -36,9 +36,9 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null
 
-          ssh -i ~/.ssh/deploy_key $USER@$HOST "sudo cp -r $DEPLOY_PATH /tmp/scada-backup-\$(date +%Y%m%d%H%M%S)" || true
+          ssh -i ~/.ssh/deploy_key $USER@$HOST "sudo cp -r $DEPLOY_PATH /tmp/scada-backup-\$(date +%Y%m%d%H%M%S) && mkdir -p /tmp/scada-deploy" || true
 
-          scp -i ~/.ssh/deploy_key -r dist/scada-front/browser/* $USER@$HOST:/tmp/scada-deploy/
+          scp -i ~/.ssh/deploy_key -r dist/scada-demo/browser/* $USER@$HOST:/tmp/scada-deploy/
 
           ssh -i ~/.ssh/deploy_key $USER@$HOST "sudo rm -rf $DEPLOY_PATH/* && sudo cp -r /tmp/scada-deploy/* $DEPLOY_PATH/ && rm -rf /tmp/scada-deploy"
 
