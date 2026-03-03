@@ -12,28 +12,28 @@
   align-items:   center;
   gap:           8px;
   padding:       7px 12px;
-  border:        1px solid #d1d5db;
+  border:        1px solid var(--border-input);
   border-radius: 8px;
-  background:    #fff;
+  background:    var(--bg-card);
   cursor:        pointer;
   font-size:     13px;
   font-weight:   500;
-  color:         #374151;
+  color:         var(--text-primary);
   white-space:   nowrap;
   transition:    border-color 0.15s, box-shadow 0.15s;
 }
-.drp-trigger:hover { border-color: #6d002b; }
+.drp-trigger:hover { border-color: var(--accent); }
 
 .drp-trigger-icon {
   width: 15px; height: 15px;
-  color: #6b7280;
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 .drp-trigger-label { flex: 1; }
 
 .drp-chevron {
   width: 15px; height: 15px;
-  color: #6b7280;
+  color: var(--text-secondary);
   transition: transform 0.2s;
   flex-shrink: 0;
 }
@@ -45,8 +45,8 @@
   right:         0;
   top:           calc(100% + 8px);
   z-index:       500;
-  background:    #fff;
-  border:        1px solid #e5e7eb;
+  background:    var(--bg-card);
+  border:        1px solid var(--border-default);
   border-radius: 12px;
   box-shadow:    0 12px 40px rgba(0,0,0,.16);
   overflow:      hidden;
@@ -64,30 +64,30 @@
   align-items: center;
   gap:         8px;
   padding:     12px 16px 10px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .drp-input-field {
   display:         flex;
   align-items:     center;
-  border:          1px solid #d1d5db;
+  border:          1px solid var(--border-input);
   border-radius:   8px;
   padding:         6px 14px;
   font-size:       13px;
   font-weight:     500;
-  color:           #374151;
+  color:           var(--text-primary);
   min-width:       140px;
   justify-content: center;
   letter-spacing:  0.04em;
   transition:      border-color 0.15s;
 }
-.drp-input-field--active { border-color: #6d002b; box-shadow: 0 0 0 2px rgba(109,0,43,.1); }
+.drp-input-field--active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(109,0,43,.1); }
 
-.drp-input-sep { color: #9ca3af; font-size: 18px; font-weight: 300; }
+.drp-input-sep { color: var(--text-muted); font-size: 18px; font-weight: 300; }
 
 .drp-hint {
   font-size:   11px;
-  color:       #6d002b;
+  color:       var(--accent);
   font-weight: 600;
   margin-left: 4px;
   animation:   drpFadeIn 0.15s ease;
@@ -115,15 +115,15 @@
   text-align:      center;
   font-size:       13px;
   font-weight:     600;
-  color:           #374151;
+  color:           var(--text-primary);
   text-transform:  capitalize;
 }
 .drp-nav-btn {
   width:           30px;
   height:          30px;
-  border:          1px solid #e5e7eb;
+  border:          1px solid var(--border-default);
   border-radius:   7px;
-  background:      #fff;
+  background:      var(--bg-card);
   cursor:          pointer;
   display:         flex;
   align-items:     center;
@@ -131,8 +131,8 @@
   flex-shrink:     0;
   transition:      background 0.12s;
 }
-.drp-nav-btn:hover { background: #f3f4f6; }
-.drp-nav-btn svg   { width: 14px; height: 14px; color: #374151; }
+.drp-nav-btn:hover { background: var(--bg-card-hover); }
+.drp-nav-btn svg   { width: 14px; height: 14px; color: var(--text-primary); }
 
 /* Two-calendar grid */
 .drp-cal-grid {
@@ -150,7 +150,7 @@
   text-align:  center;
   font-size:   10px;
   font-weight: 700;
-  color:       #9ca3af;
+  color:       var(--text-muted);
   padding:     3px 0;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -184,14 +184,14 @@
   justify-content: center;
   border-radius:   50%;
   font-size:       12px;
-  color:           #374151;
+  color:           var(--text-primary);
   position:        relative;
   z-index:         2;
   transition:      background 0.1s, color 0.1s;
   flex-shrink:     0;
 }
 
-.drp-day:hover:not(.drp-day--empty) span { background: #f3f4f6; }
+.drp-day:hover:not(.drp-day--empty) span { background: var(--bg-card-hover); }
 
 .drp-day--empty {
   cursor:         default;
@@ -200,7 +200,7 @@
 
 /* Today */
 .drp-day--today span {
-  color:       #6d002b;
+  color:       var(--accent);
   font-weight: 700;
 }
 .drp-day--today span::after {
@@ -212,18 +212,18 @@
   width:         4px;
   height:        4px;
   border-radius: 50%;
-  background:    #6d002b;
+  background:    var(--accent);
 }
 
 /* In-range background (full cell width) */
-.drp-day--in-range { background: rgba(109, 0, 43, 0.08); }
+.drp-day--in-range { background: var(--accent-light); }
 
 /* Start / End: half-rect background + filled circle */
 .drp-day--start {
-  background: linear-gradient(to right, transparent 50%, rgba(109,0,43,0.08) 50%);
+  background: linear-gradient(to right, transparent 50%, var(--accent-light) 50%);
 }
 .drp-day--end {
-  background: linear-gradient(to left, transparent 50%, rgba(109,0,43,0.08) 50%);
+  background: linear-gradient(to left, transparent 50%, var(--accent-light) 50%);
 }
 /* When start === end: no background */
 .drp-day--start.drp-day--end { background: transparent; }
@@ -231,11 +231,11 @@
 /* Selected circle */
 .drp-day--start span,
 .drp-day--end span {
-  background: #6d002b !important;
-  color:      #fff !important;
+  background: var(--accent) !important;
+  color:      var(--text-on-accent) !important;
 }
 .drp-day--start:hover span,
-.drp-day--end:hover span { background: #5a0023 !important; }
+.drp-day--end:hover span { background: var(--accent-hover) !important; }
 
 /* ---- PRESETS ---- */
 .drp-presets {
@@ -243,7 +243,7 @@
   flex-direction: column;
   padding:        12px 8px 12px 4px;
   min-width:      160px;
-  border-left:    1px solid #f3f4f6;
+  border-left:    1px solid var(--border-default);
   gap:            1px;
 }
 
@@ -256,17 +256,17 @@
   background:  transparent;
   cursor:      pointer;
   font-size:   13px;
-  color:       #374151;
+  color:       var(--text-primary);
   border-radius: 7px;
   text-align:  left;
   white-space: nowrap;
   transition:  background 0.1s;
 }
-.drp-preset-btn:hover              { background: #f3f4f6; }
-.drp-preset-btn--active            { color: #6d002b; font-weight: 600; }
-.drp-preset-btn--active:hover      { background: rgba(109,0,43,.06); }
+.drp-preset-btn:hover              { background: var(--bg-card-hover); }
+.drp-preset-btn--active            { color: var(--accent); font-weight: 600; }
+.drp-preset-btn--active:hover      { background: var(--accent-light); }
 
-.drp-check    { width: 14px; height: 14px; color: #6d002b; flex-shrink: 0; }
+.drp-check    { width: 14px; height: 14px; color: var(--accent); flex-shrink: 0; }
 .drp-check-ph { width: 14px; height: 14px; flex-shrink: 0; display: inline-block; }
 
 /* ---- FOOTER ---- */
@@ -275,8 +275,8 @@
   align-items:     center;
   justify-content: space-between;
   padding:         10px 16px;
-  border-top:      1px solid #f3f4f6;
-  background:      #f9fafb;
+  border-top:      1px solid var(--border-default);
+  background:      var(--bg-card-hover);
 }
 
 .drp-interval {
@@ -285,23 +285,23 @@
   gap:         8px;
   font-size:   11px;
   font-weight: 700;
-  color:       #6b7280;
+  color:       var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .drp-interval-sel {
-  border:        1px solid #d1d5db;
+  border:        1px solid var(--border-input);
   border-radius: 6px;
   padding:       4px 8px;
   font-size:     13px;
-  color:         #374151;
-  background:    #fff;
+  color:         var(--text-primary);
+  background:    var(--bg-card);
   cursor:        pointer;
   outline:       none;
   transition:    border-color 0.15s;
   font-weight:   400;
 }
-.drp-interval-sel:focus { border-color: #6d002b; }
+.drp-interval-sel:focus { border-color: var(--accent); }
 
 .drp-footer-actions { display: flex; gap: 8px; }
 
@@ -314,7 +314,7 @@
   border:        none;
   transition:    background 0.15s;
 }
-.drp-btn--cancel { background: transparent; border: 1px solid #e5e7eb; color: #374151; }
-.drp-btn--cancel:hover { background: #f3f4f6; }
-.drp-btn--apply  { background: #6d002b; color: #fff; }
-.drp-btn--apply:hover  { background: #5a0023; }
+.drp-btn--cancel { background: transparent; border: 1px solid var(--border-default); color: var(--text-primary); }
+.drp-btn--cancel:hover { background: var(--bg-card-hover); }
+.drp-btn--apply  { background: var(--accent); color: var(--text-on-accent); }
+.drp-btn--apply:hover  { background: var(--accent-hover); }

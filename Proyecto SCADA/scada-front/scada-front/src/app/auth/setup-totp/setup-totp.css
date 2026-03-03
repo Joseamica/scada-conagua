@@ -2,15 +2,15 @@
   min-height: 100vh;
   display: grid;
   place-items: center;
-  background: #f9fafb;
+  background: var(--bg-app);
   padding: 20px;
 }
 
 .auth-card {
   width: 100%;
   max-width: 460px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 14px;
   padding: 32px 28px;
   text-align: center;
@@ -19,13 +19,13 @@
 .auth-card h1 {
   font-size: 22px;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary);
   margin: 0 0 8px;
 }
 
 .auth-text {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0 0 24px;
   line-height: 1.5;
 }
@@ -52,8 +52,8 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #6d002b;
-  color: #ffffff;
+  background: var(--accent);
+  color: var(--text-on-accent);
   font-size: 13px;
   font-weight: 700;
   flex-shrink: 0;
@@ -61,7 +61,7 @@
 
 .step-text {
   font-size: 14px;
-  color: #374151;
+  color: var(--text-primary);
   line-height: 1.4;
 }
 
@@ -74,9 +74,9 @@
 
 .qr-frame {
   padding: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-default);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--bg-card);
 }
 
 .qr-image {
@@ -92,7 +92,7 @@
 
 .manual-key-label {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-secondary);
   display: block;
   margin-bottom: 6px;
 }
@@ -107,8 +107,8 @@
 .manual-key-value {
   font-family: 'SF Mono', 'Fira Code', monospace;
   font-size: 13px;
-  color: #111827;
-  background: #f3f4f6;
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
   padding: 6px 12px;
   border-radius: 6px;
   letter-spacing: 1px;
@@ -117,9 +117,9 @@
 
 .btn-copy {
   font-size: 12px;
-  color: #6d002b;
+  color: var(--accent);
   background: none;
-  border: 1px solid #6d002b;
+  border: 1px solid var(--accent);
   border-radius: 6px;
   padding: 4px 10px;
   cursor: pointer;
@@ -134,18 +134,18 @@
 .verify-label {
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-primary);
   display: block;
   margin-bottom: 10px;
 }
 
 /* Error */
 .error {
-  color: #dc2626;
+  color: var(--danger);
   font-size: 13px;
   margin: 12px 0;
   padding: 10px;
-  background: #fef2f2;
+  background: var(--danger-bg);
   border-radius: 8px;
 }
 
@@ -165,7 +165,7 @@
 
 .btn-link {
   background: none;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
   text-decoration: underline;

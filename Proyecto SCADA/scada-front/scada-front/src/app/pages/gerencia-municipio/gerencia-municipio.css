@@ -6,14 +6,14 @@
   display: grid;
   grid-template-columns: 520px 1fr;
   height: 100vh;
-  background: #f5f7fa;
+  background: var(--bg-app);
 }
 
 /* ===== LEFT PANEL ===== */
 
 .panel-left {
   padding: 24px 24px 90px;
-  background: #fff;
+  background: var(--bg-card);
   overflow-y: auto;
 }
 
@@ -28,7 +28,7 @@
   width: 160px;
   height: 160px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--bg-card);
   border: 7px solid #2f6f64;
   display: flex;
   align-items: center;
@@ -40,13 +40,13 @@
 .gasto-number {
   font-size: 36px;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .gasto-title {
   font-size: 15px;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .metric-delta {
@@ -63,10 +63,10 @@
 
 .chart-card {
   margin-top: 20px;
-  background: #f8fafc;
+  background: var(--bg-card-hover);
   padding: 14px;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-default);
 }
 
 /* Row 1: title + date picker */
@@ -80,7 +80,7 @@
 .chart-title-row h3 {
   font-size: 14px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -88,7 +88,7 @@
 .time-strip {
   display: flex;
   gap: 2px;
-  background: #f1f5f9;
+  background: var(--table-hover);
   border-radius: 8px;
   padding: 3px;
   margin-bottom: 8px;
@@ -107,18 +107,18 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: #64748b;
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-.time-strip button:hover { color: #0f172a; }
+.time-strip button:hover { color: var(--text-primary); }
 
 .time-strip button.active {
-  background: #fff;
-  color: #0f172a;
+  background: var(--bg-card);
+  color: var(--text-primary);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
@@ -133,24 +133,24 @@
   gap: 6px;
   padding: 2px 10px;
   border-radius: 999px;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
+  background: var(--info-bg);
+  border: 1px solid var(--info-border);
   font-size: 11px;
-  color: #0369a1;
+  color: var(--info);
   font-weight: 600;
 }
 
 .filter-pill__clear {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 14px;
   cursor: pointer;
   padding: 0 2px;
   line-height: 1;
 }
 
-.filter-pill__clear:hover { color: #ef4444; }
+.filter-pill__clear:hover { color: var(--danger); }
 
 /* Row 3: unified controls — variables + separator + chart type */
 .chart-controls {
@@ -165,9 +165,9 @@
   font-size: 10.5px;
   padding: 3px 9px;
   border-radius: 999px;
-  border: 1.5px solid #d1d5db;
-  background: #fff;
-  color: #64748b;
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg-card);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s;
   font-weight: 600;
@@ -189,20 +189,20 @@
 /* Chart type pills use neutral dark color */
 .ctrl-pill--type:hover {
   border-color: #475569;
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 .ctrl-pill--type.active {
-  background: #0f172a;
-  border-color: #0f172a;
-  color: #fff;
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  color: var(--text-on-accent);
 }
 
 /* Vertical separator between variable pills and type pills */
 .ctrl-sep {
   width: 1px;
   height: 16px;
-  background: #d1d5db;
+  background: var(--border-strong);
   flex-shrink: 0;
   margin: 0 2px;
 }
@@ -218,10 +218,10 @@
 
 .sitios-card {
   margin-top: 16px;
-  background: #f8fafc;
+  background: var(--bg-card-hover);
   padding: 14px;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-default);
 }
 
 .sitios-header {
@@ -234,13 +234,13 @@
 .sitios-header h3 {
   font-size: 14px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary);
   margin: 0;
 }
 
 .sitios-count {
   font-size: 11px;
-  color: #64748b;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -257,9 +257,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 10px;
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-default);
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -279,7 +279,7 @@
 .sitio-nombre {
   font-size: 12px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -288,7 +288,7 @@
 .sitio-estatus {
   font-size: 10px;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .sitio-estatus.activo { color: #16a34a; }
@@ -302,19 +302,19 @@
 
 .sitio-val {
   font-size: 11px;
-  color: #64748b;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
 .sitio-val b {
-  color: #0f172a;
+  color: var(--text-primary);
   font-weight: 700;
 }
 
 .sitio-empty {
   text-align: center;
   padding: 20px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 13px;
 }
 

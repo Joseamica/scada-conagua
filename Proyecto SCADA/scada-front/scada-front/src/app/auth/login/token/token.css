@@ -2,14 +2,14 @@
   min-height: 100vh;
   display: grid;
   place-items: center;
-  background: #f9fafb;
+  background: var(--bg-app);
 }
 
 .auth-card {
   width: 100%;
   max-width: 420px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 14px;
   padding: 28px;
   text-align: center;
@@ -18,29 +18,29 @@
 .auth-card h1 {
   font-size: 22px;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-primary);
   margin-bottom: 8px;
 }
 
 .auth-text {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 12px 0 20px;
   line-height: 1.4;
 }
 
 .error {
-  color: #dc2626;
+  color: var(--danger);
   font-size: 13px;
   margin: 14px 0;
   padding: 10px;
-  background: #fef2f2;
+  background: var(--danger-bg);
   border-radius: 8px;
 }
 
 .btn-link {
   background: none;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
   text-decoration: underline;

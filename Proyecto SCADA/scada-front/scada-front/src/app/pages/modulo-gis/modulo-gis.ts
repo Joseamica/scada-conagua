@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, effect } from '@angular/core';
 import { Router } from '@angular/router';
 import * as L from 'leaflet';
 import * as omnivore from 'leaflet-omnivore';
@@ -9,6 +9,7 @@ import { POZOS_LAYOUT } from '../pozos/pozos-layout';
 import { POZO_NAME_TO_ID } from '../../core/stores/pozo-name.map';
 import { PozosStore } from '../../core/stores/pozos.store';
 import { TelemetryService } from '../../core/services/telemetry';
+import { ThemeService } from '../../core/services/theme.service';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
 import { heroPresentationChartLine } from '@ng-icons/heroicons/outline';
 
@@ -119,6 +120,18 @@ export class ModuloGis implements OnInit {
 
   private gastoByMunicipio = new Map<number, number>();
   private telemetryService = inject(TelemetryService);
+  private themeService = inject(ThemeService);
+  private tileLayer?: L.TileLayer;
+
+  private themeEffect = effect(() => {
+    const theme = this.themeService.resolved();
+    if (this.tileLayer && this.map) {
+      const url = theme === 'dark'
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+      this.tileLayer.setUrl(url);
+    }
+  });
 
   constructor(
     private router: Router,
@@ -883,10 +896,10 @@ export class ModuloGis implements OnInit {
     // 1) Mapa base
     this.map = L.map('map').setView([19.3, -99.6], 8);
 
-    L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-      { subdomains: 'abcd', maxZoom: 19 }
-    ).addTo(this.map);
+    const tileUrl = this.themeService.resolved() === 'dark'
+      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    this.tileLayer = L.tileLayer(tileUrl, { subdomains: 'abcd', maxZoom: 19 }).addTo(this.map);
 
     this.setupIconScalingByZoom();
 

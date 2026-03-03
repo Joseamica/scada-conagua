@@ -3,7 +3,7 @@
 .page{ padding:18px 18px 0; }
 
 .card{
-  background:#fff; border:1px solid #e5e7eb; border-radius:10px;
+  background:var(--bg-card); border:1px solid var(--border-default); border-radius:10px;
   padding:14px;
 }
 
@@ -14,12 +14,12 @@
 .toolbar{
   display:flex; align-items:center; justify-content:space-between;
   gap:12px; padding:10px 4px 14px;
-  border-bottom:1px solid #eef2f7;
+  border-bottom:1px solid var(--border-default);
 }
 
 .search{
   display:flex; align-items:center; gap:8px;
-  background:#f9fafb; border:1px solid #e5e7eb;
+  background:var(--table-header-bg); border:1px solid var(--border-default);
   border-radius:10px; padding:10px 12px; min-width: 320px;
 }
 
@@ -39,7 +39,7 @@
 
 .filters{
   padding:12px 4px 14px;
-  border-bottom:1px solid #eef2f7;
+  border-bottom:1px solid var(--border-default);
 }
 
 /* En Usuarios son 3 columnas.
@@ -55,15 +55,15 @@
   flex-direction:column;
   gap:6px;
   font-size:13px;
-  color:#374151;
+  color:var(--text-primary);
 }
 
 .field select,
 .field input{
-  border:1px solid #e5e7eb;
+  border:1px solid var(--border-default);
   border-radius:10px;
   padding:10px 12px;
-  background:#fff;
+  background:var(--bg-card);
   font-size:14px;
 }
 
@@ -100,7 +100,7 @@
    ========================= */
 
 .table-wrap{
-  border:1px solid #e5e7eb;
+  border:1px solid var(--border-default);
   border-radius:10px;
   overflow:hidden;
   margin-top:14px;
@@ -109,8 +109,8 @@
 .table-title{
   padding:10px 12px;
   font-weight:700;
-  background:#f9fafb;
-  border-bottom:1px solid #e5e7eb;
+  background:var(--table-header-bg);
+  border-bottom:1px solid var(--border-default);
 }
 
 .table-scroll{ overflow:auto; }
@@ -122,18 +122,18 @@
 
 .table th, .table td{
   padding:12px 12px;
-  border-bottom:1px solid #eef2f7;
+  border-bottom:1px solid var(--border-default);
   font-size:14px;
 }
 
 .table th{
   text-align:left;
-  color:#6b7280;
+  color:var(--text-secondary);
   font-weight:700;
-  background:#fff;
+  background:var(--bg-card);
 }
 
-.table tr:hover td{ background:#fafafa; }
+.table tr:hover td{ background:var(--bg-card-hover); }
 
 .mono{
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
@@ -144,7 +144,7 @@
 
 .empty{
   text-align:center;
-  color:#6b7280;
+  color:var(--text-secondary);
   padding:22px 12px;
 }
 
@@ -165,26 +165,26 @@
 }
 
 .btn-primary{
-  background:#6d002b;
-  color:#fff;
+  background:var(--accent);
+  color:var(--text-on-accent);
 }
 
 .btn-outline{
-  background:#fff;
-  border-color:#e5e7eb;
+  background:var(--bg-card);
+  border-color:var(--border-default);
 }
 
 .btn-ghost{
-  background:#fff;
-  border-color:#e5e7eb;
-  color:#374151;
+  background:var(--bg-card);
+  border-color:var(--border-default);
+  color:var(--text-primary);
 }
 
 .pagination{
   display:flex; align-items:center; justify-content:center;
   gap:12px; padding:12px;
-  border-top:1px solid #eef2f7;
+  border-top:1px solid var(--border-default);
 }
-.page-info{ font-size:14px; color:#6b7280; }
+.page-info{ font-size:14px; color:var(--text-secondary); }
 .pagination .btn:disabled{ opacity:.4; cursor:not-allowed; }
-.hint{ font-weight:500; color:#6b7280; font-size:13px; }
+.hint{ font-weight:500; color:var(--text-secondary); font-size:13px; }

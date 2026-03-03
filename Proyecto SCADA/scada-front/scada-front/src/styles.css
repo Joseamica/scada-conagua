@@ -1,9 +1,165 @@
 @import "leaflet/dist/leaflet.css";
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+/* =========================================
+   THEME — CSS Custom Properties
+   ========================================= */
+
+:root {
+  /* Surface */
+  --bg-app: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --bg-input: #ffffff;
+  --bg-modal-backdrop: rgba(0, 0, 0, 0.45);
+
+  /* Text */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-on-accent: #ffffff;
+
+  /* Borders */
+  --border-default: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --border-input: #d1d5db;
+
+  /* Accent (brand) */
+  --accent: #6d002b;
+  --accent-hover: #5a0020;
+  --accent-light: rgba(109, 0, 43, 0.08);
+
+  /* Semantic colors */
+  --success: #059669;
+  --success-bg: #ecfdf5;
+  --success-border: #a7f3d0;
+  --warning: #b45309;
+  --warning-bg: #fff7ed;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --info: #2563eb;
+  --info-bg: #eff6ff;
+  --info-border: #bfdbfe;
+
+  /* Status colors */
+  --status-online: #22c55e;
+  --status-offline: #ef4444;
+  --status-warning: #f59e0b;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  /* Specific UI */
+  --header-bg: #ffffff;
+  --sidebar-bg: #ffffff;
+  --footer-bg: #6d002b;
+  --kpi-card-bg: #ffffff;
+  --chart-grid: #e2e8f0;
+  --table-stripe: #f8fafc;
+  --table-hover: #f1f5f9;
+  --table-header-bg: #f9fafb;
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-track: #f1f5f9;
+}
+
+html[data-theme="dark"] {
+  /* Surface */
+  --bg-app: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-hover: #334155;
+  --bg-input: #1e293b;
+  --bg-modal-backdrop: rgba(0, 0, 0, 0.7);
+
+  /* Text */
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-on-accent: #ffffff;
+
+  /* Borders */
+  --border-default: #334155;
+  --border-strong: #475569;
+  --border-input: #475569;
+
+  /* Accent (brand) */
+  --accent: #e8365d;
+  --accent-hover: #f43f5e;
+  --accent-light: rgba(232, 54, 93, 0.15);
+
+  /* Semantic colors */
+  --success: #34d399;
+  --success-bg: rgba(52, 211, 153, 0.1);
+  --success-border: rgba(52, 211, 153, 0.3);
+  --warning: #fbbf24;
+  --warning-bg: rgba(251, 191, 36, 0.1);
+  --danger: #f87171;
+  --danger-bg: rgba(248, 113, 113, 0.1);
+  --danger-border: rgba(248, 113, 113, 0.3);
+  --info: #60a5fa;
+  --info-bg: rgba(96, 165, 250, 0.1);
+  --info-border: rgba(96, 165, 250, 0.3);
+
+  /* Status colors */
+  --status-online: #4ade80;
+  --status-offline: #f87171;
+  --status-warning: #fbbf24;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+  /* Specific UI */
+  --header-bg: #0f172a;
+  --sidebar-bg: #1e293b;
+  --footer-bg: #1e293b;
+  --kpi-card-bg: #1e293b;
+  --chart-grid: #334155;
+  --table-stripe: #1e293b;
+  --table-hover: #334155;
+  --table-header-bg: #1e293b;
+  --scrollbar-thumb: #475569;
+  --scrollbar-track: #0f172a;
+}
+
+/* ===== GLOBAL TRANSITIONS ===== */
+html,
+html * {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html,
+  html * {
+    transition: none !important;
+  }
+}
+
+/* ===== SCROLLBARS ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+/* ===== BASE ===== */
 body, html {
   margin: 0;
   padding: 0;
   font-family: Arial, sans-serif !important;
+  background: var(--bg-app);
+  color: var(--text-primary);
 }
 
 .leaflet-top {
@@ -46,7 +202,7 @@ body, html {
   width: 260px;
   font-size: 12px;
   line-height: 1.4;
-  color: #020617;
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -56,7 +212,7 @@ body, html {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: #f1f5f9;
+  background: var(--bg-card-hover);
   border-radius: 6px;
 }
 
@@ -78,13 +234,13 @@ body, html {
 
 .scada-popup-meta {
   font-size: 11px;
-  color: #475569;
+  color: var(--text-secondary);
 }
 
 .scada-popup-alert {
   font-size: 11px;
-  color: #b45309;
-  background: #fff7ed;
+  color: var(--warning);
+  background: var(--warning-bg);
   padding: 4px 6px;
   border-radius: 4px;
 }
@@ -92,8 +248,8 @@ body, html {
 .scada-popup-btn {
   margin-top: 4px;
   width: 100%;
-  background: #2563eb;
-  color: #fff;
+  background: var(--info);
+  color: var(--text-on-accent);
   border: none;
   padding: 6px 0;
   border-radius: 6px;
@@ -102,10 +258,18 @@ body, html {
 }
 
 .scada-popup-btn:hover {
-  background: #1e40af;
+  background: var(--accent-hover);
 }
 
 /* Ajuste Leaflet */
+.leaflet-popup-content-wrapper {
+  background: var(--bg-card) !important;
+}
+
+.leaflet-popup-tip {
+  background: var(--bg-card) !important;
+}
+
 .leaflet-popup-content {
   margin: 8px 12px;
 }
@@ -120,7 +284,7 @@ body, html {
     width: 24px;
     height: 24px;
     font: 16px / 24px Tahoma, Verdana, sans-serif;
-    color: #fff;
+    color: var(--text-muted);
     text-decoration: none;
     background: transparent;
 }

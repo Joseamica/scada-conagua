@@ -6,6 +6,7 @@ import {
   ElementRef,
   signal,
   inject,
+  effect,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
@@ -18,6 +19,8 @@ import { NgIconComponent, provideIcons } from '@ng-icons/core';
 import { heroArrowLeftStartOnRectangle, heroDocumentArrowDown } from '@ng-icons/heroicons/outline';
 import { TelemetryService } from '../../../core/services/telemetry';
 import { AuthService } from '../../../core/services/auth.service';
+import { ThemeService } from '../../../core/services/theme.service';
+import { getEChartsColors } from '../../../core/utils/echarts-theme';
 import { POZOS_DATA } from '../../pozos/pozos-data';
 
 type SeriesKey = 'caudal' | 'presion' | 'comunicacion';
@@ -66,6 +69,16 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit {
   };
 
   private authService = inject(AuthService);
+  private themeService = inject(ThemeService);
+
+  private themeEffect = effect(() => {
+    const theme = this.themeService.resolved();
+    if (this.chart) {
+      const c = getEChartsColors(theme);
+      this.chart.setOption({ backgroundColor: c.backgroundColor }, true);
+      this.chart.resize();
+    }
+  });
 
   constructor(
     private router: Router,

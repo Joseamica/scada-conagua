@@ -9,19 +9,19 @@
   display:flex; align-items:center; justify-content:space-between;
   gap:12px; margin-bottom:12px;
 }
-.title{ font-size:44px; font-weight:300; margin:6px 0 0; color:#374151; }
+.title{ font-size:44px; font-weight:300; margin:6px 0 0; color:var(--text-primary); }
 
 .actions{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
 
 .card{
-  background:#fff; border:1px solid #e5e7eb; border-radius:10px;
+  background:var(--bg-card); border:1px solid var(--border-default); border-radius:10px;
   padding:14px;
 }
 
 .toolbar{
   display:flex; align-items:center; justify-content:space-between;
   gap:12px; padding:10px 4px 14px;
-  border-bottom:1px solid #eef2f7;
+  border-bottom:1px solid var(--border-default);
 }
 
 .btn{
@@ -29,15 +29,15 @@
   border:1px solid transparent; cursor:pointer; font-size:14px;
 }
 .btn-primary{
-  background:#6d002b; color:#fff;
+  background:var(--accent); color:var(--text-on-accent);
 }
 
 
 
 /* CARD */
 .user-form-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 14px;
   padding: 24px;
 }
@@ -72,8 +72,8 @@
   min-width: 0;
   padding: 10px 14px;
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
+  border: 1px solid var(--border-default);
+  background: var(--bg-card);
 }
 
 /* Toggle */
@@ -100,7 +100,7 @@
 .user-form-card input:focus,
 .user-form-card select:focus {
   outline: none;
-  border-color: #6d002b;
+  border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(109, 0, 43, 0.12);
 }
 
@@ -109,7 +109,7 @@
   font-size: 15px;
   font-weight: 600;
   margin: 28px 0 12px;
-  color: #374151;
+  color: var(--text-primary);
 }
 
 /* TABS */
@@ -122,8 +122,8 @@
 .tab {
   padding: 8px 14px;
   border-radius: 8px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--table-header-bg);
+  border: 1px solid var(--border-default);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -181,15 +181,15 @@
   align-items: center;
 
   padding: 14px 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-default);
   border-radius: 12px;
-  background: #f9fafb;
+  background: var(--table-header-bg);
 }
 
 /* Texto */
 .toggle-label {
   font-size: 14px;
-  color: #374151;
+  color: var(--text-primary);
   line-height: 1.4;
   padding-right: 12px;
 }
@@ -208,7 +208,7 @@
   position: absolute;
   cursor: pointer;
   inset: 0;
-  background-color: #d1d5db;
+  background-color: var(--border-strong);
   border-radius: 999px;
   transition: background-color 0.25s ease;
 }
@@ -220,14 +220,14 @@
   width: 20px;
   left: 3px;
   top: 3px;
-  background-color: #ffffff;
+  background-color: var(--bg-card);
   border-radius: 50%;
   transition: transform 0.25s ease;
 }
 
 /* ON state */
 .toggle input:checked + .slider {
-  background-color: #6d002b; /* tu color vino */
+  background-color: var(--accent);
 }
 
 .toggle input:checked + .slider::before {
@@ -261,16 +261,16 @@
 .field label{
   font-size:14px;
   margin-bottom:6px;
-  color:#374151;
+  color:var(--text-primary);
 }
 
 .field input,
 .field select {
   height:44px;
   padding:0 14px;
-  border:1px solid #e5e7eb;
+  border:1px solid var(--border-default);
   border-radius:10px;
-  background:#fff;
+  background:var(--bg-card);
   font-size:14px;
   transition: all .15s ease;
 
@@ -279,15 +279,15 @@
 /* hover */
 .field input:hover,
 .field select:hover {
-  border-color:#cbd5e1;
+  border-color:var(--border-strong);
 }
 
 /* focus */
 .field input:focus,
 .field select:focus {
   outline:none;
-  border-color:#6d002b;
-  box-shadow:0 0 0 2px rgba(46,49,146,0.12);
+  border-color:var(--accent);
+  box-shadow:0 0 0 2px rgba(109,0,43,0.12);
 
 }
 
@@ -300,9 +300,9 @@
 
 .tipo-card{
   padding:12px 18px;
-  border:1px solid #e5e7eb;
+  border:1px solid var(--border-default);
   border-radius:10px;
-  background:#fff;
+  background:var(--bg-card);
   cursor:pointer;
   transition: all .15s ease;
 
@@ -310,15 +310,15 @@
 
 /* hover */
 .tipo-card:hover{
-  border-color:#cbd5e1;
+  border-color:var(--border-strong);
   transform:translateY(-1px);
 }
 
 /* activo */
 .tipo-card.active{
-  background:#6d002b;
-  color:white;
-  border-color:#6d002b;
+  background:var(--accent);
+  color:var(--text-on-accent);
+  border-color:var(--accent);
 }
 
 .file-ui{
@@ -329,7 +329,7 @@
 
 .file-name{
   font-size:14px;
-  color:#6b7280;
+  color:var(--text-secondary);
 }
 
 .form-actions{

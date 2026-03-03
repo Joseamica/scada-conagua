@@ -8,7 +8,7 @@
   left: 0;
   right: 0;
   height: 60px;
-  background: #6d002b;
+  background: var(--footer-bg);
   display: flex;
   align-items: stretch;
   z-index: 1000;

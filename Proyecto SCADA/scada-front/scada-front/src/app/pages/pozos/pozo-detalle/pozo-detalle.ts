@@ -1,6 +1,6 @@
 // src/app/pages/pozos/pozo-detalle/pozo-detalle.ts
 
-import { Component, computed, signal, ViewChild, ElementRef, AfterViewInit, OnInit, inject, DestroyRef, OnDestroy } from '@angular/core';
+import { Component, computed, signal, ViewChild, ElementRef, AfterViewInit, OnInit, inject, DestroyRef, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
@@ -12,6 +12,8 @@ import { TelemetryService } from '../../../core/services/telemetry';
 import { timer, forkJoin } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import * as echarts from 'echarts';
+import { ThemeService } from '../../../core/services/theme.service';
+import { getEChartsColors } from '../../../core/utils/echarts-theme';
 
 // ICONOS
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
@@ -107,6 +109,21 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   private router = inject(Router);
   private telemetryService = inject(TelemetryService);
   private destroyRef = inject(DestroyRef);
+  private themeService = inject(ThemeService);
+
+  private themeEffect = effect(() => {
+    const theme = this.themeService.resolved();
+    if (this.mainChart) {
+      const c = getEChartsColors(theme);
+      this.mainChart.setOption({ backgroundColor: c.backgroundColor }, true);
+      this.mainChart.resize();
+    }
+    if (this.totalizerChart) {
+      const c = getEChartsColors(theme);
+      this.totalizerChart.setOption({ backgroundColor: c.backgroundColor }, true);
+      this.totalizerChart.resize();
+    }
+  });
   public liveStatus = signal<LiveStatusResponse | null>(null);
 
   // Role-based control: only Admin (1) and Supervisor (2) can operate pumps
@@ -678,7 +695,7 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
         type: 'value', name: v.unit, position: isLeft ? 'left' : 'right',
         scale: true,
         axisLabel: { color: v.color }, nameTextStyle: { color: v.color },
-        splitLine: { show: idx === 0, lineStyle: { color: '#e5e7eb' } }
+        splitLine: { show: idx === 0, lineStyle: { color: getEChartsColors(this.themeService.resolved()).splitLine } }
       };
 
       if (!isLeft && rightOffset > 0) axis.offset = rightOffset;
@@ -776,7 +793,7 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
       xAxis: { type: 'time', boundaryGap: false },
       yAxis: {
         type: 'value', name: 'm³',
-        splitLine: { lineStyle: { color: '#e5e7eb' } }
+        splitLine: { lineStyle: { color: getEChartsColors(this.themeService.resolved()).splitLine } }
       },
       dataZoom: [
         { type: 'inside', xAxisIndex: 0, filterMode: 'filter' },

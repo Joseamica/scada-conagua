@@ -10,7 +10,7 @@
 
 .shell {
   min-height: 100vh;
-  background: #f4f5f7;
+  background: var(--bg-app);
   padding-bottom: 90px;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
@@ -34,13 +34,13 @@
 .page-title {
   font-size: 24px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary);
   margin: 0 0 4px;
 }
 
 .page-subtitle {
   font-size: 14px;
-  color: #64748b;
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -50,9 +50,9 @@
   gap: 6px;
   padding: 8px 16px;
   border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  color: #475569;
+  border: 1px solid var(--border-default);
+  background: var(--bg-card);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
@@ -62,8 +62,8 @@
 }
 
 .btn-ghost:hover {
-  border-color: #cbd5e1;
-  color: #0f172a;
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
 /* ===== KPI CARDS ROW ===== */
@@ -76,8 +76,8 @@
 }
 
 .kpi-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 16px;
   padding: 20px;
   display: flex;
@@ -87,13 +87,13 @@
 }
 
 .kpi-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 12px var(--shadow-sm);
   transform: translateY(-2px);
 }
 
 /* Main KPI (total gasto) */
 .kpi-main {
-  border-left: 4px solid #6b0027;
+  border-left: 4px solid var(--accent);
 }
 
 /* Icon wrap */
@@ -103,8 +103,8 @@
   border-radius: 10px;
   display: grid;
   place-items: center;
-  background: rgba(107, 0, 39, 0.08);
-  color: #6b0027;
+  background: var(--accent-light);
+  color: var(--accent);
   margin-bottom: 8px;
 }
 
@@ -133,7 +133,7 @@
 .kpi-value {
   font-size: 32px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary);
   line-height: 1.1;
 }
 
@@ -144,19 +144,19 @@
 .kpi-unit {
   font-size: 16px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-secondary);
 }
 
 .kpi-label {
   font-size: 14px;
   font-weight: 600;
-  color: #334155;
+  color: var(--text-primary);
   margin-top: 4px;
 }
 
 .kpi-hint {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 /* ===== CONTENT GRID (Chart + Map) ===== */
@@ -168,8 +168,8 @@
 }
 
 .content-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 16px;
   overflow: hidden;
   display: flex;
@@ -182,7 +182,7 @@
   align-items: center;
   gap: 12px;
   padding: 20px 24px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .content-header-icon {
@@ -191,8 +191,8 @@
   border-radius: 10px;
   display: grid;
   place-items: center;
-  background: rgba(107, 0, 39, 0.08);
-  color: #6b0027;
+  background: var(--accent-light);
+  color: var(--accent);
   flex-shrink: 0;
 }
 
@@ -204,13 +204,13 @@
 .content-title {
   font-size: 15px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-primary);
   margin: 0 0 2px;
 }
 
 .content-desc {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -247,11 +247,11 @@
 
 .municipio-name {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
 }
 
 .municipio-gasto {
-  color: #0284c7;
+  color: var(--info);
   font-weight: 700;
 }
 

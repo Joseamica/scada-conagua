@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, inject } from '@angular/core';
+import { Component, OnInit, AfterViewInit, inject, effect } from '@angular/core';
 import { Location, CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
@@ -11,6 +11,8 @@ import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
 import { POZOS_DATA } from '../../pozos/pozos-data';
 import { TelemetryService } from '../../../core/services/telemetry';
 import { AuthService } from '../../../core/services/auth.service';
+import { ThemeService } from '../../../core/services/theme.service';
+import { getEChartsColors } from '../../../core/utils/echarts-theme';
 import * as L from 'leaflet';
 import * as echarts from 'echarts';
 
@@ -48,6 +50,23 @@ export class Overview implements OnInit, AfterViewInit {
   private location = inject(Location);
   private telemetryService = inject(TelemetryService);
   private authService = inject(AuthService);
+  private themeService = inject(ThemeService);
+  private tileLayer?: L.TileLayer;
+
+  private themeEffect = effect(() => {
+    const theme = this.themeService.resolved();
+    if (this.chart) {
+      const c = getEChartsColors(theme);
+      this.chart.setOption({ backgroundColor: c.backgroundColor }, true);
+      this.chart.resize();
+    }
+    if (this.tileLayer && this.detalleMap) {
+      const url = theme === 'dark'
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+      this.tileLayer.setUrl(url);
+    }
+  });
 
   // Scoped sources filtered by user role
   private scopedSources: GisSource[] = [];
@@ -174,10 +193,10 @@ export class Overview implements OnInit, AfterViewInit {
   private initBaseMap() {
     this.detalleMap = L.map('mapOverview').setView([19.4, -99.1], 11);
 
-    L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-      { subdomains: 'abcd', maxZoom: 19 }
-    ).addTo(this.detalleMap);
+    const tileUrl = this.themeService.resolved() === 'dark'
+      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    this.tileLayer = L.tileLayer(tileUrl, { subdomains: 'abcd', maxZoom: 19 }).addTo(this.detalleMap);
   }
 
   private loadMunicipiosOverview() {

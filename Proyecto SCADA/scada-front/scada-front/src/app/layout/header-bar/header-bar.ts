@@ -7,13 +7,17 @@ import { HeaderTitleService } from '../../core/services/header-title.service';
 import {
   heroChevronDown,
   heroArrowRightOnRectangle,
-  heroIdentification
+  heroIdentification,
+  heroSun,
+  heroMoon,
+  heroComputerDesktop
 } from '@ng-icons/heroicons/outline';
 import {
   heroBellAlertSolid,
   heroEnvelopeSolid
 } from '@ng-icons/heroicons/solid';
 import { AuthService } from '../../core/services/auth.service';
+import { ThemeService } from '../../core/services/theme.service';
 import { ROLE_MAP } from '../../core/constants/roles';
 
 @Component({
@@ -28,7 +32,10 @@ import { ROLE_MAP } from '../../core/constants/roles';
       heroEnvelopeSolid,
       heroChevronDown,
       heroArrowRightOnRectangle,
-      heroIdentification
+      heroIdentification,
+      heroSun,
+      heroMoon,
+      heroComputerDesktop
     })
   ]
 })
@@ -71,11 +78,33 @@ export class HeaderBarComponent {
     return name.substring(0, 2).toUpperCase();
   });
 
+  // ======================
+  // TEMA
+  // ======================
+  themeIcon = computed(() => {
+    const pref = this.themeService.preference();
+    if (pref === 'dark') return 'heroMoon';
+    if (pref === 'system') return 'heroComputerDesktop';
+    return 'heroSun';
+  });
+
+  themeLabel = computed(() => {
+    const pref = this.themeService.preference();
+    if (pref === 'dark') return 'Tema: Oscuro';
+    if (pref === 'system') return 'Tema: Sistema';
+    return 'Tema: Claro';
+  });
+
+  toggleTheme() {
+    this.themeService.toggle();
+  }
+
   constructor(
     private router: Router,
     private authService: AuthService,
     private elementRef: ElementRef,
-    public headerTitleService: HeaderTitleService
+    public headerTitleService: HeaderTitleService,
+    private themeService: ThemeService
   ) {
     this.router.events
       .pipe(filter(e => e instanceof NavigationEnd))

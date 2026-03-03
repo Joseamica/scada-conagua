@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, OnDestroy, inject, signal, computed, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, inject, signal, computed, ViewChild, ElementRef, effect } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef } from '@angular/core';
@@ -10,6 +10,8 @@ import { POZOS_DATA } from '../pozos/pozos-data';
 import { HeaderBarComponent } from '../../layout/header-bar/header-bar';
 import { FooterTabsComponent } from '../../layout/footer-tabs/footer-tabs';
 import { TelemetryService } from '../../core/services/telemetry';
+import { ThemeService } from '../../core/services/theme.service';
+import { getEChartsColors } from '../../core/utils/echarts-theme';
 import { TIME_RANGES, TimeRange } from '../../shared/time-ranges';
 import { DateRangePickerComponent, DateRangeOutput } from '../../shared/date-range-picker/date-range-picker';
 
@@ -59,9 +61,26 @@ export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
 
   private telemetryService = inject(TelemetryService);
   private router = inject(Router);
+  private themeService = inject(ThemeService);
   private pozosMunicipio: any[] = [];
   private activeDevEui = '';
   private resizeHandler = () => { this.chart?.resize(); };
+  private tileLayer?: L.TileLayer;
+
+  private themeEffect = effect(() => {
+    const theme = this.themeService.resolved();
+    if (this.chart) {
+      const c = getEChartsColors(theme);
+      this.chart.setOption({ backgroundColor: c.backgroundColor }, true);
+      this.chart.resize();
+    }
+    if (this.tileLayer && this.detalleMap) {
+      const url = theme === 'dark'
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+      this.tileLayer.setUrl(url);
+    }
+  });
 
   // Sitios list with live data
   sitios = signal<{ slug: string; nombre: string; estatus: string; caudal: number; presion: number; lat: number; lng: number }[]>([]);
@@ -202,7 +221,10 @@ export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
 
   private initMap() {
     this.detalleMap = L.map('mapDetalle').setView([19.4, -99.1], 11);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 19 }).addTo(this.detalleMap);
+    const tileUrl = this.themeService.resolved() === 'dark'
+      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    this.tileLayer = L.tileLayer(tileUrl, { subdomains: 'abcd', maxZoom: 19 }).addTo(this.detalleMap);
     this.loadMunicipioDetalle(this.municipioId);
     this.addPozoMarkers();
   }

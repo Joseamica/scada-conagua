@@ -47,6 +47,15 @@
       <span>2 Mensajes</span>
     </button>
 
+    <!-- TEMA -->
+    <button
+      class="theme-toggle"
+      (click)="toggleTheme()"
+      [title]="themeLabel()"
+      aria-label="Cambiar tema">
+      <ng-icon [name]="themeIcon()" size="18"></ng-icon>
+    </button>
+
     <div class="header-divider" aria-hidden="true"></div>
 
     <!-- USUARIO -->
