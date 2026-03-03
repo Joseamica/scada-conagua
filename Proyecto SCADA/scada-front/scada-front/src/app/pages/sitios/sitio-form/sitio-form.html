@@ -3,209 +3,262 @@
 <div class="shell">
   <main class="page">
 
-    <section class="card">
+    <!-- Page header -->
+    <div class="page-head">
+      <div class="page-head-left">
+        <button type="button" class="btn-back" (click)="cancelar()">
+          <ng-icon name="heroArrowLeft" size="18"></ng-icon>
+        </button>
+        <div>
+          <h1 class="page-title">{{ modo === 'create' ? 'Nuevo sitio' : 'Editar sitio' }}</h1>
+          <p class="page-subtitle">
+            {{ modo === 'create'
+              ? 'Registra un nuevo sitio de monitoreo en el sistema'
+              : 'Modifica la informacion del sitio seleccionado' }}
+          </p>
+        </div>
+      </div>
+    </div>
 
-      <form [formGroup]="form" (ngSubmit)="save()">
+    <form [formGroup]="form" (ngSubmit)="save()">
 
-        <!-- DATOS BASICOS -->
-        <div class="section">
+      <!-- Datos basicos -->
+      <section class="form-card">
+        <div class="form-card-header">
+          <div class="form-card-icon" style="background: var(--accent-light); color: var(--accent);">
+            <ng-icon name="heroBuildingOffice2" size="18"></ng-icon>
+          </div>
+          <div>
+            <h2 class="form-card-title">Datos basicos</h2>
+            <p class="form-card-desc">Informacion general del sitio</p>
+          </div>
+        </div>
 
-          <h3>Datos básicos</h3>
-
+        <div class="form-card-body">
           <div class="grid-2">
 
-            <div class="field">
-              <label>Nombre del sitio</label>
-              <input formControlName="nombre">
+            <div class="field field--full">
+              <label>Nombre del sitio <span class="required">*</span></label>
+              <input formControlName="nombre" placeholder="Ej. Pozo 40 Ixtapaluca">
+              <span class="field-error"
+                *ngIf="form.get('nombre')?.touched && form.get('nombre')?.hasError('required')">
+                El nombre es obligatorio
+              </span>
             </div>
 
-            <div class="field">
+            <div class="field field--full">
               <label>Tipo de sitio</label>
-
               <div class="tipo-grid">
                 <div
                   class="tipo-card"
                   *ngFor="let t of tiposSitio"
                   [class.active]="form.value.tipo === t.value"
                   (click)="form.patchValue({tipo:t.value})">
-
-                  {{ t.label }}
-
+                  <ng-icon [name]="t.icon" size="18"></ng-icon>
+                  <span>{{ t.label }}</span>
                 </div>
               </div>
             </div>
 
             <div class="field">
-              <label>Proveedor</label>
-
+              <label>Proveedor <span class="required">*</span></label>
               <select formControlName="proveedor">
-
                 <option [ngValue]="null">Seleccionar</option>
-
-                <option *ngFor="let p of proveedores"
-                        [ngValue]="p.id">
-
+                <option *ngFor="let p of proveedores" [ngValue]="p.id">
                   {{ p.nombre }}
-
                 </option>
-
               </select>
+              <span class="field-error"
+                *ngIf="form.get('proveedor')?.touched && form.get('proveedor')?.hasError('required')">
+                Selecciona un proveedor
+              </span>
             </div>
 
             <div class="field">
               <label>Estatus</label>
-
               <select formControlName="estatus">
-
-                <option *ngFor="let e of estatusSitio"
-                        [ngValue]="e.value">
-
+                <option *ngFor="let e of estatusSitio" [ngValue]="e.value">
                   {{ e.label }}
-
                 </option>
-
               </select>
             </div>
 
-            <div class="field">
-
-  <label>ID Gateway</label>
-
-  <input formControlName="gatewayId">
-
-</div>
-
-<div class="field">
-
-  <label>ID UTR</label>
-
-  <input formControlName="utrId">
-
-</div>
-
           </div>
+        </div>
+      </section>
 
-          
-
-
+      <!-- Conectividad -->
+      <section class="form-card">
+        <div class="form-card-header">
+          <div class="form-card-icon" style="background: rgba(13,148,136,0.08); color: #0d9488;">
+            <ng-icon name="heroCpuChip" size="18"></ng-icon>
+          </div>
+          <div>
+            <h2 class="form-card-title">Conectividad</h2>
+            <p class="form-card-desc">Identificadores del dispositivo IoT</p>
+          </div>
         </div>
 
+        <div class="form-card-body">
+          <div class="grid-3">
 
-        <!-- UBICACION -->
-        <div class="section">
+            <div class="field">
+              <label>DevEUI</label>
+              <input formControlName="devEUI" placeholder="Ej. a84041b4e1835e0f">
+            </div>
 
-          <h3>Ubicación</h3>
+            <div class="field">
+              <label>ID Gateway</label>
+              <input formControlName="gatewayId" placeholder="Ej. GW-001">
+            </div>
 
+            <div class="field">
+              <label>ID UTR</label>
+              <input formControlName="utrId" placeholder="Ej. UTR-040">
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- Ubicacion -->
+      <section class="form-card">
+        <div class="form-card-header">
+          <div class="form-card-icon" style="background: rgba(59,130,246,0.08); color: #3b82f6;">
+            <ng-icon name="heroMapPin" size="18"></ng-icon>
+          </div>
+          <div>
+            <h2 class="form-card-title">Ubicacion</h2>
+            <p class="form-card-desc">Localizacion geografica del sitio</p>
+          </div>
+        </div>
+
+        <div class="form-card-body">
           <div class="grid-2">
 
             <div class="field">
-
-              <label>Estado</label>
-              <select formControlName="estado">
-                <option value="">Seleccionar</option>
-                <ng-container *ngIf="estados && estados.length > 0">
-                    <option *ngFor="let e of estados" [value]="e.estado">
-                    {{ e.estado }}
-                    </option>
-                </ng-container>
-            </select>
-
-            </div>
-
-            <div class="field">
-            <label>Municipio</label>
-            <select formControlName="municipio">
-                <option value="">Seleccionar</option>
-                <option *ngFor="let m of municipiosFiltrados" [value]="m">
-                {{ m }}
-                </option>
-            </select>
-            </div>
-
-            <div class="field">
               <label>Latitud</label>
-              <input formControlName="lat">
+              <input formControlName="lat" type="number" step="any" placeholder="19.3456">
             </div>
 
             <div class="field">
               <label>Longitud</label>
-              <input formControlName="lng">
+              <input formControlName="lng" type="number" step="any" placeholder="-98.7654">
             </div>
 
-          </div>
+            @if (!locationVisible()) {
+              <div class="field field--full">
+                <div class="auto-hint">
+                  <ng-icon name="heroSparkles" size="14"></ng-icon>
+                  <span>Ingresa latitud y longitud para detectar estado y municipio automaticamente</span>
+                </div>
+              </div>
+            }
 
+            @if (locationVisible()) {
+              <div class="field">
+                <label>
+                  Estado <span class="required">*</span>
+                  @if (autoDetected()) {
+                    <span class="auto-badge">
+                      <ng-icon name="heroSparkles" size="12"></ng-icon>
+                      Auto-detectado
+                    </span>
+                  }
+                </label>
+                <select formControlName="estado">
+                  <option value="">Seleccionar</option>
+                  <ng-container *ngIf="estados && estados.length > 0">
+                    <option *ngFor="let e of estados" [value]="e.estado">
+                      {{ e.estado }}
+                    </option>
+                  </ng-container>
+                </select>
+                <span class="field-error"
+                  *ngIf="form.get('estado')?.touched && form.get('estado')?.hasError('required')">
+                  Selecciona un estado
+                </span>
+              </div>
+
+              <div class="field">
+                <label>
+                  Municipio <span class="required">*</span>
+                  @if (autoDetected()) {
+                    <span class="auto-badge">
+                      <ng-icon name="heroSparkles" size="12"></ng-icon>
+                      Auto-detectado
+                    </span>
+                  }
+                </label>
+                <select formControlName="municipio">
+                  <option value="">Seleccionar</option>
+                  <option *ngFor="let m of municipiosFiltrados" [value]="m">
+                    {{ m }}
+                  </option>
+                </select>
+                <span class="field-error"
+                  *ngIf="form.get('municipio')?.touched && form.get('municipio')?.hasError('required')">
+                  Selecciona un municipio
+                </span>
+              </div>
+            }
+
+          </div>
+        </div>
+      </section>
+
+      <!-- Visualizacion -->
+      <section class="form-card">
+        <div class="form-card-header">
+          <div class="form-card-icon" style="background: rgba(168,85,247,0.08); color: #a855f7;">
+            <ng-icon name="heroPhoto" size="18"></ng-icon>
+          </div>
+          <div>
+            <h2 class="form-card-title">Visualizacion</h2>
+            <p class="form-card-desc">Render isometrico del sitio</p>
+          </div>
         </div>
 
+        <div class="form-card-body">
 
-        <!-- VISUAL -->
-        <div class="section">
+          <!-- Upload area -->
+          <div class="upload-area" *ngIf="!form.value.render" (click)="fileInput.click()">
+            <input
+              type="file"
+              accept="image/*"
+              (change)="onRenderSelected($event)"
+              #fileInput
+              hidden>
+            <ng-icon name="heroCloudArrowUp" size="32" class="upload-icon"></ng-icon>
+            <p class="upload-label">Haz clic para seleccionar un archivo</p>
+            <p class="upload-hint">PNG, JPG o WEBP</p>
+          </div>
 
-          <h3>Visualización</h3>
-
-          <div class="field full">
-
-            <label>Añadir render</label>
-
-            <div class="file-ui">
-
-              <input
-                type="file"
-                accept="image/*"
-                (change)="onRenderSelected($event)"
-                #fileInput
-                hidden>
-
-              <button
-                type="button"
-                class="btn btn-outline"
-                (click)="fileInput.click()">
-
-                Seleccionar archivo
-
+          <!-- Preview -->
+          <div class="render-preview" *ngIf="form.value.render">
+            <img [src]="form.value.render" alt="Render preview">
+            <div class="render-preview-overlay">
+              <span class="render-file-name">{{ renderFileName }}</span>
+              <button type="button" class="btn btn-sm btn-outline" (click)="removeRender()">
+                Quitar
               </button>
-
-              <span class="file-name">
-
-                {{ form.value.render ? 'Render cargado' : 'Ningún archivo seleccionado' }}
-
-              </span>
-
             </div>
-
-            <div class="render-preview" *ngIf="form.value.render">
-              <img [src]="form.value.render">
-            </div>
-
           </div>
 
         </div>
+      </section>
 
-        <!-- ACTIONS -->
-<div class="form-actions">
+      <!-- Actions -->
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" (click)="cancelar()">
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+          {{ modo === 'create' ? 'Guardar sitio' : 'Actualizar sitio' }}
+        </button>
+      </div>
 
-  <button
-    type="button"
-    class="btn btn-outline"
-    (click)="cancelar()">
-
-    Cancelar
-
-  </button>
-
-  <button
-    type="submit"
-    class="btn btn-primary">
-
-    {{ modo === 'create' ? 'Guardar sitio' : 'Actualizar sitio' }}
-
-  </button>
-
-</div>
-
-
-      </form>
-
-    </section>
+    </form>
 
   </main>
 </div>

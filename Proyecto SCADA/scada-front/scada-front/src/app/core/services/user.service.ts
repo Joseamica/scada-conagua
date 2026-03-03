@@ -10,6 +10,7 @@ export interface UserPermissions {
   can_edit: boolean;
   can_export: boolean;
   can_block: boolean;
+  can_operate: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

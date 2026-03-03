@@ -1,7 +1,20 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { NgIconComponent, provideIcons } from '@ng-icons/core';
+import { Subscription, combineLatest, debounceTime } from 'rxjs';
+import {
+  heroArrowLeft,
+  heroMapPin,
+  heroBuildingOffice2,
+  heroPhoto,
+  heroCloudArrowUp,
+  heroSignal,
+  heroCpuChip,
+  heroWrenchScrewdriver,
+  heroSparkles,
+} from '@ng-icons/heroicons/outline';
 
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
@@ -9,185 +22,247 @@ import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
 const estadosJson = require('../../../../assets/data/estados.json');
 
 interface EstadoMunicipio {
-
   estado: string;
-  municipios: string[];
-
+  municipios: Record<string, string>;
 }
 
 @Component({
   standalone: true,
   selector: 'app-sitio-form',
-  imports: [
-    ReactiveFormsModule,  
-    HeaderBarComponent,
-    FooterTabsComponent,
-    CommonModule
-], 
+  imports: [ReactiveFormsModule, HeaderBarComponent, FooterTabsComponent, CommonModule, NgIconComponent],
+  providers: [
+    provideIcons({
+      heroArrowLeft,
+      heroMapPin,
+      heroBuildingOffice2,
+      heroPhoto,
+      heroCloudArrowUp,
+      heroSignal,
+      heroCpuChip,
+      heroWrenchScrewdriver,
+      heroSparkles,
+    }),
+  ],
   templateUrl: './sitio-form.html',
-  styleUrls: ['./sitio-form.css']
+  styleUrls: ['./sitio-form.css'],
 })
-export class SitioForm implements OnInit {
-
+export class SitioForm implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private fb = inject(FormBuilder);
 
   modo: 'create' | 'edit' = 'create';
   sitioId: string | null = null;
+  renderFileName = '';
 
   tiposSitio = [
-  { value:'pozo', label:'Pozo' },
-  { value:'pluviometro', label:'Pluviómetro' },
-  { value:'drenaje', label:'Drenaje' },
-  { value:'agua_bloque', label:'Agua en bloque' },
-  { value:'estanque', label:'Estanque' }
-];
+    { value: 'pozo', label: 'Pozo', icon: 'heroWrenchScrewdriver' },
+    { value: 'pluviometro', label: 'Pluviometro', icon: 'heroCloudArrowUp' },
+    { value: 'drenaje', label: 'Drenaje', icon: 'heroSignal' },
+    { value: 'agua_bloque', label: 'Agua en bloque', icon: 'heroSignal' },
+    { value: 'estanque', label: 'Estanque', icon: 'heroSignal' },
+  ];
 
-estatusSitio = [
+  estatusSitio = [
+    { value: 'activo', label: 'Activo' },
+    { value: 'obra', label: 'En obra' },
+    { value: 'inactivo', label: 'Inactivo' },
+  ];
 
-  { value:'activo', label:'Activo' },
-  { value:'obra', label:'En obra' },
-  { value:'inactivo', label:'Inactivo' }
+  estados: EstadoMunicipio[] = [];
+  municipiosFiltrados: string[] = [];
 
-];
+  proveedores = [
+    { id: 1, nombre: '4PT' },
+    { id: 2, nombre: 'ICH' },
+  ];
 
-estados: EstadoMunicipio[] = [];
-municipiosFiltrados:string[] = [];
+  // Auto-detection
+  autoDetected = signal(false);
+  locationVisible = signal(false);
+  private geoFeatures: any[] = [];
+  private baseEstadosData: Record<string, { estado: string; municipios: Record<string, string> }> = {};
+  private coordSub?: Subscription;
 
-proveedores = [
-
-  { id:1, nombre:'4PT' },
-  { id:2, nombre:'ICH' }
-
-];
-
-
- form = this.fb.group({
-
-  nombre:[''],
-
-  tipo:['pozo'],
-
-  estatus:['activo'],
-
-  estado:[''],
-  municipio:[''],
-
-  proveedor:[null],
-
-  gatewayId:[''],
-  utrId:[''],
-
-  lat:[0],
-  lng:[0],
-
-  render:['']
-
-});
-
+  form = this.fb.group({
+    nombre: ['', Validators.required],
+    tipo: ['pozo'],
+    estatus: ['activo'],
+    estado: ['', Validators.required],
+    municipio: ['', Validators.required],
+    proveedor: [null as number | null, Validators.required],
+    devEUI: [''],
+    gatewayId: [''],
+    utrId: [''],
+    lat: [0],
+    lng: [0],
+    render: [''],
+  });
 
   ngOnInit() {
+    const data: unknown = estadosJson;
+    this.baseEstadosData = (data as { default: any }).default || data;
+    this.estados = Object.values(this.baseEstadosData) as EstadoMunicipio[];
 
- const data: unknown = estadosJson;
+    this.form.get('estado')?.valueChanges.subscribe((estadoNombre) => {
+      const encontrado = this.estados.find((e) => e.estado === estadoNombre);
+      if (encontrado && encontrado.municipios) {
+        this.municipiosFiltrados = Object.values(encontrado.municipios);
+      } else {
+        this.municipiosFiltrados = [];
+      }
+      this.form.get('municipio')?.setValue('');
+    });
 
-  // 2. Verificamos si es el formato de módulo { default: [...] } o el objeto directo
-  const baseData = (data as { default: any }).default || data;
+    // Load GeoJSON for auto-detection
+    fetch('assets/mapas/edomex_municipios.geojson')
+      .then((r) => r.json())
+      .then((geo) => {
+        this.geoFeatures = geo.features;
+        // If coords already present (e.g. from GIS query params), detect now
+        const lat = this.form.value.lat;
+        const lng = this.form.value.lng;
+        if (lat && lng) {
+          this.detectLocation(+lat, +lng);
+        }
+      })
+      .catch(() => {
+        /* GeoJSON unavailable — form works normally */
+      });
 
-  // 3. Convertimos a Array y asignamos
-  this.estados = Object.values(baseData) as EstadoMunicipio[];
+    // Subscribe to lat/lng changes with debounce
+    this.coordSub = combineLatest([
+      this.form.get('lat')!.valueChanges,
+      this.form.get('lng')!.valueChanges,
+    ])
+      .pipe(debounceTime(400))
+      .subscribe(([lat, lng]) => this.detectLocation(+(lat ?? 0), +(lng ?? 0)));
 
-  console.log('Estados listos:', this.estados);
-
-  // 3. Tu lógica de suscripción se mantiene igual
-  this.form.get('estado')?.valueChanges.subscribe(estadoNombre => {
-  const encontrado = this.estados.find(e => e.estado === estadoNombre);
-  
-  if (encontrado && encontrado.municipios) {
-    // CONVERSIÓN CRÍTICA: Convertimos el objeto de municipios en un Array
-    this.municipiosFiltrados = Object.values(encontrado.municipios);
-  } else {
-    this.municipiosFiltrados = [];
-  }
-
-  // Limpiamos el valor del municipio en el formulario
-  this.form.get('municipio')?.setValue('');
-});
-
-    // detectar si viene edición
+    // detectar si viene edicion
     this.sitioId = this.route.snapshot.paramMap.get('id');
-
     if (this.sitioId) {
       this.modo = 'edit';
+      this.locationVisible.set(true); // edit mode always shows estado/municipio
       this.loadSitio();
     }
 
-    // detectar si viene desde GIS
+    // detectar si viene desde GIS con coordenadas
     const qp = this.route.snapshot.queryParams;
-
     if (qp['lat']) {
-      this.form.patchValue({
-        lat: qp['lat'],
-        lng: qp['lng']
-      });
+      this.form.patchValue({ lat: qp['lat'], lng: qp['lng'] });
     }
-
   }
 
+  ngOnDestroy() {
+    this.coordSub?.unsubscribe();
+  }
 
   loadSitio() {
-
-    // aquí luego cargas desde store o API
     console.log('cargar sitio', this.sitioId);
-
   }
 
   save() {
-
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
 
     if (this.modo === 'create') {
-
       console.log('crear sitio', this.form.value);
-
     } else {
-
       console.log('editar sitio', this.form.value);
-
     }
 
     this.router.navigate(['/telemetria']);
-
   }
 
-  onRenderSelected(event:any){
+  onRenderSelected(event: any) {
+    const file = event.target.files[0];
+    if (!file) return;
+    this.renderFileName = file.name;
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.form.patchValue({ render: reader.result as string });
+    };
+    reader.readAsDataURL(file);
+  }
 
-  const file = event.target.files[0];
+  removeRender() {
+    this.form.patchValue({ render: '' });
+    this.renderFileName = '';
+  }
 
-  if(!file) return;
+  cancelar() {
+    this.router.navigate(['/telemetria']);
+  }
 
-  const reader = new FileReader();
+  // --- Auto-detection ---
 
-  reader.onload = () => {
+  private detectLocation(lat: number, lng: number) {
+    if (!lat || !lng || this.geoFeatures.length === 0) {
+      this.autoDetected.set(false);
+      // Keep locationVisible if user already has values to edit
+      return;
+    }
 
-   this.form.patchValue({
-  render: reader.result as string
-});
+    for (const feature of this.geoFeatures) {
+      const geom = feature.geometry;
+      const polygons: number[][][] =
+        geom.type === 'MultiPolygon'
+          ? geom.coordinates.flatMap((p: number[][][]) => p)
+          : geom.coordinates;
 
-  };
+      for (const ring of polygons) {
+        if (this.pointInPolygon(lat, lng, ring)) {
+          const cveEnt: string = feature.properties.CVE_ENT;
+          const cveMun: string = feature.properties.CVE_MUN;
+          this.applyDetectedLocation(cveEnt, cveMun);
+          return;
+        }
+      }
+    }
 
-  reader.readAsDataURL(file);
+    this.autoDetected.set(false);
+  }
 
-}
+  private pointInPolygon(lat: number, lng: number, coords: number[][]): boolean {
+    let inside = false;
+    for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
+      const [xi, yi] = coords[i]; // GeoJSON = [lng, lat]
+      const [xj, yj] = coords[j];
+      if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
 
-cancelar(){
+  private applyDetectedLocation(cveEnt: string, cveMun: string) {
+    const estadoData = this.baseEstadosData[cveEnt];
+    if (!estadoData) {
+      this.autoDetected.set(false);
+      return;
+    }
 
-  this.router.navigate(['/telemetria']);
+    // GeoJSON CVE_MUN is zero-padded ("039"), estados.json keys are not ("39")
+    const munKey = parseInt(cveMun, 10).toString();
+    const munName = estadoData.municipios[munKey];
+    if (!munName) {
+      this.autoDetected.set(false);
+      return;
+    }
 
-}
+    this.form.patchValue({ estado: estadoData.estado });
 
-
-
-
-
+    // Wait a tick for municipiosFiltrados to be populated, then set municipio
+    setTimeout(() => {
+      if (this.municipiosFiltrados.includes(munName)) {
+        this.form.patchValue({ municipio: munName });
+        this.autoDetected.set(true);
+        this.locationVisible.set(true);
+      } else {
+        this.autoDetected.set(false);
+      }
+    }, 50);
+  }
 }

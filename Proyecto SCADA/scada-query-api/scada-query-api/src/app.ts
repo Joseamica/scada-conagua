@@ -9,8 +9,9 @@ import authRoutes from './routes/auth-routes';
 import userRoutes from './routes/user-routes';
 import auditRoutes from './routes/audit-routes';
 import entityRoutes from './routes/entity-routes';
-import { isAuth, isSupervisor } from './middlewares/auth-middleware';
+import { isAuth } from './middlewares/auth-middleware';
 import { auditLog } from './services/audit-service';
+import { getPermissions } from './services/permission-service';
 
 const app: Application = express();
 
@@ -201,14 +202,20 @@ app.get('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
 app.get('/api/v1/status/:devEUI', isAuth, getSiteStatus);
 app.get('/api/v1/telemetry/:devEUI/:measurement', isAuth, getSiteHistory);
 
-app.post('/api/v1/control', isSupervisor, async (req: Request, res: Response) => {
+app.post('/api/v1/control', isAuth, async (req: Request, res: Response) => {
     const { devEUI, command } = req.body;
-    
+
+    // Permission check: only users with can_operate may control pumps
+    const perms = await getPermissions(req.user!.id);
+    if (!perms?.can_operate) {
+        return res.status(403).json({ error: 'No tiene permiso para operar bombas.' });
+    }
+
     // Validación de parámetros de entrada conforme a la interfaz SCADAControlRequest
     if (!devEUI || (command !== 'START' && command !== 'STOP')) {
         return res.status(400).json({ error: 'Invalid devEUI or command. Must be START or STOP.' });
     }
-    
+
     const success = await sendSCADACommand(req.body);
 
     if (success) {

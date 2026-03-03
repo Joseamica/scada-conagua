@@ -523,8 +523,8 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
           return html;
         }
       },
-      legend: { data: legendData, top: 0, type: 'scroll' },
-      grid: { left: 55, right: gridRight, bottom: 70, top: 45 },
+      legend: { show: activeSites.length > 1, data: legendData, top: 0, type: 'scroll' },
+      grid: { left: 55, right: gridRight, bottom: 70, top: activeSites.length > 1 ? 45 : 20 },
       xAxis: {
         type: 'time',
         boundaryGap: false,

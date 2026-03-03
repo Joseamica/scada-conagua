@@ -50,22 +50,27 @@
       </div>
 
       <div class="chart-controls">
-        <button
-          *ngFor="let v of chartVariables"
-          class="ctrl-pill"
-          [class.active]="isVarSelected(v.key)"
-          [style.--c]="v.color"
-          (click)="toggleVar(v.key)">
-          {{ v.label }}
-        </button>
-        <span class="ctrl-sep"></span>
-        <button
-          *ngFor="let t of chartTypeOptions"
-          class="ctrl-pill ctrl-pill--type"
-          [class.active]="chartType() === t.key"
-          (click)="setChartType(t.key)">
-          {{ t.label }}
-        </button>
+        <div class="var-chips">
+          <button
+            *ngFor="let v of chartVariables"
+            class="var-chip"
+            [class.active]="isVarSelected(v.key)"
+            [style.--vc]="v.color"
+            (click)="toggleVar(v.key)">
+            <span class="var-dot"></span>
+            {{ v.key === 'rssi' ? 'LTE' : (v.key === 'snr' ? 'SNR' : v.label) }}
+          </button>
+        </div>
+        <div class="type-segment">
+          <button
+            *ngFor="let t of chartTypeOptions"
+            class="type-seg-btn"
+            [class.active]="chartType() === t.key"
+            [title]="t.label"
+            (click)="setChartType(t.key)">
+            <ng-icon [name]="t.icon" size="14"></ng-icon>
+          </button>
+        </div>
       </div>
 
       <div #chartEl class="chart-container"></div>

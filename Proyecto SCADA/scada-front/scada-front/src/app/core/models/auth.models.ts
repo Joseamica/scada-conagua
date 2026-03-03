@@ -8,6 +8,7 @@ export interface UserSession {
   estado_id: number;
   totp_enabled: boolean;
   is_2fa_enabled: boolean;
+  can_operate?: boolean;
 }
 
 export interface AuthResponse {

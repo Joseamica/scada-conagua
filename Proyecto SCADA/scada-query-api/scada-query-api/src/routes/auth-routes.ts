@@ -11,6 +11,7 @@ import bcrypt from 'bcrypt';
 import { ILoginRequest } from '../interfaces/user.interface';
 import { isAuth } from '../middlewares/auth-middleware';
 import { auditLog } from '../services/audit-service';
+import { getPermissions } from '../services/permission-service';
 
 const router = Router();
 
@@ -73,6 +74,8 @@ router.post('/login', async (req: Request, res: Response) => {
 
         await auditLog(user.id, 'LOGIN_SUCCESS', { method: 'direct' }, req.ip!);
 
+        const perms = await getPermissions(user.id);
+
         res.status(200).json({
             message: 'Login successful',
             requires2FA: false,
@@ -85,7 +88,8 @@ router.post('/login', async (req: Request, res: Response) => {
                 scope_id: user.scope_id,
         	estado_id: user.estado_id,
         	totp_enabled: !!user.totp_enabled,
-        	is_2fa_enabled: !!user.is_2fa_enabled
+        	is_2fa_enabled: !!user.is_2fa_enabled,
+        	can_operate: perms?.can_operate ?? false
     	    }
         });
 
@@ -132,6 +136,8 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
         // 3. Register activity in scada.audit_logs
         await auditLog(user.id, 'LOGIN_SUCCESS', { method: 'email_code' }, req.ip!);
 
+        const perms = await getPermissions(user.id);
+
         // 4. Send success response
         res.status(200).json({
             message: 'Authentication successful',
@@ -144,7 +150,8 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
 		scope_id: user.scope_id,
         	estado_id: user.estado_id,
         	totp_enabled: !!user.totp_enabled,
-        	is_2fa_enabled: !!user.is_2fa_enabled
+        	is_2fa_enabled: !!user.is_2fa_enabled,
+        	can_operate: perms?.can_operate ?? false
             }
         });
 
@@ -322,6 +329,8 @@ router.post('/verify-totp', async (req: Request, res: Response) => {
         // Audit log
         await auditLog(user.id, 'LOGIN_SUCCESS', { method: 'totp' }, req.ip!);
 
+        const perms = await getPermissions(user.id);
+
         res.status(200).json({
             message: 'Authentication successful',
             token: sessionToken,
@@ -333,7 +342,8 @@ router.post('/verify-totp', async (req: Request, res: Response) => {
                 scope_id: user.scope_id,
                 estado_id: user.estado_id,
                 totp_enabled: true,
-                is_2fa_enabled: !!user.is_2fa_enabled
+                is_2fa_enabled: !!user.is_2fa_enabled,
+                can_operate: perms?.can_operate ?? false
             }
         });
 
@@ -421,6 +431,8 @@ router.get('/verify-email', async (req: Request, res: Response) => {
         // Audit log
         await auditLog(user.id, 'LOGIN_SUCCESS', { method: 'email_link' }, req.ip!);
 
+        const perms = await getPermissions(user.id);
+
         res.status(200).json({
             message: 'Email verified successfully',
             token: sessionToken,
@@ -432,7 +444,8 @@ router.get('/verify-email', async (req: Request, res: Response) => {
                 scope_id: user.scope_id,
                 estado_id: user.estado_id,
                 totp_enabled: !!user.totp_enabled,
-                is_2fa_enabled: !!user.is_2fa_enabled
+                is_2fa_enabled: !!user.is_2fa_enabled,
+                can_operate: perms?.can_operate ?? false
             }
         });
     } catch (error) {

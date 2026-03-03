@@ -1,7 +1,9 @@
-import { Component, OnInit, inject, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, effect } from '@angular/core';
 import { Router } from '@angular/router';
 import * as L from 'leaflet';
 import * as omnivore from 'leaflet-omnivore';
+import * as echarts from 'echarts';
+import { forkJoin } from 'rxjs';
 import { HeaderBarComponent } from '../../layout/header-bar/header-bar';
 import { FooterTabsComponent } from '../../layout/footer-tabs/footer-tabs';
 import { POZOS_DATA } from '../pozos/pozos-data';
@@ -10,6 +12,7 @@ import { POZO_NAME_TO_ID } from '../../core/stores/pozo-name.map';
 import { PozosStore } from '../../core/stores/pozos.store';
 import { TelemetryService } from '../../core/services/telemetry';
 import { ThemeService } from '../../core/services/theme.service';
+import { getEChartsColors } from '../../core/utils/echarts-theme';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
 import { heroPresentationChartLine } from '@ng-icons/heroicons/outline';
 
@@ -92,8 +95,10 @@ const MUNICIPIOS_CON_POZO = new Set<number>(
   ],
 })
 
-export class ModuloGis implements OnInit {
+export class ModuloGis implements OnInit, OnDestroy {
   map!: L.Map;
+  private popupChart: echarts.ECharts | null = null;
+  private municipioChartCache = new Map<number, [number, number | null][]>();
 
   // LayerGroups
   pozosLayer = L.layerGroup();
@@ -427,7 +432,11 @@ export class ModuloGis implements OnInit {
           </div>
         </div>
 
-        <button class="scada-popup-btn" data-url="${detailUrl}">
+        <div class="scada-popup-chart" id="popup-chart-${municipioId}">
+          <div class="scada-popup-chart-loading">Cargando...</div>
+        </div>
+
+        <button class="scada-popup-btn" data-url="${detailUrl}" data-mun="${municipioId}">
           Ver detalle →
         </button>
       </div>
@@ -681,7 +690,7 @@ export class ModuloGis implements OnInit {
               // Popup con botón "Ver detalle"
               poly.bindPopup(
                 () => this.buildMunicipioPopup(nombre, municipioId),
-                { minWidth: 260 }
+                { minWidth: 280, maxWidth: 300 }
               );
 
               poly.on('popupopen', (e: any) => {
@@ -694,6 +703,15 @@ export class ModuloGis implements OnInit {
                   const url = btn.getAttribute('data-url');
                   if (url) this.router.navigateByUrl(url);
                 };
+                // Render mini chart
+                this.renderPopupChart(municipioId);
+              });
+
+              poly.on('popupclose', () => {
+                if (this.popupChart) {
+                  this.popupChart.dispose();
+                  this.popupChart = null;
+                }
               });
 
               // Hover effect (sin rebindear tooltip ni bringToFront)
@@ -1086,6 +1104,121 @@ export class ModuloGis implements OnInit {
 
     // ───── FALLBACK (legacy)
     this.styleAndAddLayerLegacy(layer);
+  }
+
+  private renderPopupChart(municipioId: number) {
+    // Dispose previous popup chart if any
+    if (this.popupChart) {
+      this.popupChart.dispose();
+      this.popupChart = null;
+    }
+
+    const el = document.getElementById(`popup-chart-${municipioId}`);
+    if (!el) return;
+
+    // If cached, render immediately
+    const cached = this.municipioChartCache.get(municipioId);
+    if (cached) {
+      this.drawMiniChart(el, cached);
+      return;
+    }
+
+    // Build devEUI list for this municipality
+    const wells: string[] = [];
+    Object.values(POZOS_DATA as any).forEach((pozo: any) => {
+      const munId = Number(pozo?.municipioId ?? pozo?.CVE_MUN);
+      if (munId !== municipioId) return;
+      if ((pozo?.estatus || '').toLowerCase() !== 'activo') return;
+      const devEui = (pozo?.devEui || '').trim();
+      if (devEui) wells.push(devEui);
+    });
+
+    if (wells.length === 0) {
+      el.innerHTML = '<div class="scada-popup-chart-empty">Sin pozos activos</div>';
+      return;
+    }
+
+    // Fetch last 24h for all wells
+    const requests: Record<string, any> = {};
+    wells.forEach((devEUI, i) => {
+      requests[`w${i}`] = this.telemetryService.getHistory(devEUI, 'caudal_lts', '-24h', {});
+    });
+
+    forkJoin(requests).subscribe({
+      next: (res: any) => {
+        // Aggregate: sum flows per timestamp bucket
+        const buckets = new Map<number, number>();
+        for (const data of Object.values(res) as any[]) {
+          (data.data || []).forEach((p: any) => {
+            const ts = new Date(p.timestamp).getTime();
+            const v = p.value != null && p.value > 0.01 ? p.value : 0;
+            buckets.set(ts, (buckets.get(ts) || 0) + v);
+          });
+        }
+
+        const sorted = Array.from(buckets.entries())
+          .sort((a, b) => a[0] - b[0])
+          .map(([ts, v]): [number, number | null] => [ts, v > 0.01 ? Math.round(v * 100) / 100 : null]);
+
+        this.municipioChartCache.set(municipioId, sorted);
+
+        // Check element still exists (popup might have closed)
+        const chartEl = document.getElementById(`popup-chart-${municipioId}`);
+        if (chartEl) this.drawMiniChart(chartEl, sorted);
+      },
+      error: () => {
+        if (el) el.innerHTML = '<div class="scada-popup-chart-empty">Error al cargar</div>';
+      }
+    });
+  }
+
+  private drawMiniChart(el: HTMLElement, data: [number, number | null][]) {
+    el.innerHTML = '';
+    if (data.length === 0) {
+      el.innerHTML = '<div class="scada-popup-chart-empty">Sin datos</div>';
+      return;
+    }
+
+    const c = getEChartsColors(this.themeService.resolved());
+    this.popupChart = echarts.init(el);
+
+    this.popupChart.setOption({
+      backgroundColor: 'transparent',
+      grid: { left: 4, right: 4, top: 8, bottom: 4 },
+      xAxis: { type: 'time', show: false },
+      yAxis: { type: 'value', show: false, scale: true },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(15,23,42,0.92)',
+        borderColor: 'rgba(255,255,255,0.08)',
+        borderWidth: 1,
+        textStyle: { color: '#e2e8f0', fontSize: 11 },
+        formatter: (params: any) => {
+          const p = Array.isArray(params) ? params[0] : params;
+          if (!p?.value) return '';
+          const d = new Date(p.value[0]);
+          const time = d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+          const val = p.value[1] != null ? Number(p.value[1]).toFixed(1) : '—';
+          return `<b>${val} L/s</b><br/>${time}`;
+        }
+      },
+      series: [{
+        type: 'line',
+        data,
+        showSymbol: false,
+        smooth: true,
+        lineStyle: { width: 1.5, color: '#007bff' },
+        areaStyle: { color: 'rgba(0,123,255,0.15)' },
+        connectNulls: false
+      }]
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.popupChart) {
+      this.popupChart.dispose();
+      this.popupChart = null;
+    }
   }
 
   goToOverview() {

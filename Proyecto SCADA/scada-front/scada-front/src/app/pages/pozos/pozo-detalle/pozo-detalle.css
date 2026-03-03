@@ -1088,6 +1088,56 @@
   margin-left: auto;
 }
 
+/* ===== TOTALIZER CARD (collapsible) ===== */
+
+.totalizer-card {
+  margin-top: 16px;
+}
+
+.totalizer-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.totalizer-toggle .content-title {
+  flex: 1;
+}
+
+.totalizer-chevron {
+  color: var(--text-muted);
+  transition: transform 0.25s ease;
+}
+
+.totalizer-chevron--open {
+  transform: rotate(180deg);
+}
+
+.totalizer-body {
+  overflow: hidden;
+  max-height: 600px;
+  transition: max-height 0.3s ease, opacity 0.25s ease;
+  opacity: 1;
+  border-top: 1px solid var(--border-default);
+}
+
+.totalizer-body--collapsed {
+  max-height: 0;
+  opacity: 0;
+  border-top: none;
+}
+
+.totalizer-chart {
+  height: 360px;
+}
+
 /* ===== FULLSCREEN MODE ===== */
 
 .chart-fullscreen {

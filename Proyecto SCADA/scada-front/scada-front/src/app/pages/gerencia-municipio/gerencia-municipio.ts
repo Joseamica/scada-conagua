@@ -6,6 +6,11 @@ import { forkJoin } from 'rxjs';
 import * as L from 'leaflet';
 import * as echarts from 'echarts';
 
+import { NgIconComponent, provideIcons } from '@ng-icons/core';
+import {
+  heroPresentationChartLine, heroChartBar, heroChartBarSquare, heroChartPie
+} from '@ng-icons/heroicons/outline';
+
 import { POZOS_DATA } from '../pozos/pozos-data';
 import { HeaderBarComponent } from '../../layout/header-bar/header-bar';
 import { FooterTabsComponent } from '../../layout/footer-tabs/footer-tabs';
@@ -34,19 +39,22 @@ const CHART_VARIABLES: ChartVariable[] = [
 
 type ChartType = 'line' | 'bar' | 'area' | 'gauge';
 
-const CHART_TYPE_OPTIONS: { key: ChartType; label: string }[] = [
-  { key: 'line', label: 'Línea' },
-  { key: 'bar',  label: 'Barras' },
-  { key: 'area', label: 'Área' },
-  { key: 'gauge', label: 'Gauge' },
+const CHART_TYPE_OPTIONS: { key: ChartType; label: string; icon: string }[] = [
+  { key: 'line',  label: 'Línea',  icon: 'heroPresentationChartLine' },
+  { key: 'bar',   label: 'Barras', icon: 'heroChartBar' },
+  { key: 'area',  label: 'Área',   icon: 'heroChartBarSquare' },
+  { key: 'gauge', label: 'Gauge',  icon: 'heroChartPie' },
 ];
 
 @Component({
   selector: 'gerencia-municipio',
   standalone: true,
-  imports: [HeaderBarComponent, FooterTabsComponent, CommonModule, DateRangePickerComponent],
+  imports: [HeaderBarComponent, FooterTabsComponent, CommonModule, NgIconComponent, DateRangePickerComponent],
   templateUrl: './gerencia-municipio.html',
-  styleUrl: './gerencia-municipio.css'
+  styleUrl: './gerencia-municipio.css',
+  viewProviders: [
+    provideIcons({ heroPresentationChartLine, heroChartBar, heroChartBarSquare, heroChartPie })
+  ]
 })
 export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
 
@@ -70,8 +78,9 @@ export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
   private themeEffect = effect(() => {
     const theme = this.themeService.resolved();
     if (this.chart) {
-      const c = getEChartsColors(theme);
-      this.chart.setOption({ backgroundColor: c.backgroundColor }, true);
+      if (Object.keys(this.lastChartData).length > 0) {
+        this.renderMainChart();
+      }
       this.chart.resize();
     }
     if (this.tileLayer && this.detalleMap) {
@@ -392,6 +401,7 @@ export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
   private updateChart(data: Record<string, [number, number | null][]>) {
     const selected = this.selectedVars();
     const activeVars = this.chartVariables.filter(v => selected.has(v.key) && data[v.key]);
+    const c = getEChartsColors(this.themeService.resolved());
 
     // Y axes
     const yAxis: any[] = [];
@@ -405,13 +415,36 @@ export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
       const axis: any = {
         type: 'value', name: v.unit, position: isLeft ? 'left' : 'right',
         scale: true,
-        axisLabel: { color: v.color }, nameTextStyle: { color: v.color },
-        splitLine: { show: idx === 0, lineStyle: { color: '#e5e7eb' } }
+        axisLabel: { color: v.color, fontSize: 10 },
+        nameTextStyle: { color: v.color, fontSize: 10 },
+        splitLine: { show: idx === 0, lineStyle: { color: c.splitLine } },
+        axisLine: { lineStyle: { color: c.axisLine } }
       };
       if (!isLeft && rightOffset > 0) axis.offset = rightOffset;
       if (!isLeft) rightOffset += 60;
       yAxis.push(axis);
     }
+
+    // Tooltip formatter with color dots and units
+    const varMap = new Map(activeVars.map(v => [v.label, v]));
+    const tooltipFormatter = (params: any) => {
+      if (!Array.isArray(params) || params.length === 0) return '';
+      const ts = new Date(params[0].value[0]);
+      const dateStr = ts.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+      const timeStr = ts.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+      let html = `<div style="font-size:11px;font-weight:600;margin-bottom:4px;color:${c.tooltip.textColor}">${dateStr} ${timeStr}</div>`;
+      for (const p of params) {
+        const v = varMap.get(p.seriesName);
+        const val = p.value[1];
+        if (val == null) continue;
+        html += `<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:${c.tooltip.textColor}">`;
+        html += `<span style="width:7px;height:7px;border-radius:50%;background:${v?.color || p.color};flex-shrink:0"></span>`;
+        html += `<span>${p.seriesName}</span>`;
+        html += `<span style="margin-left:auto;font-weight:600">${Number(val).toFixed(2)} ${v?.unit || ''}</span>`;
+        html += `</div>`;
+      }
+      return html;
+    };
 
     // Series
     const series: any[] = [];
@@ -445,27 +478,42 @@ export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
     const gridRight = Math.max(40, 40 + (rightAxes - 1) * 60);
 
     this.chart.setOption({
-      tooltip: { trigger: 'axis' },
-      legend: { data: legendData, top: 0 },
-      toolbox: {
-        right: gridRight + 10, itemSize: 18, itemGap: 10,
-        iconStyle: { borderColor: '#475569', borderWidth: 1.5 },
-        emphasis: { iconStyle: { borderColor: '#007bff' } },
-        feature: {
-          dataZoom: {
-            yAxisIndex: 'none',
-            title: { zoom: 'Seleccionar rango', back: 'Restaurar' },
-            brushStyle: { borderWidth: 1, color: 'rgba(0,123,255,0.15)', borderColor: '#007bff' }
-          },
-          restore: { title: 'Restaurar' }
-        }
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: c.tooltip.bg,
+        borderColor: c.tooltip.border,
+        textStyle: { color: c.tooltip.textColor, fontSize: 11 },
+        padding: [8, 10],
+        formatter: tooltipFormatter
       },
-      grid: { left: 55, right: gridRight, bottom: 60, top: 50 },
-      xAxis: { type: 'time', boundaryGap: false },
+      legend: { show: false },
+      grid: { left: 55, right: gridRight, bottom: 50, top: 20 },
+      xAxis: {
+        type: 'time', boundaryGap: false,
+        axisLabel: {
+          color: c.subtextColor, fontSize: 10,
+          formatter: (val: number) => {
+            const d = new Date(val);
+            const h = d.getHours(), m = d.getMinutes();
+            const date = d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+            if (h === 0 && m === 0) return date;
+            return `${date}\n${d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`;
+          }
+        },
+        axisLine: { lineStyle: { color: c.axisLine } },
+        splitLine: { show: false }
+      },
       yAxis,
       dataZoom: [
         { type: 'inside', xAxisIndex: 0, filterMode: 'filter' },
-        { type: 'slider', xAxisIndex: 0, bottom: 4, height: 20, handleSize: '80%' }
+        {
+          type: 'slider', xAxisIndex: 0, bottom: 4, height: 20, handleSize: '80%',
+          borderColor: c.splitLine,
+          fillerColor: 'rgba(0,123,255,0.08)',
+          handleStyle: { color: c.subtextColor, borderColor: c.axisLine },
+          dataBackground: { lineStyle: { color: c.splitLine }, areaStyle: { color: c.splitLine } },
+          textStyle: { color: c.subtextColor, fontSize: 10 }
+        }
       ],
       series
     }, true);

@@ -9,7 +9,7 @@ import { NgIconComponent, provideIcons } from '@ng-icons/core';
 import {
   heroUser, heroLockClosed, heroShieldCheck, heroKey,
   heroEye, heroEyeSlash, heroArrowLeft, heroCheck, heroPlus,
-  heroPencilSquare, heroArrowDownTray, heroNoSymbol
+  heroPencilSquare, heroArrowDownTray, heroNoSymbol, heroBolt
 } from '@ng-icons/heroicons/outline';
 
 // JSON directo
@@ -39,7 +39,7 @@ type MunicipioValue = string | 'Todos';
     provideIcons({
       heroUser, heroLockClosed, heroShieldCheck, heroKey,
       heroEye, heroEyeSlash, heroArrowLeft, heroCheck, heroPlus,
-      heroPencilSquare, heroArrowDownTray, heroNoSymbol
+      heroPencilSquare, heroArrowDownTray, heroNoSymbol, heroBolt
     })
   ],
   templateUrl: './usuario-detalle.html',
@@ -132,7 +132,8 @@ export class UsuarioDetalle implements OnInit {
       can_view: [true],
       can_edit: [false],
       can_export: [false],
-      can_block: [false]
+      can_block: [false],
+      can_operate: [false]
     }, { validators: passwordMatchValidator });
 
     this.entityService.getAll().subscribe({
@@ -246,7 +247,8 @@ export class UsuarioDetalle implements OnInit {
             can_view: perms.can_view,
             can_edit: perms.can_edit,
             can_export: perms.can_export,
-            can_block: perms.can_block
+            can_block: perms.can_block,
+            can_operate: perms.can_operate
           });
         },
         error: () => {}
@@ -367,7 +369,8 @@ export class UsuarioDetalle implements OnInit {
             can_view: !!formVal.can_view,
             can_edit: !!formVal.can_edit,
             can_export: !!formVal.can_export,
-            can_block: !!formVal.can_block
+            can_block: !!formVal.can_block,
+            can_operate: !!formVal.can_operate
           }).subscribe({
             error: (err) => console.error('Error saving permissions:', err)
           });

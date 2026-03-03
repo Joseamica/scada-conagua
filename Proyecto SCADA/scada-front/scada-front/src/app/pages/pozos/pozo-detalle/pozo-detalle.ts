@@ -24,7 +24,7 @@ import {
   heroLockClosed, heroArrowsPointingOut, heroArrowsPointingIn,
   heroMagnifyingGlassPlus, heroArrowPath, heroArrowDownTray,
   heroCursorArrowRays, heroTableCells, heroChartPie,
-  heroViewfinderCircle, heroPencil
+  heroViewfinderCircle, heroPencil, heroChevronDown
 } from '@ng-icons/heroicons/outline';
 import { bootstrapBatteryFull, bootstrapBatteryHalf, bootstrapBatteryLow } from '@ng-icons/bootstrap-icons';
 import { DateRangePickerComponent, DateRangeOutput } from '../../../shared/date-range-picker/date-range-picker';
@@ -104,7 +104,7 @@ const CHART_TYPE_OPTIONS: { key: ChartType; label: string; icon: string }[] = [
       heroLockClosed, bootstrapBatteryFull, bootstrapBatteryHalf, bootstrapBatteryLow,
       heroArrowsPointingOut, heroArrowsPointingIn, heroMagnifyingGlassPlus,
       heroArrowPath, heroArrowDownTray, heroCursorArrowRays, heroTableCells, heroChartPie,
-      heroViewfinderCircle, heroPencil
+      heroViewfinderCircle, heroPencil, heroChevronDown
     })
   ],
   templateUrl: './pozo-detalle.html',
@@ -139,7 +139,7 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
     const userData = localStorage.getItem('scada_user_data');
     if (!userData) return false;
     const user = JSON.parse(userData);
-    return user.role_id <= 2;
+    return !!user.can_operate;
   });
 
   private resizeHandler = () => { this.mainChart?.resize(); this.totalizerChart?.resize(); };
@@ -281,6 +281,16 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   chartTypeOptions = CHART_TYPE_OPTIONS;
   chartType = signal<ChartType>('line');
   private lastChartData: Record<string, [number, number | null][]> = {};
+
+  // Totalizer collapse
+  totalizerCollapsed = signal(true);
+
+  toggleTotalizer() {
+    this.totalizerCollapsed.set(!this.totalizerCollapsed());
+    if (!this.totalizerCollapsed()) {
+      setTimeout(() => this.totalizerChart?.resize(), 50);
+    }
+  }
 
   // Professional toolbar signals
   crosshairEnabled = signal(false);

@@ -3,20 +3,11 @@
 <div class="shell">
   <main class="page">
 
-    <!-- HEADER ROW -->
-    <div class="page-header">
-      <div class="header-left">
-        <h2 class="page-title">Gráficas avanzadas</h2>
-        <span class="selected-count">{{ selectedSites().length }} sitio{{ selectedSites().length !== 1 ? 's' : '' }}</span>
-      </div>
-      <button class="btn-back" (click)="goBack()">
-        <ng-icon name="heroArrowLeftStartOnRectangle" size="16"></ng-icon>
-        Regresar
-      </button>
-    </div>
-
-    <!-- TIME RANGE BAR -->
-    <div class="range-bar">
+    <!-- HEADER BAR — single row -->
+    <div class="page-bar">
+      <h2 class="page-title">Gráficas avanzadas</h2>
+      <span class="selected-count">{{ selectedSites().length }} sitio{{ selectedSites().length !== 1 ? 's' : '' }}</span>
+      <div class="bar-spacer"></div>
       <div class="time-presets">
         @for (tr of timeRanges; track tr.key) {
           <button class="preset-btn" [class.active]="range() === tr.key && !customRangeActive()"
@@ -24,10 +15,13 @@
         }
       </div>
       <app-date-range-picker #datePicker (rangeApplied)="onRangeApplied($event)"></app-date-range-picker>
+      <button class="btn-back" (click)="goBack()">
+        <ng-icon name="heroArrowLeftStartOnRectangle" size="16"></ng-icon>
+      </button>
     </div>
 
-    <!-- ACTIVE FILTERS -->
-    <div class="active-filters" *ngIf="activeRangeLabel()">
+    <!-- CUSTOM RANGE FILTERS — only when a custom date range is active -->
+    <div class="active-filters" *ngIf="customRangeActive()">
       <span class="filter-pill">{{ activeRangeLabel() }}</span>
       <span class="filter-pill filter-pill--muted">Muestreo: {{ activeIntervalLabel() }}</span>
     </div>
@@ -38,26 +32,8 @@
       <!-- SIDEBAR -->
       <aside class="sidebar">
 
-        <!-- VARIABLES SECTION -->
-        <div class="sidebar-section">
-          <div class="sidebar-title">Variables</div>
-          <div class="var-cards">
-            @for (v of chartVariables; track v.key) {
-              <div class="var-card" [class.active]="isVarSelected(v.key)"
-                   [style.--var-color]="v.color"
-                   (click)="toggleVar(v.key)">
-                <div class="var-color-bar"></div>
-                <div class="var-info">
-                  <span class="var-name">{{ v.label }}</span>
-                  <span class="var-unit">{{ v.unit }}</span>
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-
         <!-- SITES SECTION -->
-        <div class="sidebar-section sidebar-section--sites">
+        <div class="sidebar-section sidebar-section--sites sidebar-section--only">
           <div class="sidebar-title">Sitios</div>
           <div class="search-box">
             <ng-icon name="heroMagnifyingGlass" size="14" class="search-icon"></ng-icon>
@@ -93,6 +69,18 @@
         <!-- CHART TOOLBAR -->
         <div class="chart-toolbar">
           <div class="toolbar-left">
+            <!-- Variables -->
+            <div class="var-chips">
+              @for (v of chartVariables; track v.key) {
+                <button class="var-chip" [class.active]="isVarSelected(v.key)"
+                        [style.--vc]="v.color"
+                        (click)="toggleVar(v.key)">
+                  <span class="var-dot"></span>
+                  {{ v.label }}
+                </button>
+              }
+            </div>
+            <span class="toolbar-sep"></span>
             <!-- Chart type -->
             <div class="chart-type-group">
               @for (ct of chartTypeOptions; track ct.key) {

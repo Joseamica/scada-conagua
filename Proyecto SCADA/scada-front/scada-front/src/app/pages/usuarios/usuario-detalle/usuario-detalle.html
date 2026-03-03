@@ -227,6 +227,15 @@
             <span class="perm-name">Bloquear</span>
             <span class="perm-desc">Desactivar cuentas</span>
           </label>
+
+          <label class="perm-card" [class.perm-active]="form.get('can_operate')?.value">
+            <input type="checkbox" formControlName="can_operate" hidden />
+            <div class="perm-icon perm-icon--operate">
+              <ng-icon name="heroBolt" size="20"></ng-icon>
+            </div>
+            <span class="perm-name">Operacion</span>
+            <span class="perm-desc">Paro / arranque de bombas</span>
+          </label>
         </div>
       </section>
 

@@ -250,6 +250,7 @@
       </div>
 
       <!-- RIGHT COLUMN: CHARTS -->
+      <div class="content-column">
       <div class="content-card chart-card-main" [class.chart-fullscreen]="isFullscreen()">
         <div class="content-header chart-header">
           <div class="chart-header-left">
@@ -362,7 +363,6 @@
         <div class="content-body chart-body">
           <div class="charts-grid">
             <div>
-              <h3 class="chart-section-title">Lecturas operativas</h3>
               <div #mainChart class="chart"></div>
             </div>
 
@@ -385,13 +385,27 @@
                 </div>
               </ng-container>
             </div>
-
-            <div>
-              <h3 class="chart-section-title">Caudal totalizado</h3>
-              <div #totalizerChart class="chart"></div>
-            </div>
           </div>
         </div>
+      </div>
+
+      <!-- TOTALIZER CARD (collapsible) -->
+      <div class="content-card totalizer-card">
+        <button class="totalizer-toggle" (click)="toggleTotalizer()">
+          <div class="content-header-icon" style="background: rgba(233,30,143,0.08); color: #e91e8f;">
+            <ng-icon name="heroChartBar" size="18"></ng-icon>
+          </div>
+          <h2 class="content-title">Caudal totalizado</h2>
+          <ng-icon name="heroChevronDown" size="16" class="totalizer-chevron"
+            [class.totalizer-chevron--open]="!totalizerCollapsed()">
+          </ng-icon>
+        </button>
+        <div class="totalizer-body" [class.totalizer-body--collapsed]="totalizerCollapsed()">
+          <div class="chart-body">
+            <div #totalizerChart class="chart totalizer-chart"></div>
+          </div>
+        </div>
+      </div>
       </div>
 
     </div>
