@@ -92,7 +92,7 @@ export const getScopedUsers = async (adminScope: string, adminScopeId: number, a
     if (adminScope === 'Estatal') {
         conditions.push(`u.estado_id = $${values.length + 1}`);
         values.push(adminEstadoId);
-    } else if (adminScope === 'Municipio') {
+    } else if (adminScope === 'Municipal') {
         conditions.push(`u.estado_id = $${values.length + 1}`);
         values.push(adminEstadoId);
         conditions.push(`u.scope_id = $${values.length + 1}`);
