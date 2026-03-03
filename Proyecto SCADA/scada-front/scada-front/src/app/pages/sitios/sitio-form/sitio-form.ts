@@ -152,7 +152,60 @@ export class SitioForm implements OnInit {
   }
 
   loadSitio() {
-    console.log('cargar sitio', this.sitioId);
+    if (!this.sitioId) return;
+    this.telemetry.getSite(this.sitioId).subscribe({
+      next: (site) => {
+        // Patch form with existing data
+        this.form.patchValue({
+          nombre: site.site_name,
+          tipo: site.site_type || 'pozo',
+          devEUI: site.dev_eui,
+          gatewayId: site.gw_eui,
+          lat: site.latitude || 0,
+          lng: site.longitude || 0,
+        });
+        // Disable devEUI in edit mode — it's the primary key
+        this.form.get('devEUI')?.disable();
+
+        // Trigger location detection from lat/lng to populate estado + municipio
+        if (site.latitude && site.longitude) {
+          // Wait for geoFeatures to load, then detect
+          const tryDetect = () => {
+            if (this.geoFeatures.length > 0) {
+              this.detectLocation(site.latitude!, site.longitude!);
+            } else {
+              setTimeout(tryDetect, 100);
+            }
+          };
+          tryDetect();
+        } else if (site.municipality) {
+          // No coords — try to find municipality in estados data manually
+          this.setMunicipioFromName(site.municipality);
+        }
+      },
+      error: () => {
+        this.errorMsg.set('No se pudo cargar el sitio.');
+      },
+    });
+  }
+
+  private setMunicipioFromName(municipality: string) {
+    const normalized = municipality.trim().toLowerCase();
+    for (const estado of this.estados) {
+      const munNames = Object.values(estado.municipios);
+      const match = munNames.find(m => m.toLowerCase() === normalized);
+      if (match) {
+        this.form.patchValue({ estado: estado.estado });
+        setTimeout(() => {
+          this.form.patchValue({ municipio: match });
+          this.locationVisible.set(true);
+        }, 50);
+        return;
+      }
+    }
+    // Couldn't match — just show the raw municipality in the field
+    this.form.patchValue({ municipio: municipality });
+    this.locationVisible.set(true);
   }
 
   save() {
@@ -193,8 +246,33 @@ export class SitioForm implements OnInit {
         },
       });
     } else {
-      console.log('editar sitio', this.form.value);
-      this.router.navigate(['/telemetria']);
+      const v = this.form.getRawValue();
+      const payload = {
+        site_name: v.nombre?.trim() || '',
+        site_type: v.tipo || 'pozo',
+        municipality: v.municipio?.trim() || '',
+        gw_eui: v.gatewayId?.trim() || undefined,
+        latitude: v.lat || undefined,
+        longitude: v.lng || undefined,
+      };
+
+      this.saving.set(true);
+      this.telemetry.updateSite(this.sitioId!, payload).subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.router.navigate(['/telemetria']);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.saving.set(false);
+          if (err.status === 409) {
+            this.errorMsg.set(err.error?.error || 'Conflicto: Gateway ID duplicado.');
+          } else if (err.status === 400) {
+            this.errorMsg.set(err.error?.error || 'Datos incompletos o invalidos.');
+          } else {
+            this.errorMsg.set('Error al actualizar el sitio. Intenta de nuevo.');
+          }
+        },
+      });
     }
   }
 

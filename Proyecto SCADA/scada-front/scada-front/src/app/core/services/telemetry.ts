@@ -44,7 +44,7 @@ export class TelemetryService {
     private readonly BASE_URL = environment.apiQueryUrl;
   
   // Catálogo completo de sitios del inventario (incluye last_flow_value para agregaciones)
-  getSites(): Observable<{ dev_eui: string; site_name: string; municipality: string; site_type: string; last_flow_value: number | null; last_pressure_value: number | null; last_updated_at: string | null }[]> {
+  getSites(): Observable<{ dev_eui: string; site_name: string; municipality: string; site_type: string; last_flow_value: number | null; last_pressure_value: number | null; last_updated_at: string | null; rssi?: number; snr?: number }[]> {
     return this.http.get<any[]>(`${this.BASE_URL}/sites`);
   }
 
@@ -88,6 +88,22 @@ export class TelemetryService {
     longitude?: number;
   }): Observable<{ dev_eui: string; message: string }> {
     return this.http.post<{ dev_eui: string; message: string }>(`${this.BASE_URL}/sites`, payload);
+  }
+
+  // Obtener un sitio individual por devEUI
+  getSite(devEUI: string): Observable<{
+    dev_eui: string; gw_eui: string; site_name: string; site_type: string;
+    municipality: string; latitude: number | null; longitude: number | null;
+  }> {
+    return this.http.get<any>(`${this.BASE_URL}/sites/${devEUI.trim()}`);
+  }
+
+  // Actualizar un sitio existente
+  updateSite(devEUI: string, payload: {
+    site_name: string; site_type: string; municipality: string;
+    gw_eui?: string; latitude?: number; longitude?: number;
+  }): Observable<{ message: string }> {
+    return this.http.put<{ message: string }>(`${this.BASE_URL}/sites/${devEUI.trim()}`, payload);
   }
 
   // Método de control para usar la interfaz estricta

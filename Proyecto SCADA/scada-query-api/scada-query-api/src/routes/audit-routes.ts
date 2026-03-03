@@ -129,19 +129,25 @@ router.get('/logs/export', isSupervisor, async (req: Request, res: Response) => 
             values
         );
 
+        // Neutralize CSV injection: prefix dangerous leading chars with a single quote
+        const csvSafe = (val: string): string => {
+            if (val.length > 0 && '=+-@\t\r'.includes(val[0])) return `'${val}`;
+            return val;
+        };
+
         // Build CSV
         const header = 'ID,Usuario,Email,Rol,Nivel,Municipio,Accion,Detalles,IP,Fecha\n';
         const rows = result.rows.map(r => {
             const details = typeof r.details === 'string' ? r.details : JSON.stringify(r.details);
             return [
                 r.id,
-                `"${(r.full_name || '').replace(/"/g, '""')}"`,
-                r.email || '',
+                `"${csvSafe((r.full_name || '').replace(/"/g, '""'))}"`,
+                csvSafe(r.email || ''),
                 r.role_name || '',
                 r.scope || '',
-                r.entity_name || '',
+                csvSafe(r.entity_name || ''),
                 r.action,
-                `"${details.replace(/"/g, '""')}"`,
+                `"${csvSafe(details.replace(/"/g, '""'))}"`,
                 r.ip_address || '',
                 r.created_at ? new Date(r.created_at).toISOString() : ''
             ].join(',');

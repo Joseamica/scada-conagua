@@ -239,7 +239,8 @@ export class ModuloGis implements OnInit, OnDestroy {
   // POZOS → depende del estatus
   // ===============================
   if (!data) {
-    return `assets/icons/map/well-gray.svg`;
+    // Sitio no está en POZOS_DATA (creado dinámicamente) — mostrar activo por defecto
+    return `assets/icons/map/well-yellow.svg`;
   }
 
   const status = (data.estatus || '').toLowerCase().trim();

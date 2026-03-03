@@ -185,7 +185,9 @@ app.get('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
                 i.site_type,
                 s.last_flow_value,
                 s.last_pressure_value,
-                s.last_updated_at
+                s.last_updated_at,
+                s.rssi,
+                s.snr
             FROM scada.inventory i
             LEFT JOIN scada.site_status s ON TRIM(s.dev_eui) = TRIM(i.dev_eui)
             WHERE TRIM(COALESCE(i.dev_eui, '')) != ''
@@ -252,6 +254,100 @@ app.post('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
         }
         console.error('❌ Error creating site:', e);
         res.status(500).json({ error: 'Error interno al crear el sitio.' });
+    }
+});
+
+// Obtener un sitio individual por devEUI
+app.get('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => {
+    const { devEUI } = req.params;
+    if (!RE_DEV_EUI.test(devEUI)) {
+        return res.status(400).json({ error: 'Invalid devEUI format.' });
+    }
+    try {
+        const result = await pool.query(
+            `SELECT dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude, is_active
+             FROM scada.inventory WHERE TRIM(dev_eui) = $1`,
+            [devEUI.trim()]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Sitio no encontrado.' });
+        }
+        const row = result.rows[0];
+        res.json({
+            dev_eui: (row.dev_eui || '').trim(),
+            gw_eui: (row.gw_eui || '').trim(),
+            site_name: (row.site_name || '').trim(),
+            site_type: row.site_type,
+            municipality: (row.municipality || '').trim(),
+            latitude: row.latitude ? Number(row.latitude) : null,
+            longitude: row.longitude ? Number(row.longitude) : null,
+            is_active: row.is_active,
+        });
+    } catch (e) {
+        console.error('❌ Error fetching site:', e);
+        res.status(500).json({ error: 'Error interno.' });
+    }
+});
+
+// Actualizar un sitio existente
+app.put('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => {
+    const { devEUI } = req.params;
+    if (!RE_DEV_EUI.test(devEUI)) {
+        return res.status(400).json({ error: 'Invalid devEUI format.' });
+    }
+
+    const { site_name, site_type, municipality, latitude, longitude, gw_eui } = req.body;
+    if (!site_name || !municipality) {
+        return res.status(400).json({ error: 'site_name y municipality son obligatorios.' });
+    }
+
+    try {
+        const existing = await pool.query(
+            'SELECT dev_eui FROM scada.inventory WHERE TRIM(dev_eui) = $1',
+            [devEUI.trim()]
+        );
+        if (existing.rows.length === 0) {
+            return res.status(404).json({ error: 'Sitio no encontrado.' });
+        }
+
+        const setClauses: string[] = [];
+        const values: any[] = [];
+
+        setClauses.push(`site_name = $${values.length + 1}`);
+        values.push(site_name.trim());
+
+        setClauses.push(`site_type = $${values.length + 1}`);
+        values.push(site_type || null);
+
+        setClauses.push(`municipality = $${values.length + 1}`);
+        values.push(municipality.trim());
+
+        setClauses.push(`latitude = $${values.length + 1}`);
+        values.push(latitude || null);
+
+        setClauses.push(`longitude = $${values.length + 1}`);
+        values.push(longitude || null);
+
+        if (gw_eui) {
+            setClauses.push(`gw_eui = $${values.length + 1}`);
+            values.push(gw_eui.trim().substring(0, 16));
+        }
+
+        values.push(devEUI.trim());
+        await pool.query(
+            `UPDATE scada.inventory SET ${setClauses.join(', ')} WHERE TRIM(dev_eui) = $${values.length}`,
+            values
+        );
+
+        await auditLog(req.user!.id, 'SITE_UPDATED', { dev_eui: devEUI, site_name, municipality }, req.ip!);
+
+        res.json({ message: 'Sitio actualizado correctamente.' });
+    } catch (e: any) {
+        if (e.code === '23505') {
+            return res.status(409).json({ error: 'Conflicto: Gateway ID duplicado.' });
+        }
+        console.error('❌ Error updating site:', e);
+        res.status(500).json({ error: 'Error interno al actualizar el sitio.' });
     }
 });
 

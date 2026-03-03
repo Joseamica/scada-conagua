@@ -25,6 +25,7 @@ export const ACTION_META: Record<string, ActionMeta> = {
   // Entities / Inventory
   ENTITY_CREATED:           { label: 'Entidad creada',       category: 'entity' },
   SITE_CREATED:             { label: 'Sitio creado',         category: 'entity' },
+  SITE_UPDATED:             { label: 'Sitio actualizado',    category: 'entity' },
   // Data export
   EXPORT_CHART_PNG:         { label: 'Export PNG',           category: 'export' },
   EXPORT_TELEMETRY_CSV:     { label: 'Export CSV',           category: 'export' },
