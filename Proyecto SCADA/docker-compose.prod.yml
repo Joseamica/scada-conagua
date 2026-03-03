@@ -78,3 +78,4 @@ services:
 volumes:
   postgres_metadata_data:
     external: true
+    name: opc_postgres_metadata_data

@@ -41,8 +41,8 @@ jobs:
           cache-dependency-path: Proyecto SCADA/scada-query-api/scada-query-api/package-lock.json
 
       - run: npm ci
-      - run: npm run build --if-present
       - run: npm test
+      - run: npm run build --if-present
 
   build-ingestion-api:
     name: Build Ingestion API
