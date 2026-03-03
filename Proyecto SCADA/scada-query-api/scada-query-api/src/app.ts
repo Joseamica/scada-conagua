@@ -10,6 +10,7 @@ import userRoutes from './routes/user-routes';
 import auditRoutes from './routes/audit-routes';
 import entityRoutes from './routes/entity-routes';
 import { isAuth, isSupervisor } from './middlewares/auth-middleware';
+import { auditLog } from './services/audit-service';
 
 const app: Application = express();
 
@@ -209,13 +210,15 @@ app.post('/api/v1/control', isSupervisor, async (req: Request, res: Response) =>
     }
     
     const success = await sendSCADACommand(req.body);
-    
+
     if (success) {
-        res.status(202).json({ 
-            status: 'Command accepted', 
-            message: `Control command '${command}' sent to DevEUI ${devEUI}.` 
+        await auditLog(req.user!.id, 'PUMP_COMMAND_SENT', { devEUI, command }, req.ip!);
+        res.status(202).json({
+            status: 'Command accepted',
+            message: `Control command '${command}' sent to DevEUI ${devEUI}.`
         });
     } else {
+        await auditLog(req.user!.id, 'PUMP_COMMAND_FAILED', { devEUI, command }, req.ip!);
         res.status(500).json({ error: 'Failed to publish MQTT downlink command.' });
     }
 });

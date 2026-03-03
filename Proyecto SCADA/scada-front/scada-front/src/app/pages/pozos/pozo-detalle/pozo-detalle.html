@@ -293,7 +293,7 @@
         <!-- VARIABLE INDICATORS ROW -->
         <div class="toolbar-vars-row">
           <button
-            *ngFor="let v of chartVariables"
+            *ngFor="let v of chartVariables()"
             class="var-indicator"
             [class.active]="isVarSelected(v.key)"
             [style.--var-color]="v.color"
@@ -368,7 +368,7 @@
 
             <!-- STATS STRIP -->
             <div class="stats-strip" *ngIf="chartType() !== 'gauge'">
-              <ng-container *ngFor="let v of chartVariables">
+              <ng-container *ngFor="let v of chartVariables()">
                 <div class="stats-strip__item" *ngIf="isVarSelected(v.key) && variableStats()[v.key]">
                   <span class="stats-strip__dot" [style.background]="v.color"></span>
                   <span class="stats-strip__name">{{ v.label }}</span>

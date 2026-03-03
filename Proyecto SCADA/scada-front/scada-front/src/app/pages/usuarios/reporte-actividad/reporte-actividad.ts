@@ -177,6 +177,7 @@ export class ReporteActividad implements OnInit {
         a.download = 'reporte_auditoria.csv';
         a.click();
         window.URL.revokeObjectURL(url);
+        this.auditService.logAction('EXPORT_AUDIT_CSV', {}).subscribe();
       },
       error: (err) => {
         console.error('Error downloading report:', err);

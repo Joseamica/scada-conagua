@@ -3,182 +3,181 @@
 <div class="shell">
   <main class="page">
 
-
-    <!-- CARD PRINCIPAL -->
-    <section class="card">
-
-      <!-- TOOLBAR -->
-      <div class="toolbar">
-
-        <!-- IZQUIERDA -->
-     
-  <div class="tool-actions">
-    <div class="time-selector">
-            <button [class.active]="timePreset() === '15m'" (click)="setTimePreset('15m')">15m</button>
-            <button [class.active]="timePreset() === '1h'"  (click)="setTimePreset('1h')">1h</button>
-            <button [class.active]="timePreset() === '6h'"  (click)="setTimePreset('6h')">6h</button>
-            <button [class.active]="timePreset() === '12h'" (click)="setTimePreset('12h')">12h</button>
-            <button [class.active]="timePreset() === '1d'"  (click)="setTimePreset('1d')">1d</button>
-            <button [class.active]="timePreset() === '1sem'"(click)="setTimePreset('1sem')">1sem</button>
-          </div>
-  </div>
-        <!-- DERECHA -->
-        <div class="tool-actions">
-
-          <!-- PRESETS -->
-          
-
-           <div class="date-range-inline">
-            <label for="">Fecha personalizada</label>
-      <input type="date" title="Desde">
-      <span class="date-sep">–</span>
-      <input type="date" title="Hasta">
-
-      <button class="btn btn-primary btn-sm">
-      Aplicar
-    </button>
+    <!-- HEADER ROW -->
+    <div class="page-header">
+      <div class="header-left">
+        <h2 class="page-title">Gráficas avanzadas</h2>
+        <span class="selected-count">{{ selectedSites().length }} sitio{{ selectedSites().length !== 1 ? 's' : '' }}</span>
+      </div>
+      <button class="btn-back" (click)="goBack()">
+        <ng-icon name="heroArrowLeftStartOnRectangle" size="16"></ng-icon>
+        Regresar
+      </button>
     </div>
 
+    <!-- TIME RANGE BAR -->
+    <div class="range-bar">
+      <div class="time-presets">
+        @for (tr of timeRanges; track tr.key) {
+          <button class="preset-btn" [class.active]="range() === tr.key && !customRangeActive()"
+                  (click)="setRange($any(tr.key))">{{ tr.label }}</button>
+        }
+      </div>
+      <app-date-range-picker #datePicker (rangeApplied)="onRangeApplied($event)"></app-date-range-picker>
+    </div>
 
-          <button class="btn btn-outline" (click)="exportPDF()">
-            <ng-icon
-          name="heroDocumentArrowDown"
-          size="20"></ng-icon> Exportar
-          </button>
+    <!-- ACTIVE FILTERS -->
+    <div class="active-filters" *ngIf="activeRangeLabel()">
+      <span class="filter-pill">{{ activeRangeLabel() }}</span>
+      <span class="filter-pill filter-pill--muted">Muestreo: {{ activeIntervalLabel() }}</span>
+    </div>
 
-             <button class="btn btn-outline" (click)="goBack()">
-          <ng-icon
-          name="heroArrowLeftStartOnRectangle"
-          size="20"> </ng-icon>Regresar
-        </button>
+    <!-- MAIN GRID -->
+    <div class="main-grid">
 
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+
+        <!-- VARIABLES SECTION -->
+        <div class="sidebar-section">
+          <div class="sidebar-title">Variables</div>
+          <div class="var-cards">
+            @for (v of chartVariables; track v.key) {
+              <div class="var-card" [class.active]="isVarSelected(v.key)"
+                   [style.--var-color]="v.color"
+                   (click)="toggleVar(v.key)">
+                <div class="var-color-bar"></div>
+                <div class="var-info">
+                  <span class="var-name">{{ v.label }}</span>
+                  <span class="var-unit">{{ v.unit }}</span>
+                </div>
+              </div>
+            }
+          </div>
         </div>
-      </div>
 
-      <!-- GRID -->
-      <div class="grid">
-
-        <!-- PANEL IZQUIERDO -->
-        <aside class="card">
-
-          <div class="table-title">
-            Listado de sitios
+        <!-- SITES SECTION -->
+        <div class="sidebar-section sidebar-section--sites">
+          <div class="sidebar-title">Sitios</div>
+          <div class="search-box">
+            <ng-icon name="heroMagnifyingGlass" size="14" class="search-icon"></ng-icon>
+            <input type="text" placeholder="Buscar sitio..."
+                   [value]="searchQuery()"
+                   (input)="searchQuery.set($any($event.target).value)">
+            <button class="search-clear" *ngIf="searchQuery()" (click)="searchQuery.set('')">
+              <ng-icon name="heroXMark" size="12"></ng-icon>
+            </button>
           </div>
-
-          <div class="filters">
-
-            <!-- SERIES -->
-            <div class="field">
-              <label>Variables</label>
-              <div class="checkbox-list">
-                <label>
-                  <input type="checkbox"
-                    [checked]="selectedSeries().caudal"
-                    (change)="onToggleSeries('caudal', $any($event.target).checked)">
-                  Caudal (L/s)
-                </label>
-                <label>
-                  <input type="checkbox"
-                    [checked]="selectedSeries().presion"
-                    (change)="onToggleSeries('presion', $any($event.target).checked)">
-                  Presión (Kg/cm²)
-                </label>
-                <label>
-                  <input type="checkbox"
-                    [checked]="selectedSeries().comunicacion"
-                    (change)="onToggleSeries('comunicacion', $any($event.target).checked)">
-                  Señal (dBm)
-                </label>
+          <div class="sites-list">
+            @if (filteredSites().length === 0) {
+              <div class="sites-empty">
+                {{ sitesDisponibles().length === 0 ? 'Cargando sitios...' : 'Sin resultados' }}
               </div>
-            </div>
-
-            <!-- SITIOS -->
-            <div class="field">
-              <label>Sitios</label>
-              <div *ngIf="sitesDisponibles.length === 0" class="tree-empty">
-                Cargando sitios...
-              </div>
-              <div class="checkbox-list" *ngIf="sitesDisponibles.length > 0">
-                <label *ngFor="let s of sitesDisponibles">
-                  <input
-                    type="checkbox"
-                    [checked]="selectedSites().includes(s.devEUI)"
-                    (change)="toggleSite(s.devEUI)">
-                  {{ s.name }}
-                </label>
-              </div>
-            </div>
-
+            }
+            @for (s of filteredSites(); track s.devEUI) {
+              <label class="site-item" [class.checked]="selectedSites().includes(s.devEUI)">
+                <input type="checkbox"
+                       [checked]="selectedSites().includes(s.devEUI)"
+                       (change)="toggleSite(s.devEUI)">
+                <span class="site-check"></span>
+                <span class="site-name">{{ s.name }}</span>
+              </label>
+            }
           </div>
-          
-        </aside>
-
-
-        <!-- GRÁFICA -->
-        <section class="card">
-
-          <div class="table-title">
-            Lecturas
-          </div>
-
-          <div
-            #chart
-            style="height:420px; width:100%;">
-          </div>
-
-          <!-- ===================== -->
-<!-- LECTURAS OPERATIVAS -->
-<!-- ===================== -->
-<div class="readings-panel">
-  <div class="reading-grid">
-
-    <!-- CAUDAL -->
-    <div class="reading-card">
-      <h4>Caudal (L/s)</h4>
-      <div class="metrics">
-        <div><span>Min</span><b>--</b></div>
-        <div><span>Med</span><b>--</b></div>
-        <div><span>Prom</span><b>--</b></div>
-        <div><span>Max</span><b>--</b></div>
-      </div>
-      <div class="accumulated">
-        Gasto semanal: <b>-- m³</b>
-      </div>
-    </div>
-
-    <!-- PRESIÓN -->
-    <div class="reading-card">
-      <h4>Presión (Kg/cm²)</h4>
-      <div class="metrics">
-        <div><span>Min</span><b>--</b></div>
-        <div><span>Med</span><b>--</b></div>
-        <div><span>Prom</span><b>--</b></div>
-        <div><span>Max</span><b>--</b></div>
-      </div>
-    </div>
-
-    <!-- COMUNICACIONES -->
-    <div class="reading-card">
-      <h4>Comunicaciones</h4>
-      <div class="comm-row">
-        <div class="comm-availability">
-          Disponibilidad:
-          <b> %</b>
         </div>
-       
-      </div>
+      </aside>
+
+      <!-- CHART AREA -->
+      <section class="chart-card" [class.chart-fullscreen]="isFullscreen()">
+
+        <!-- CHART TOOLBAR -->
+        <div class="chart-toolbar">
+          <div class="toolbar-left">
+            <!-- Chart type -->
+            <div class="chart-type-group">
+              @for (ct of chartTypeOptions; track ct.key) {
+                <button class="type-btn" [class.active]="chartType() === ct.key"
+                        (click)="setChartType(ct.key)" [title]="ct.label">
+                  <ng-icon [name]="ct.icon" size="15"></ng-icon>
+                </button>
+              }
+            </div>
+          </div>
+          <div class="toolbar-right">
+            <div class="tool-group">
+              <button class="tool-btn has-tooltip" [class.active]="crosshairEnabled()" (click)="toggleCrosshair()"
+                      data-tooltip="Crosshair: muestra valores exactos en ambos ejes">
+                <ng-icon name="heroCursorArrowRays" size="15"></ng-icon>
+              </button>
+            </div>
+            <div class="tool-group">
+              <button class="tool-btn has-tooltip" [class.active]="activeBrushType() === 'lineX'" (click)="setBrushType('lineX')"
+                      data-tooltip="Zoom horizontal: arrastra para hacer zoom a un rango de tiempo">
+                <ng-icon name="heroMagnifyingGlassPlus" size="15"></ng-icon>
+              </button>
+              <button class="tool-btn has-tooltip" [class.active]="activeBrushType() === 'rect'" (click)="setBrushType('rect')"
+                      data-tooltip="Selección rectangular: arrastra un recuadro para hacer zoom al área">
+                <ng-icon name="heroViewfinderCircle" size="15"></ng-icon>
+              </button>
+              <button class="tool-btn has-tooltip" [class.active]="activeBrushType() === 'polygon'" (click)="setBrushType('polygon')"
+                      data-tooltip="Lazo libre: dibuja una forma para hacer zoom al rango seleccionado">
+                <ng-icon name="heroPencil" size="15"></ng-icon>
+              </button>
+              <button class="tool-btn has-tooltip" (click)="resetZoom()"
+                      data-tooltip="Restaurar vista original de la gráfica">
+                <ng-icon name="heroArrowPath" size="15"></ng-icon>
+              </button>
+            </div>
+            <div class="tool-group">
+              <button class="tool-btn has-tooltip" (click)="toggleFullscreen()"
+                      [attr.data-tooltip]="isFullscreen() ? 'Salir de pantalla completa' : 'Expandir gráfica'">
+                <ng-icon [name]="isFullscreen() ? 'heroArrowsPointingIn' : 'heroArrowsPointingOut'" size="15"></ng-icon>
+              </button>
+            </div>
+            <div class="tool-group">
+              <button class="tool-btn has-tooltip" (click)="downloadChartPng()"
+                      data-tooltip="Descargar gráfica como imagen PNG">
+                <ng-icon name="heroArrowDownTray" size="15"></ng-icon>
+              </button>
+              <button class="tool-btn has-tooltip" (click)="exportCsv()"
+                      data-tooltip="Exportar datos a archivo CSV">
+                <ng-icon name="heroTableCells" size="15"></ng-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CHART -->
+        <div class="chart-wrapper">
+          <div #chart class="chart-canvas"></div>
+          <div class="loading-overlay" *ngIf="loading()">
+            <div class="spinner"></div>
+          </div>
+        </div>
+
+        <!-- STATS STRIP -->
+        <div class="stats-strip" *ngIf="(variableStats() | keyvalue).length > 0">
+          @for (v of chartVariables; track v.key) {
+            @if (variableStats()[v.key]; as st) {
+              <div class="stat-item">
+                <span class="stat-dot" [style.background]="v.color"></span>
+                <span class="stat-label">{{ v.label }}</span>
+                <span class="stat-val">Mín <b>{{ st.min }}</b></span>
+                <span class="stat-sep">|</span>
+                <span class="stat-val">Máx <b>{{ st.max }}</b></span>
+                <span class="stat-sep">|</span>
+                <span class="stat-val">Prom <b>{{ st.avg }}</b></span>
+                <span class="stat-sep">|</span>
+                <span class="stat-val">Actual <b [style.color]="v.color">{{ st.current }}</b></span>
+                <span class="stat-unit">{{ v.unit }}</span>
+              </div>
+            }
+          }
+        </div>
+
+      </section>
     </div>
-
-  </div>
-</div>
-
-
-        </section>
-
-      </div>
-    </section>
 
   </main>
-
   <app-footer-tabs></app-footer-tabs>
 </div>

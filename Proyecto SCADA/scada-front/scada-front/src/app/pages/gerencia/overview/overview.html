@@ -70,37 +70,153 @@
 
     </div>
 
-    <!-- ===== CONTENT GRID: CHART + MAP ===== -->
-    <div class="content-grid">
-
-      <!-- Chart Card -->
-      <div class="content-card">
-        <div class="content-header">
+    <!-- ===== CHART CARD (FULL WIDTH) ===== -->
+    <div class="content-card chart-card-main" [class.chart-fullscreen]="isFullscreen()">
+      <div class="content-header chart-header">
+        <div class="chart-header-left">
           <div class="content-header-icon">
             <ng-icon name="heroPresentationChartLine" size="18"></ng-icon>
           </div>
           <div>
             <h2 class="content-title">Tendencia de gasto total</h2>
-            <p class="content-desc">Suma acumulada por dia — ultimos 30 dias</p>
+            <p class="content-desc">Gasto agregado por municipio</p>
           </div>
         </div>
-        <div id="chartOverview" class="chart-container"></div>
+        <div class="chart-header-right">
+          <div class="time-selector">
+            <button
+              *ngFor="let r of timeRanges"
+              (click)="setRange(r.key)"
+              [class.active]="range() === r.key && !customRangeActive()">
+              {{ r.label }}
+            </button>
+          </div>
+          <app-date-range-picker #datePicker
+            (rangeApplied)="onRangeApplied($event)">
+          </app-date-range-picker>
+        </div>
       </div>
 
-      <!-- Map Card -->
-      <div class="content-card map-wrapper">
-        <div class="content-header">
-          <div class="content-header-icon accent-teal">
-            <ng-icon name="heroGlobeAmericas" size="18"></ng-icon>
+      <!-- PILLS DE FILTROS ACTIVOS -->
+      <div class="active-filters">
+        <span class="filter-pill">
+          <span class="filter-pill__label">Rango</span>
+          <span class="filter-pill__value">{{ activeRangeLabel() }}</span>
+          <button class="filter-pill__clear" *ngIf="customRangeActive()" (click)="setRange('24h')" title="Restaurar a último día">&times;</button>
+        </span>
+        <span class="filter-pill">
+          <span class="filter-pill__label">Muestreo</span>
+          <span class="filter-pill__value">{{ activeIntervalLabel() }}</span>
+          <button class="filter-pill__clear" *ngIf="customRangeActive() && customInterval()" (click)="clearInterval()" title="Restaurar a Auto">&times;</button>
+        </span>
+      </div>
+
+      <!-- MUNICIPALITY INDICATORS ROW -->
+      <div class="toolbar-vars-row" [style.grid-template-columns]="'repeat(' + municipioSeries().length + ', 1fr)'">
+        <button
+          *ngFor="let m of municipioSeries()"
+          class="var-indicator"
+          [class.active]="isMunicipioSelected(m.id)"
+          [style.--var-color]="m.color"
+          (click)="toggleMunicipio(m.id)">
+          <span class="var-indicator__bar"></span>
+          <div class="var-indicator__body">
+            <span class="var-indicator__label">{{ m.name }}</span>
+            <span class="var-indicator__value">
+              {{ m.liveFlow | number:'1.1-1' }}
+              <span class="var-indicator__unit">l/s</span>
+            </span>
           </div>
-          <div>
-            <h2 class="content-title">Distribucion geografica</h2>
-            <p class="content-desc">Clic en un municipio para ver detalle</p>
+        </button>
+      </div>
+
+      <!-- TOOLS ROW -->
+      <div class="toolbar-tools-row">
+        <div class="toolbar-tools-left">
+          <div class="chart-type-segmented">
+            <button
+              *ngFor="let t of chartTypeOptions"
+              class="chart-type-btn"
+              [class.active]="chartType() === t.key"
+              [title]="t.label"
+              (click)="setChartType(t.key)">
+              <ng-icon [name]="t.icon" size="16"></ng-icon>
+            </button>
           </div>
         </div>
-        <div id="mapOverview" class="map-container"></div>
+        <div class="toolbar-tools-right">
+          <div class="tool-group">
+            <button class="tool-btn has-tooltip" [class.active]="crosshairEnabled()" (click)="toggleCrosshair()" data-tooltip="Crosshair">
+              <ng-icon name="heroCursorArrowRays" size="15"></ng-icon>
+            </button>
+          </div>
+          <div class="tool-group">
+            <button class="tool-btn has-tooltip" [class.active]="activeBrushType() === 'lineX'" (click)="setBrushType('lineX')" data-tooltip="Zoom horizontal">
+              <ng-icon name="heroMagnifyingGlassPlus" size="15"></ng-icon>
+            </button>
+            <button class="tool-btn has-tooltip" [class.active]="activeBrushType() === 'rect'" (click)="setBrushType('rect')" data-tooltip="Selección rectangular">
+              <ng-icon name="heroViewfinderCircle" size="15"></ng-icon>
+            </button>
+            <button class="tool-btn has-tooltip" [class.active]="activeBrushType() === 'polygon'" (click)="setBrushType('polygon')" data-tooltip="Lazo libre">
+              <ng-icon name="heroPencil" size="15"></ng-icon>
+            </button>
+            <button class="tool-btn has-tooltip" (click)="resetZoom()" data-tooltip="Restaurar vista">
+              <ng-icon name="heroArrowPath" size="15"></ng-icon>
+            </button>
+          </div>
+          <div class="tool-group">
+            <button class="tool-btn has-tooltip" (click)="toggleFullscreen()" [attr.data-tooltip]="isFullscreen() ? 'Salir de pantalla completa' : 'Pantalla completa'">
+              <ng-icon [name]="isFullscreen() ? 'heroArrowsPointingIn' : 'heroArrowsPointingOut'" size="15"></ng-icon>
+            </button>
+          </div>
+          <div class="tool-group">
+            <button class="tool-btn has-tooltip" (click)="downloadChartPng()" data-tooltip="Descargar PNG">
+              <ng-icon name="heroArrowDownTray" size="15"></ng-icon>
+            </button>
+            <button class="tool-btn has-tooltip" (click)="exportCsv()" data-tooltip="Exportar CSV">
+              <ng-icon name="heroTableCells" size="15"></ng-icon>
+            </button>
+          </div>
+        </div>
       </div>
 
+      <div class="content-body chart-body">
+        <div #chartEl class="chart"></div>
+
+        <!-- STATS STRIP -->
+        <div class="stats-strip">
+          <ng-container *ngFor="let m of municipioSeries()">
+            <div class="stats-strip__item" *ngIf="isMunicipioSelected(m.id) && municipioStats()[m.id]">
+              <span class="stats-strip__dot" [style.background]="m.color"></span>
+              <span class="stats-strip__name">{{ m.name }}</span>
+              <span class="stats-strip__metric">Min <b>{{ municipioStats()[m.id].min }}</b></span>
+              <span class="stats-strip__sep">|</span>
+              <span class="stats-strip__metric">Max <b>{{ municipioStats()[m.id].max }}</b></span>
+              <span class="stats-strip__sep">|</span>
+              <span class="stats-strip__metric">Prom <b>{{ municipioStats()[m.id].avg }}</b></span>
+              <span class="stats-strip__sep">|</span>
+              <span class="stats-strip__metric stats-strip__current" [style.color]="m.color">
+                Actual <b>{{ municipioStats()[m.id].current }}</b>
+              </span>
+              <span class="stats-strip__unit">l/s</span>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MAP CARD ===== -->
+    <div class="content-card map-card">
+      <div class="content-header">
+        <div class="content-header-icon accent-teal">
+          <ng-icon name="heroGlobeAmericas" size="18"></ng-icon>
+        </div>
+        <div>
+          <h2 class="content-title">Distribucion geografica</h2>
+          <p class="content-desc">Clic en un municipio para ver detalle</p>
+        </div>
+      </div>
+      <div id="mapOverview" class="map-container"></div>
     </div>
 
   </main>

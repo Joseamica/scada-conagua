@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { pool } from './db-service';
 import { ICreateUserRequest, IUser, ILoginRequest } from '../interfaces/user.interface';
+import { auditLog } from './audit-service';
 
 const JWT_SECRET = process.env['JWT_SECRET'] as string;
 
@@ -265,11 +266,7 @@ export const softDeleteUser = async (targetId: number, adminId: number, ip: stri
     await pool.query('BEGIN'); // Transactional to ensure log consistency
     try {
         await pool.query(query, [targetId]);
-        await pool.query(
-            `INSERT INTO scada.audit_logs (user_id, action, details, ip_address)
-             VALUES ($1, $2, $3, $4)`,
-            [adminId, 'USER_SOFT_DELETE', JSON.stringify({ target_user_id: targetId }), ip]
-        );
+        await auditLog(adminId, 'USER_SOFT_DELETE', { target_user_id: targetId }, ip);
         await pool.query('COMMIT');
     } catch (error) {
         await pool.query('ROLLBACK');

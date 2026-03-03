@@ -17,6 +17,7 @@ import {
   heroEnvelopeSolid
 } from '@ng-icons/heroicons/solid';
 import { AuthService } from '../../core/services/auth.service';
+import { AuditService } from '../../core/services/audit.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { ROLE_MAP } from '../../core/constants/roles';
 
@@ -102,6 +103,7 @@ export class HeaderBarComponent {
   constructor(
     private router: Router,
     private authService: AuthService,
+    private auditService: AuditService,
     private elementRef: ElementRef,
     public headerTitleService: HeaderTitleService,
     private themeService: ThemeService
@@ -179,6 +181,9 @@ export class HeaderBarComponent {
   }
 
   logout() {
-    this.authService.logout();
+    this.auditService.logAction('LOGOUT', {}).subscribe({
+      complete: () => this.authService.logout(),
+      error: () => this.authService.logout(),
+    });
   }
 }

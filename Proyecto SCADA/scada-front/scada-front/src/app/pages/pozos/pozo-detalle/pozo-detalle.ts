@@ -9,6 +9,7 @@ import { POZOS_DATA } from '../pozos-data';
 import { POZOS_LAYOUT } from '../pozos-layout';
 import { TIME_RANGES, TimeRange } from '../../../shared/time-ranges';
 import { TelemetryService } from '../../../core/services/telemetry';
+import { AuditService } from '../../../core/services/audit.service';
 import { timer, forkJoin } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import * as echarts from 'echarts';
@@ -79,7 +80,7 @@ export interface ChartVariable {
 const CHART_VARIABLES: ChartVariable[] = [
   { key: 'caudal_lts',  label: 'Caudal',    unit: 'Lt/s',   color: '#007bff', position: 'left',  defaultOn: true },
   { key: 'presion_kg',  label: 'Presión',   unit: 'Kg/cm²', color: '#28a745', position: 'right', defaultOn: true },
-  { key: 'rssi',        label: 'Señal LTE', unit: 'dBm',    color: '#ffc107', position: 'right', defaultOn: false },
+  { key: 'rssi',        label: 'Señal LTE', unit: '%',      color: '#ffc107', position: 'right', defaultOn: false },
   { key: 'snr',         label: 'SNR',       unit: 'dB',     color: '#9333ea', position: 'right', defaultOn: false },
 ];
 
@@ -116,17 +117,18 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   private telemetryService = inject(TelemetryService);
   private destroyRef = inject(DestroyRef);
   private themeService = inject(ThemeService);
+  private auditService = inject(AuditService);
+
+  private lastTotalizerData: [number, number | null][] = [];
 
   private themeEffect = effect(() => {
-    const theme = this.themeService.resolved();
-    if (this.mainChart) {
-      const c = getEChartsColors(theme);
-      this.mainChart.setOption({ backgroundColor: c.backgroundColor }, true);
+    this.themeService.resolved(); // track signal
+    if (this.mainChart && Object.keys(this.lastChartData).length > 0) {
+      this.renderMainChart();
       this.mainChart.resize();
     }
-    if (this.totalizerChart) {
-      const c = getEChartsColors(theme);
-      this.totalizerChart.setOption({ backgroundColor: c.backgroundColor }, true);
+    if (this.totalizerChart && this.lastTotalizerData.length > 0) {
+      this.updateTotalizerChart(this.lastTotalizerData);
       this.totalizerChart.resize();
     }
   });
@@ -265,7 +267,14 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   lng = signal<number>(0);
 
   // Variable selector for chart
-  chartVariables = CHART_VARIABLES;
+  // Ignition/ICH devices don't have LoRaWAN metrics (RSSI, SNR)
+  // Ignition/ICH devices don't have LoRaWAN SNR (no rxInfo in payload)
+  isIgnitionDevice = computed(() => this.pozoId().toLowerCase().startsWith('dev'));
+  chartVariables = computed(() =>
+    this.isIgnitionDevice()
+      ? CHART_VARIABLES.filter(v => v.key !== 'snr')
+      : CHART_VARIABLES
+  );
   selectedVars = signal<Set<string>>(new Set(['caudal_lts', 'presion_kg']));
 
   // Chart type selector
@@ -290,7 +299,7 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
     switch (key) {
       case 'caudal_lts': return this.datos().caudal;
       case 'presion_kg': return this.datos().presion;
-      case 'rssi': return this.commStats().lteRssi;
+      case 'rssi': return this.signalPercent();
       case 'snr': return this.commStats().snr;
       default: return 0;
     }
@@ -632,7 +641,7 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
     const requests: Record<string, any> = {};
 
     // Fetch selected chart variables
-    for (const v of this.chartVariables) {
+    for (const v of this.chartVariables()) {
       if (selected.has(v.key)) {
         requests[v.key] = this.telemetryService.getHistory(devEUI, v.key, rangeStr, options);
       }
@@ -659,10 +668,22 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
 
         // Build chart data for selected variables
         const chartData: Record<string, [number, number | null][]> = {};
-        for (const v of this.chartVariables) {
+        for (const v of this.chartVariables()) {
           if (selected.has(v.key) && res[v.key]) {
-            if (v.key === 'rssi' || v.key === 'snr') {
-              // Signal/SNR: keep raw values (no zero-threshold filter)
+            if (v.key === 'rssi') {
+              // RSSI: convert raw dBm to percentage (0–100%)
+              // API returns positive values (e.g. 77 meaning -77 dBm)
+              // Formula: -30 dBm = 100%, -120 dBm = 0%
+              chartData[v.key] = res[v.key].data.map((p: any) => {
+                const ts = new Date(p.timestamp).getTime();
+                if (p.value == null) return [ts, null] as [number, number | null];
+                const raw = Number(p.value);
+                const dbm = raw > 0 ? -raw : raw;
+                const pct = Math.max(0, Math.min(100, Math.round(((dbm + 120) / 90) * 100)));
+                return [ts, pct] as [number, number | null];
+              });
+            } else if (v.key === 'snr') {
+              // SNR: keep raw values (no zero-threshold filter)
               chartData[v.key] = res[v.key].data.map((p: any) =>
                 [new Date(p.timestamp).getTime(), p.value ?? null] as [number, number | null]);
             } else {
@@ -690,6 +711,7 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
           [new Date(p.timestamp).getTime(), p.value ?? null] as [number, number | null]);
 
         this.lastChartData = chartData;
+        this.lastTotalizerData = totalFlows;
         this.computeVariableStats();
         this.renderMainChart();
         this.updateTotalizerChart(totalFlows);
@@ -746,7 +768,7 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private updateMainChart(data: Record<string, [number, number | null][]>): void {
     const selected = this.selectedVars();
-    const activeVars = this.chartVariables.filter(v => selected.has(v.key) && data[v.key]);
+    const activeVars = this.chartVariables().filter(v => selected.has(v.key) && data[v.key]);
     const themeColors = getEChartsColors(this.themeService.resolved());
 
     // Y AXES
@@ -809,9 +831,10 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const rightAxes = activeVars.filter(v => v.position === 'right').length;
     const gridRight = Math.max(55, 55 + (rightAxes - 1) * 60);
-    const chartVars = this.chartVariables;
+    const chartVars = this.chartVariables();
 
     const option: any = {
+      backgroundColor: themeColors.backgroundColor,
       tooltip: {
         trigger: 'axis',
         backgroundColor: 'rgba(15,23,42,0.92)',
@@ -839,25 +862,21 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
           return html;
         }
       },
-      legend: { data: legendData, top: 0 },
-      brush: {
-        toolbox: [],
-        xAxisIndex: 0,
-        throttleType: 'debounce',
-        throttleDelay: 300
-      },
+      legend: { data: legendData, top: 0, textStyle: { color: themeColors.textColor } },
       grid: { left: 55, right: gridRight, bottom: 70, top: 45 },
       xAxis: {
         type: 'time',
         boundaryGap: false,
         axisLabel: {
           fontSize: 11,
+          color: themeColors.subtextColor,
           formatter: (value: number) => {
             const d = new Date(value);
             return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
               + '\n' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
           }
         },
+        axisLine: { lineStyle: { color: themeColors.axisLine } },
         splitLine: { show: false }
       },
       yAxis,
@@ -871,7 +890,7 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
           backgroundColor: 'rgba(148,163,184,0.08)',
           fillerColor: 'rgba(0,123,255,0.12)',
           dataBackground: {
-            lineStyle: { color: '#cbd5e1', width: 0.5 },
+            lineStyle: { color: themeColors.subtextColor, width: 0.5 },
             areaStyle: { color: 'rgba(203,213,225,0.15)' }
           }
         }
@@ -886,14 +905,20 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private updateTotalizerChart(totalFlows: [number, number | null][]): void {
     const vals = totalFlows.map(p => p[1]).filter((v): v is number => v !== null);
+    const c = getEChartsColors(this.themeService.resolved());
     if (vals.length === 0) {
-      this.totalizerChart.setOption({ title: { text: 'Sin datos de caudal totalizado', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 14 } }, series: [] }, true);
+      this.totalizerChart.setOption({ backgroundColor: c.backgroundColor, title: { text: 'Sin datos de caudal totalizado', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 14 } }, series: [] }, true);
       return;
     }
 
     this.totalizerChart.setOption({
+      backgroundColor: c.backgroundColor,
       tooltip: {
         trigger: 'axis',
+        backgroundColor: 'rgba(15,23,42,0.92)',
+        borderColor: 'rgba(255,255,255,0.08)',
+        borderWidth: 1,
+        textStyle: { color: '#e2e8f0', fontSize: 12 },
         formatter: (params: any) => {
           const p = Array.isArray(params) ? params[0] : params;
           const d = new Date(p.value[0]);
@@ -901,14 +926,30 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       },
       grid: { left: 70, right: 20, bottom: 70, top: 40 },
-      xAxis: { type: 'time', boundaryGap: false },
+      xAxis: {
+        type: 'time', boundaryGap: false,
+        axisLabel: { color: c.subtextColor },
+        axisLine: { lineStyle: { color: c.axisLine } }
+      },
       yAxis: {
         type: 'value', name: 'm³',
-        splitLine: { lineStyle: { color: getEChartsColors(this.themeService.resolved()).splitLine } }
+        axisLabel: { color: c.subtextColor },
+        nameTextStyle: { color: c.subtextColor },
+        splitLine: { lineStyle: { color: c.splitLine, type: 'dashed' } }
       },
       dataZoom: [
         { type: 'inside', xAxisIndex: 0, filterMode: 'filter' },
-        { type: 'slider', xAxisIndex: 0, bottom: 8, height: 22, handleSize: '80%' }
+        {
+          type: 'slider', xAxisIndex: 0, bottom: 8, height: 22, handleSize: '80%',
+          handleStyle: { color: '#94a3b8', borderColor: '#64748b' },
+          borderColor: 'transparent',
+          backgroundColor: 'rgba(148,163,184,0.08)',
+          fillerColor: 'rgba(0,123,255,0.12)',
+          dataBackground: {
+            lineStyle: { color: c.subtextColor, width: 0.5 },
+            areaStyle: { color: 'rgba(203,213,225,0.15)' }
+          }
+        }
       ],
       series: [{
         name: 'Totalizado',
@@ -968,7 +1009,7 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   // =========================
   private renderGauge(): void {
     const selected = this.selectedVars();
-    const activeVars = this.chartVariables.filter(v => selected.has(v.key));
+    const activeVars = this.chartVariables().filter(v => selected.has(v.key));
     const series: any[] = [];
     const count = activeVars.length;
 
@@ -1049,7 +1090,8 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
         brushOption: { brushType: false, brushMode: 'single' }
       });
     } else {
-      // Activate this brush type
+      // Register brush on-demand (hidden from UI) then activate
+      this.mainChart.setOption({ brush: { toolbox: [], xAxisIndex: 0 } });
       this.activeBrushType.set(type);
       this.mainChart.dispatchAction({
         type: 'takeGlobalCursor',
@@ -1092,11 +1134,12 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
     a.href = url;
     a.download = `${this.pozoNombre()}_grafica.png`;
     a.click();
+    this.auditService.logAction('EXPORT_CHART_PNG', { details: { site: this.pozoNombre() } }).subscribe();
   }
 
   exportCsv() {
     const selected = this.selectedVars();
-    const activeVars = this.chartVariables.filter(v => selected.has(v.key));
+    const activeVars = this.chartVariables().filter(v => selected.has(v.key));
     if (activeVars.length === 0) return;
 
     const allTimestamps = new Set<number>();
@@ -1132,11 +1175,12 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
     a.download = `${this.pozoNombre()}_telemetria.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    this.auditService.logAction('EXPORT_TELEMETRY_CSV', { details: { site: this.pozoNombre() } }).subscribe();
   }
 
   private computeVariableStats() {
     const stats: Record<string, { min: number; max: number; avg: number; current: number }> = {};
-    for (const v of this.chartVariables) {
+    for (const v of this.chartVariables()) {
       if (!this.selectedVars().has(v.key)) continue;
       const data = this.lastChartData[v.key];
       if (!data || data.length === 0) continue;

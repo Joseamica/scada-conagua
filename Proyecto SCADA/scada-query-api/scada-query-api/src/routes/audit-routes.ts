@@ -1,31 +1,30 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../services/db-service';
 import { isAuth, isSupervisor } from '../middlewares/auth-middleware';
+import { auditLog, AuditAction } from '../services/audit-service';
 
 const router = Router();
 
-// POST /navigation — Log module navigation events
+// POST /navigation — Log module navigation and client-side events
 router.post('/navigation', isAuth, async (req: Request, res: Response) => {
-    const { module } = req.body;
-    const userId = req.user?.id;
+    const { module, action, entity, entityId, details } = req.body;
+    const userId = req.user?.id ?? null;
     const clientIp = req.ip || '0.0.0.0';
 
-    try {
-        await pool.query(
-            `INSERT INTO scada.audit_logs (user_id, action, details, ip_address)
-             VALUES ($1, $2, $3, $4)`,
-            [
-                userId,
-                'NAVIGATE_TO_MODULE',
-                JSON.stringify({ module_name: module }),
-                clientIp
-            ]
-        );
+    const auditAction: AuditAction = action || 'NAVIGATE_TO_MODULE';
+    const auditDetails: Record<string, any> = {
+        module_name: module,
+        ...(entity && { entity }),
+        ...(entityId && { entity_id: entityId }),
+        ...(details && { ...details }),
+    };
 
-        res.status(200).json({ message: 'Navigation event logged successfully' });
+    try {
+        await auditLog(userId, auditAction, auditDetails, clientIp);
+        res.status(200).json({ message: 'Event logged' });
     } catch (error) {
         console.error('>>> [Audit Error]:', error);
-        res.status(500).json({ error: 'Failed to record navigation log' });
+        res.status(500).json({ error: 'Failed to record audit log' });
     }
 });
 

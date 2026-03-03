@@ -9,8 +9,8 @@ import { send2FACode, sendPasswordResetEmail } from '../services/email-service';
 import { findUserByEmail, findUserById, validate2FACode, clearUser2FAToken, verifyCredentials, generateAndSave2FACode, generateTempToken, saveTotpSecret, enableTotp, disableTotp, generatePasswordResetToken, findUserByResetToken, resetPasswordWithToken, generateEmailVerifyToken, validateEmailVerifyToken } from '../services/user-service';
 import bcrypt from 'bcrypt';
 import { ILoginRequest } from '../interfaces/user.interface';
-import { pool } from '../services/db-service';
 import { isAuth } from '../middlewares/auth-middleware';
+import { auditLog } from '../services/audit-service';
 
 const router = Router();
 
@@ -22,6 +22,7 @@ router.post('/login', async (req: Request, res: Response) => {
         const user = await verifyCredentials({ email, password });
 
         if (!user) {
+            await auditLog(null, 'LOGIN_FAILED', { email, reason: 'invalid_credentials' }, req.ip!);
             return res.status(401).json({ error: 'Credenciales invalidas o cuenta bloqueada.' });
         }
 
@@ -70,6 +71,8 @@ router.post('/login', async (req: Request, res: Response) => {
             { expiresIn: '8h' }
         );
 
+        await auditLog(user.id, 'LOGIN_SUCCESS', { method: 'direct' }, req.ip!);
+
         res.status(200).json({
             message: 'Login successful',
             requires2FA: false,
@@ -88,6 +91,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
     } catch (error: any) {
         // Handling lock messages from verifyCredentials
+        await auditLog(null, 'LOGIN_FAILED', { email, reason: 'account_locked' }, req.ip!);
         res.status(423).json({ error: error.message });
     }
 });
@@ -126,16 +130,7 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
         );
 
         // 3. Register activity in scada.audit_logs
-        await pool.query(
-            `INSERT INTO scada.audit_logs (user_id, action, details, ip_address) 
-             VALUES ($1, $2, $3, $4)`,
-            [
-                user.id, 
-                'LOGIN_SUCCESS', 
-                JSON.stringify({ method: '2FA_GMAIL', site_access: 'SCADA - SOA' }), 
-                req.ip // Real IP captured thanks to 'trust proxy'
-            ]
-        );
+        await auditLog(user.id, 'LOGIN_SUCCESS', { method: 'email_code' }, req.ip!);
 
         // 4. Send success response
         res.status(200).json({
@@ -268,11 +263,7 @@ router.post('/2fa/verify-setup', isAuth, async (req: Request, res: Response) => 
         await enableTotp(userId);
 
         // Audit log
-        await pool.query(
-            `INSERT INTO scada.audit_logs (user_id, action, details, ip_address)
-             VALUES ($1, $2, $3, $4)`,
-            [userId, 'TOTP_ENABLED', JSON.stringify({ method: 'google_authenticator' }), req.ip]
-        );
+        await auditLog(userId, 'TOTP_ENABLED', { method: 'google_authenticator' }, req.ip!);
 
         res.status(200).json({ message: 'Google Authenticator 2FA enabled successfully.' });
 
@@ -329,11 +320,7 @@ router.post('/verify-totp', async (req: Request, res: Response) => {
         );
 
         // Audit log
-        await pool.query(
-            `INSERT INTO scada.audit_logs (user_id, action, details, ip_address)
-             VALUES ($1, $2, $3, $4)`,
-            [user.id, 'LOGIN_SUCCESS', JSON.stringify({ method: 'TOTP_GOOGLE_AUTH', site_access: 'SCADA - SOA' }), req.ip]
-        );
+        await auditLog(user.id, 'LOGIN_SUCCESS', { method: 'totp' }, req.ip!);
 
         res.status(200).json({
             message: 'Authentication successful',
@@ -389,11 +376,7 @@ router.post('/2fa/disable', isAuth, async (req: Request, res: Response) => {
         await disableTotp(userId);
 
         // Audit log
-        await pool.query(
-            `INSERT INTO scada.audit_logs (user_id, action, details, ip_address)
-             VALUES ($1, $2, $3, $4)`,
-            [userId, 'TOTP_DISABLED', JSON.stringify({ method: 'google_authenticator' }), req.ip]
-        );
+        await auditLog(userId, 'TOTP_DISABLED', { method: 'google_authenticator' }, req.ip!);
 
         res.status(200).json({ message: 'Google Authenticator 2FA has been disabled.' });
 
@@ -436,11 +419,7 @@ router.get('/verify-email', async (req: Request, res: Response) => {
         );
 
         // Audit log
-        await pool.query(
-            `INSERT INTO scada.audit_logs (user_id, action, details, ip_address)
-             VALUES ($1, $2, $3, $4)`,
-            [user.id, 'LOGIN_SUCCESS', JSON.stringify({ method: '2FA_MAGIC_LINK', site_access: 'SCADA - SOA' }), req.ip]
-        );
+        await auditLog(user.id, 'LOGIN_SUCCESS', { method: 'email_link' }, req.ip!);
 
         res.status(200).json({
             message: 'Email verified successfully',
@@ -524,11 +503,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
             await sendPasswordResetEmail(user.email, resetUrl);
 
             // Audit log
-            await pool.query(
-                `INSERT INTO scada.audit_logs (user_id, action, details, ip_address)
-                 VALUES ($1, $2, $3, $4)`,
-                [user.id, 'PASSWORD_RESET_REQUESTED', JSON.stringify({ email: normalizedEmail }), req.ip]
-            );
+            await auditLog(user.id, 'PASSWORD_RESET_REQUESTED', { email: normalizedEmail }, req.ip!);
         }
         // If user doesn't exist or is blocked, we silently do nothing.
 
@@ -577,11 +552,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
         await resetPasswordWithToken(user.id, newHash);
 
         // Audit log
-        await pool.query(
-            `INSERT INTO scada.audit_logs (user_id, action, details, ip_address)
-             VALUES ($1, $2, $3, $4)`,
-            [user.id, 'PASSWORD_RESET_SUCCESS', JSON.stringify({ method: 'self_service' }), req.ip]
-        );
+        await auditLog(user.id, 'PASSWORD_RESET_SUCCESS', { method: 'self_service' }, req.ip!);
 
         res.status(200).json({ message: 'Contrasena actualizada correctamente. Ya puedes iniciar sesion.' });
     } catch (error) {

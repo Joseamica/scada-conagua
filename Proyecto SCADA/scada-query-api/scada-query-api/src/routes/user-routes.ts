@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import { getAllUsers, softDeleteUser, updateUser, createUser, getScopedUsers, resetUserPassword, isEmailRegistered } from '../services/user-service';
 import { getPermissions, upsertPermissions } from '../services/permission-service';
 import { isAdmin } from '../middlewares/auth-middleware';
-import { pool } from '../services/db-service';
+import { auditLog } from '../services/audit-service';
 
 const router = Router();
 
@@ -28,20 +28,12 @@ router.post('/', async (req: Request, res: Response) => {
 
         const userId = await createUser(req.body);
 
-        await pool.query(
-            `INSERT INTO scada.audit_logs (user_id, action, details, ip_address)
-             VALUES ($1, $2, $3, $4)`,
-            [req.user!.id, 'CREATE_USER_SUCCESS', JSON.stringify({ email }), req.ip]
-        );
+        await auditLog(req.user!.id, 'CREATE_USER_SUCCESS', { email }, req.ip!);
 
         res.status(201).json({ id: userId, message: 'User created' });
 
     } catch (error: any) {
-        await pool.query(
-            `INSERT INTO scada.audit_logs (user_id, action, details, ip_address)
-             VALUES ($1, $2, $3, $4)`,
-            [req.user!.id, 'CREATE_USER_FAILED', JSON.stringify({ email, reason: error.message }), req.ip]
-        );
+        await auditLog(req.user!.id, 'CREATE_USER_FAILED', { email, reason: error.message }, req.ip!);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -65,6 +57,8 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (!id) return res.status(400).json({ error: 'Invalid user ID.' });
     try {
         await updateUser(id, req.body);
+        const fieldsChanged = Object.keys(req.body);
+        await auditLog(req.user!.id, 'UPDATE_USER', { target_user_id: id, fields_changed: fieldsChanged }, req.ip!);
         res.status(200).json({ message: 'User updated successfully' });
     } catch (error: any) {
         if (error.message === 'Invalid role_id. Must be between 1 and 4.') {
@@ -101,11 +95,7 @@ router.post('/:id/reset-password', async (req: Request, res: Response) => {
 
         await resetUserPassword(targetId, hash);
 
-        await pool.query(
-            `INSERT INTO scada.audit_logs (user_id, action, details, ip_address)
-             VALUES ($1, $2, $3, $4)`,
-            [req.user!.id, 'ADMIN_PASSWORD_RESET', JSON.stringify({ target_user_id: targetId }), req.ip]
-        );
+        await auditLog(req.user!.id, 'ADMIN_PASSWORD_RESET', { target_user_id: targetId }, req.ip!);
 
         res.status(200).json({ message: 'Password reset successful' });
     } catch (error) {
@@ -134,6 +124,7 @@ router.put('/:id/permissions', async (req: Request, res: Response) => {
     if (!userId) return res.status(400).json({ error: 'Invalid user ID.' });
     try {
         await upsertPermissions(userId, req.body);
+        await auditLog(req.user!.id, 'PERMISSION_UPDATED', { target_user_id: userId, permissions: req.body }, req.ip!);
         res.json({ message: 'Permissions updated' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to update permissions' });

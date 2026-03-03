@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { isAuth, isAdmin } from '../middlewares/auth-middleware';
 import { getAllEntities, getScopedEntities, createEntity } from '../services/entity-service';
+import { auditLog } from '../services/audit-service';
 
 const router = Router();
 
@@ -26,6 +27,7 @@ router.post('/', isAdmin, async (req: Request, res: Response) => {
 
     try {
         const id = await createEntity({ name, level, parent_id, estado_id, municipio_id });
+        await auditLog(req.user!.id, 'ENTITY_CREATED', { entity_id: id, name, level }, req.ip!);
         res.status(201).json({ id, message: 'Entity created' });
     } catch (error) {
         console.error('Error creating entity:', error);

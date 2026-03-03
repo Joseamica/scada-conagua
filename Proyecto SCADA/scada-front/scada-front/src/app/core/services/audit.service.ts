@@ -52,6 +52,10 @@ export class AuditService {
     return this.http.get<AuditLogsResponse>(`${this.apiUrl}/logs`, { params: httpParams });
   }
 
+  logAction(action: string, details: Record<string, any> = {}): Observable<any> {
+    return this.http.post(`${this.apiUrl}/navigation`, { action, ...details });
+  }
+
   exportCSV(params: AuditLogParams = {}): Observable<Blob> {
     let httpParams = new HttpParams();
     if (params.from) httpParams = httpParams.set('from', params.from);

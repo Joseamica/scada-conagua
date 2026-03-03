@@ -16,7 +16,7 @@
 }
 
 .page {
-  max-width: 1280px;
+  max-width: 1380px;
   margin: 0 auto;
   padding: 24px 20px 0;
 }
@@ -159,13 +159,7 @@
   color: var(--text-muted);
 }
 
-/* ===== CONTENT GRID (Chart + Map) ===== */
-
-.content-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.4fr;
-  gap: 16px;
-}
+/* ===== CONTENT CARD ===== */
 
 .content-card {
   background: var(--bg-card);
@@ -174,6 +168,10 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.chart-card-main {
+  margin-bottom: 24px;
 }
 
 /* Card headers */
@@ -214,17 +212,459 @@
   margin: 0;
 }
 
-/* Chart */
-.chart-container {
-  width: 100%;
-  height: 360px;
-  padding: 16px;
+/* ===== CHART HEADER ===== */
+
+.chart-header {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.chart-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+/* ===== TIME SELECTOR ===== */
+
+.time-selector {
+  display: flex;
+  border-radius: 8px;
+  border: 1px solid var(--border-default);
+  overflow: hidden;
+}
+
+.time-selector button {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  border-right: 1px solid var(--border-default);
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+
+.time-selector button:last-child { border-right: none; }
+.time-selector button:hover { background: var(--bg-card-hover); }
+
+.time-selector button.active {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+/* ===== FILTER PILLS ===== */
+
+.active-filters {
+  display: flex;
+  gap: 8px;
+  padding: 10px 20px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--table-hover);
+  border: 1px solid var(--border-default);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.filter-pill__label { font-weight: 600; color: var(--text-primary); }
+.filter-pill__value { color: var(--info); }
+
+.filter-pill__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: var(--border-strong);
+  color: var(--text-on-accent);
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.filter-pill__clear:hover { background: var(--danger); }
+
+/* ===== CHART TOOLBAR — VARIABLE INDICATORS ROW ===== */
+
+.toolbar-vars-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.var-indicator {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border: 1.5px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+  overflow: hidden;
+  min-width: 0;
+  position: relative;
+}
+
+.var-indicator:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.var-indicator.active {
+  border-color: var(--var-color, var(--accent));
+  background: var(--bg-card-hover);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--var-color, var(--accent)) 20%, transparent);
+}
+
+.var-indicator__bar {
+  width: 5px;
+  flex-shrink: 0;
+  background: var(--border-strong);
+  transition: background 0.2s;
+}
+
+.var-indicator.active .var-indicator__bar {
+  background: var(--var-color, var(--accent));
+}
+
+.var-indicator__body {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px;
+  min-width: 0;
   flex: 1;
 }
 
-/* Map */
-.map-wrapper {
-  min-height: 460px;
+.var-indicator__label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  line-height: 1;
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+
+.var-indicator.active .var-indicator__label {
+  color: var(--text-secondary);
+}
+
+.var-indicator__value {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+
+.var-indicator.active .var-indicator__value {
+  color: var(--var-color, var(--accent));
+}
+
+.var-indicator__unit {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+/* ===== CHART TOOLBAR — TOOLS ROW ===== */
+
+.toolbar-tools-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-card);
+}
+
+.toolbar-tools-left,
+.toolbar-tools-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolbar-tools-right {
+  gap: 4px;
+}
+
+/* --- Tool Groups (visual separation) --- */
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+}
+
+/* --- Chart Type Segmented Control --- */
+
+.chart-type-segmented {
+  display: flex;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-card-hover);
+}
+
+.chart-type-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border-right: 1px solid var(--border-default);
+}
+
+.chart-type-btn:last-child {
+  border-right: none;
+}
+
+.chart-type-btn:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.chart-type-btn.active {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+/* --- Tool Buttons --- */
+
+.tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tool-btn:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.tool-btn.active {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+/* --- Custom Tooltips --- */
+
+.has-tooltip {
+  position: relative;
+}
+
+.has-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  color: #f1f5f9;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 8px 12px;
+  border-radius: 8px;
+  width: max-content;
+  max-width: 360px;
+  white-space: nowrap;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 50;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.has-tooltip::before {
+  content: '';
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: rgba(15, 23, 42, 0.95);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 50;
+}
+
+.has-tooltip:hover::after,
+.has-tooltip:hover::before {
+  opacity: 1;
+}
+
+/* Right-edge tooltips: shift left so they don't overflow */
+.toolbar-tools-right .tool-group:last-child .has-tooltip::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.toolbar-tools-right .tool-group:last-child .has-tooltip::before {
+  left: auto;
+  right: 8px;
+  transform: none;
+}
+
+/* ===== CHART BODY ===== */
+
+.chart-body {
+  padding: 16px 20px 20px;
+}
+
+.chart {
+  height: 480px;
+}
+
+/* ===== STATS STRIP ===== */
+
+.stats-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  margin-top: 4px;
+}
+
+.stats-strip__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 4px 0;
+}
+
+.stats-strip__item + .stats-strip__item {
+  border-top: 1px solid var(--border-default);
+  padding-top: 10px;
+}
+
+.stats-strip__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.stats-strip__name {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-primary);
+  min-width: 70px;
+}
+
+.stats-strip__metric {
+  font-weight: 500;
+}
+
+.stats-strip__metric b {
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-left: 2px;
+}
+
+.stats-strip__sep {
+  color: var(--border-strong);
+  font-size: 10px;
+  opacity: 0.5;
+}
+
+.stats-strip__current {
+  font-weight: 600;
+}
+
+.stats-strip__current b {
+  font-weight: 800;
+}
+
+.stats-strip__unit {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+/* ===== FULLSCREEN MODE ===== */
+
+.chart-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  border-radius: 0;
+  border: none;
+  overflow-y: auto;
+  background: var(--bg-card);
+}
+
+.chart-fullscreen .chart {
+  height: calc(100vh - 360px);
+}
+
+.chart-fullscreen .chart-body {
+  flex: 1;
+}
+
+.chart-fullscreen .toolbar-vars-row {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* ===== MAP CARD ===== */
+
+.map-card {
+  margin-top: 0;
 }
 
 .map-container {
@@ -262,12 +702,24 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .content-grid {
-    grid-template-columns: 1fr;
+  .chart-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
-  .map-wrapper {
-    min-height: 400px;
+  .chart-header-right {
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
+
+  .toolbar-vars-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .toolbar-tools-row {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
   .map-container {
@@ -309,13 +761,44 @@
     padding: 16px;
   }
 
-  .chart-container {
-    height: 280px;
-    padding: 12px;
+  .chart {
+    height: 350px;
   }
 
-  .map-wrapper {
-    min-height: 350px;
+  .time-selector {
+    flex-wrap: wrap;
+  }
+
+  .toolbar-vars-row {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 10px 12px;
+    gap: 6px;
+  }
+
+  .toolbar-tools-row {
+    padding: 8px 12px;
+  }
+
+  .var-indicator__body {
+    padding: 8px 10px;
+  }
+
+  .var-indicator__value {
+    font-size: 14px;
+  }
+
+  .stats-strip__item {
+    flex-wrap: wrap;
+    font-size: 11px;
+    gap: 6px;
+  }
+
+  .stats-strip__unit {
+    margin-left: 0;
+  }
+
+  .toolbar-tools-right {
+    flex-wrap: wrap;
   }
 
   .map-container {
