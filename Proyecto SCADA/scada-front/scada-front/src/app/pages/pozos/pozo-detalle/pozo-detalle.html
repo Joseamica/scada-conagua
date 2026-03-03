@@ -250,7 +250,7 @@
       </div>
 
       <!-- RIGHT COLUMN: CHARTS -->
-      <div class="content-card chart-card-main">
+      <div class="content-card chart-card-main" [class.chart-fullscreen]="isFullscreen()">
         <div class="content-header chart-header">
           <div class="chart-header-left">
             <div class="content-header-icon">
@@ -290,36 +290,102 @@
           </span>
         </div>
 
+        <!-- VARIABLE INDICATORS ROW -->
+        <div class="toolbar-vars-row">
+          <button
+            *ngFor="let v of chartVariables"
+            class="var-indicator"
+            [class.active]="isVarSelected(v.key)"
+            [style.--var-color]="v.color"
+            (click)="toggleVar(v.key)">
+            <span class="var-indicator__bar"></span>
+            <div class="var-indicator__body">
+              <span class="var-indicator__label">{{ v.label }}</span>
+              <span class="var-indicator__value">
+                {{ getLiveValue(v.key) | number:'1.1-1' }}
+                <span class="var-indicator__unit">{{ v.unit }}</span>
+              </span>
+            </div>
+          </button>
+        </div>
+
+        <!-- TOOLS ROW -->
+        <div class="toolbar-tools-row">
+          <div class="toolbar-tools-left">
+            <div class="chart-type-segmented">
+              <button
+                *ngFor="let t of chartTypeOptions"
+                class="chart-type-btn"
+                [class.active]="chartType() === t.key"
+                [title]="t.label"
+                (click)="setChartType(t.key)">
+                <ng-icon [name]="t.icon" size="16"></ng-icon>
+              </button>
+            </div>
+          </div>
+          <div class="toolbar-tools-right">
+            <div class="tool-group">
+              <button class="tool-btn has-tooltip" [class.active]="crosshairEnabled()" (click)="toggleCrosshair()" data-tooltip="Crosshair: muestra valores exactos en ambos ejes">
+                <ng-icon name="heroCursorArrowRays" size="15"></ng-icon>
+              </button>
+            </div>
+            <div class="tool-group">
+              <button class="tool-btn has-tooltip" [class.active]="activeBrushType() === 'lineX'" (click)="setBrushType('lineX')" data-tooltip="Zoom horizontal: arrastra para hacer zoom a un rango de tiempo">
+                <ng-icon name="heroMagnifyingGlassPlus" size="15"></ng-icon>
+              </button>
+              <button class="tool-btn has-tooltip" [class.active]="activeBrushType() === 'rect'" (click)="setBrushType('rect')" data-tooltip="Selección rectangular: arrastra un recuadro para hacer zoom al área">
+                <ng-icon name="heroViewfinderCircle" size="15"></ng-icon>
+              </button>
+              <button class="tool-btn has-tooltip" [class.active]="activeBrushType() === 'polygon'" (click)="setBrushType('polygon')" data-tooltip="Lazo libre: dibuja una forma para hacer zoom al rango seleccionado">
+                <ng-icon name="heroPencil" size="15"></ng-icon>
+              </button>
+              <button class="tool-btn has-tooltip" (click)="resetZoom()" data-tooltip="Restaurar vista original de la gráfica">
+                <ng-icon name="heroArrowPath" size="15"></ng-icon>
+              </button>
+            </div>
+            <div class="tool-group">
+              <button class="tool-btn has-tooltip" (click)="toggleFullscreen()" [attr.data-tooltip]="isFullscreen() ? 'Salir de pantalla completa' : 'Expandir gráfica a pantalla completa'">
+                <ng-icon [name]="isFullscreen() ? 'heroArrowsPointingIn' : 'heroArrowsPointingOut'" size="15"></ng-icon>
+              </button>
+            </div>
+            <div class="tool-group">
+              <button class="tool-btn has-tooltip" (click)="downloadChartPng()" data-tooltip="Descargar gráfica como imagen PNG">
+                <ng-icon name="heroArrowDownTray" size="15"></ng-icon>
+              </button>
+              <button class="tool-btn has-tooltip" (click)="exportCsv()" data-tooltip="Exportar datos a archivo CSV">
+                <ng-icon name="heroTableCells" size="15"></ng-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="content-body chart-body">
           <div class="charts-grid">
             <div>
               <h3 class="chart-section-title">Lecturas operativas</h3>
               <div #mainChart class="chart"></div>
             </div>
-            <div class="chart-actions">
-              <div class="var-selector">
-                <span class="var-selector__label">Variables:</span>
-                <button
-                  *ngFor="let v of chartVariables"
-                  class="var-pill"
-                  [class.active]="isVarSelected(v.key)"
-                  [style.--pill-color]="v.color"
-                  (click)="toggleVar(v.key)">
-                  {{ v.label }}
-                </button>
-              </div>
-              <div class="chart-type-divider"></div>
-              <div class="var-selector">
-                <span class="var-selector__label">Gráfico:</span>
-                <button
-                  *ngFor="let t of chartTypeOptions"
-                  class="type-pill"
-                  [class.active]="chartType() === t.key"
-                  (click)="setChartType(t.key)">
-                  {{ t.label }}
-                </button>
-              </div>
+
+            <!-- STATS STRIP -->
+            <div class="stats-strip" *ngIf="chartType() !== 'gauge'">
+              <ng-container *ngFor="let v of chartVariables">
+                <div class="stats-strip__item" *ngIf="isVarSelected(v.key) && variableStats()[v.key]">
+                  <span class="stats-strip__dot" [style.background]="v.color"></span>
+                  <span class="stats-strip__name">{{ v.label }}</span>
+                  <span class="stats-strip__metric">Min <b>{{ variableStats()[v.key].min }}</b></span>
+                  <span class="stats-strip__sep">|</span>
+                  <span class="stats-strip__metric">Max <b>{{ variableStats()[v.key].max }}</b></span>
+                  <span class="stats-strip__sep">|</span>
+                  <span class="stats-strip__metric">Prom <b>{{ variableStats()[v.key].avg }}</b></span>
+                  <span class="stats-strip__sep">|</span>
+                  <span class="stats-strip__metric stats-strip__current" [style.color]="v.color">
+                    Actual <b>{{ variableStats()[v.key].current }}</b>
+                  </span>
+                  <span class="stats-strip__unit">{{ v.unit }}</span>
+                </div>
+              </ng-container>
             </div>
+
             <div>
               <h3 class="chart-section-title">Caudal totalizado</h3>
               <div #totalizerChart class="chart"></div>

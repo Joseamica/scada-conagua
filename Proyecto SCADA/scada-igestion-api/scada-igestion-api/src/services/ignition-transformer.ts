@@ -32,7 +32,8 @@ export const transformIgnition = (topic: string, rawData: string): IgnitionProce
         : new Date();
 
     let valor: number | boolean = parseFloat(valorStr);
-    if (variable.toLowerCase().includes('bomba')) {
+    const varLower = variable.toLowerCase();
+    if (varLower.includes('bomba') || varLower.includes('arrancador')) {
         valor = valorStr.toLowerCase() === 'true';
     }
 

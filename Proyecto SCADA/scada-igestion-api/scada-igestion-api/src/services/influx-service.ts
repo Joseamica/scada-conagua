@@ -62,13 +62,18 @@ export const writeGroupedIgnitionToInflux = async (data: any): Promise<void> => 
             if (key === 'bomba') {
                 point.tag('status_motor', value ? 'Encendido' : 'Apagado');
                 point.booleanField('value_bomba', value as boolean);
+            } else if (key === 'arrancador') {
+                point.stringField('value_arrancador', String(!!value));
             } else if (key === 'senal') {
                 const v = value as number;
                 point.tag('status_senal', v >= 80 ? 'Excelente' : v >= 25 ? 'Bueno' : 'Malo');
                 point.floatField('value_senal', v);
             } else {
                 // presión, caudal, totalizado...
-                point.floatField(`value_${key}`, value as number);
+                const numVal = Number(value);
+                if (!isNaN(numVal)) {
+                    point.floatField(`value_${key}`, numVal);
+                }
             }
         });
 

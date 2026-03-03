@@ -295,10 +295,10 @@ export const POZOS_LAYOUT: Record<string, any> = {
   'pozo-1-ixtapaluca': {
     render: 'pozo-1-ixtapaluca.png',
     overlays: {
-      nivel:  { x: 48,  y: 215 },
-      presion: { x: 17.5, y: 27 }, // porcentajes
-      caudal: { x: 66.2, y: 15 }, // porcentajes
-      lteBox: { x: 10,  y: 18  }
+      nivel:  { x: 12, y: 70 },
+      presion: { x: 18, y: 22 },
+      caudal:  { x: 52, y: 18 },
+      lteBox:  { x: 85, y: 15 }
     }
   },
 

@@ -247,13 +247,15 @@
                 <tbody>
                   <tr *ngFor="let site of sitesFiltrados(); let i = index; let odd = odd"
                     [class.row-alt]="odd">
-                    <td class="cell-name">
-                      <span class="site-dot"
-                        [class.site-dot--ok]="site.status === 'ok'"
-                        [class.site-dot--warn]="site.status === 'no-signal'"
-                        aria-hidden="true">
+                    <td>
+                      <span class="cell-name">
+                        <span class="site-dot"
+                          [class.site-dot--ok]="site.status === 'ok'"
+                          [class.site-dot--warn]="site.status === 'no-signal'"
+                          aria-hidden="true">
+                        </span>
+                        {{ site.name }}
                       </span>
-                      {{ site.name }}
                     </td>
                     <td>
                       <span class="type-badge">{{ site.type }}</span>

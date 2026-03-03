@@ -20,7 +20,10 @@ import { NgIconComponent, provideIcons } from '@ng-icons/core';
 import {
   heroChartBarSquare, heroBolt, heroBeaker, heroChartBar,
   heroSignal, heroCog6Tooth, heroPresentationChartLine, heroExclamationTriangle,
-  heroLockClosed
+  heroLockClosed, heroArrowsPointingOut, heroArrowsPointingIn,
+  heroMagnifyingGlassPlus, heroArrowPath, heroArrowDownTray,
+  heroCursorArrowRays, heroTableCells, heroChartPie,
+  heroViewfinderCircle, heroPencil
 } from '@ng-icons/heroicons/outline';
 import { bootstrapBatteryFull, bootstrapBatteryHalf, bootstrapBatteryLow } from '@ng-icons/bootstrap-icons';
 import { DateRangePickerComponent, DateRangeOutput } from '../../../shared/date-range-picker/date-range-picker';
@@ -82,11 +85,11 @@ const CHART_VARIABLES: ChartVariable[] = [
 
 type ChartType = 'line' | 'bar' | 'area' | 'gauge';
 
-const CHART_TYPE_OPTIONS: { key: ChartType; label: string }[] = [
-  { key: 'line',    label: 'Línea' },
-  { key: 'bar',     label: 'Barras' },
-  { key: 'area',    label: 'Área' },
-  { key: 'gauge',   label: 'Gauge' },
+const CHART_TYPE_OPTIONS: { key: ChartType; label: string; icon: string }[] = [
+  { key: 'line',  label: 'Línea',  icon: 'heroPresentationChartLine' },
+  { key: 'bar',   label: 'Barras', icon: 'heroChartBar' },
+  { key: 'area',  label: 'Área',   icon: 'heroChartBarSquare' },
+  { key: 'gauge', label: 'Gauge',  icon: 'heroChartPie' },
 ];
 
 @Component({
@@ -97,7 +100,10 @@ const CHART_TYPE_OPTIONS: { key: ChartType; label: string }[] = [
     provideIcons({
       heroChartBarSquare, heroBolt, heroBeaker, heroChartBar,
       heroSignal, heroCog6Tooth, heroPresentationChartLine, heroExclamationTriangle,
-      heroLockClosed, bootstrapBatteryFull, bootstrapBatteryHalf, bootstrapBatteryLow
+      heroLockClosed, bootstrapBatteryFull, bootstrapBatteryHalf, bootstrapBatteryLow,
+      heroArrowsPointingOut, heroArrowsPointingIn, heroMagnifyingGlassPlus,
+      heroArrowPath, heroArrowDownTray, heroCursorArrowRays, heroTableCells, heroChartPie,
+      heroViewfinderCircle, heroPencil
     })
   ],
   templateUrl: './pozo-detalle.html',
@@ -266,6 +272,29 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   chartTypeOptions = CHART_TYPE_OPTIONS;
   chartType = signal<ChartType>('line');
   private lastChartData: Record<string, [number, number | null][]> = {};
+
+  // Professional toolbar signals
+  crosshairEnabled = signal(false);
+  activeBrushType = signal<'none' | 'lineX' | 'rect' | 'polygon'>('none');
+  isFullscreen = signal(false);
+  variableStats = signal<Record<string, { min: number; max: number; avg: number; current: number }>>({});
+
+  private escHandler = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && this.isFullscreen()) {
+      this.isFullscreen.set(false);
+      setTimeout(() => this.mainChart?.resize(), 50);
+    }
+  };
+
+  getLiveValue(key: string): number {
+    switch (key) {
+      case 'caudal_lts': return this.datos().caudal;
+      case 'presion_kg': return this.datos().presion;
+      case 'rssi': return this.commStats().lteRssi;
+      case 'snr': return this.commStats().snr;
+      default: return 0;
+    }
+  }
 
   layout = signal<any>(null);
   datos = signal<any>({
@@ -477,6 +506,44 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   ngAfterViewInit() {
     this.mainChart = echarts.init(this.mainChartRef.nativeElement);
     this.totalizerChart = echarts.init(this.totalizerChartRef.nativeElement);
+
+    // Brush-to-zoom: when user drags a range, zoom into that range
+    this.mainChart.on('brushEnd', (params: any) => {
+      const areas = params.areas;
+      if (!areas?.length || !areas[0].coordRange) return;
+
+      const brushType = this.activeBrushType();
+      const range = areas[0].coordRange;
+
+      let xStart: number, xEnd: number;
+
+      if (brushType === 'lineX') {
+        // coordRange = [xMin, xMax]
+        [xStart, xEnd] = range;
+      } else if (brushType === 'rect') {
+        // coordRange = [[xMin, xMax], [yMin, yMax]]
+        [xStart, xEnd] = range[0];
+      } else if (brushType === 'polygon') {
+        // coordRange = [[x1,y1], [x2,y2], ...] — extract min/max x
+        const xs = range.map((p: number[]) => p[0]);
+        xStart = Math.min(...xs);
+        xEnd = Math.max(...xs);
+      } else {
+        return;
+      }
+
+      this.mainChart.dispatchAction({ type: 'dataZoom', dataZoomIndex: 0, startValue: xStart, endValue: xEnd });
+      this.mainChart.dispatchAction({ type: 'dataZoom', dataZoomIndex: 1, startValue: xStart, endValue: xEnd });
+      // Clear brush selection and deactivate cursor
+      this.mainChart.dispatchAction({ type: 'brush', areas: [] });
+      this.mainChart.dispatchAction({
+        type: 'takeGlobalCursor',
+        key: 'brush',
+        brushOption: { brushType: false, brushMode: 'single' }
+      });
+      this.activeBrushType.set('none');
+    });
+
     this.loadCharts();
     window.addEventListener('resize', this.resizeHandler);
   }
@@ -485,6 +552,7 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.mainChart) this.mainChart.dispose();
     if (this.totalizerChart) this.totalizerChart.dispose();
     window.removeEventListener('resize', this.resizeHandler);
+    document.removeEventListener('keydown', this.escHandler);
   }
 
   private startAutoRefresh(devEui: string) {
@@ -622,6 +690,7 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
           [new Date(p.timestamp).getTime(), p.value ?? null] as [number, number | null]);
 
         this.lastChartData = chartData;
+        this.computeVariableStats();
         this.renderMainChart();
         this.updateTotalizerChart(totalFlows);
         this.loading.set(false);
@@ -678,10 +747,9 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   private updateMainChart(data: Record<string, [number, number | null][]>): void {
     const selected = this.selectedVars();
     const activeVars = this.chartVariables.filter(v => selected.has(v.key) && data[v.key]);
+    const themeColors = getEChartsColors(this.themeService.resolved());
 
-    // =========================
-    // Y AXES — built dynamically from selected variables
-    // =========================
+    // Y AXES
     const yAxis: any[] = [];
     const varAxisIndex: Record<string, number> = {};
     let rightOffset = 0;
@@ -694,8 +762,9 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
       const axis: any = {
         type: 'value', name: v.unit, position: isLeft ? 'left' : 'right',
         scale: true,
-        axisLabel: { color: v.color }, nameTextStyle: { color: v.color },
-        splitLine: { show: idx === 0, lineStyle: { color: getEChartsColors(this.themeService.resolved()).splitLine } }
+        axisLabel: { color: v.color, fontSize: 11 },
+        nameTextStyle: { color: v.color },
+        splitLine: { show: idx === 0, lineStyle: { color: themeColors.splitLine, type: 'dashed' } }
       };
 
       if (!isLeft && rightOffset > 0) axis.offset = rightOffset;
@@ -704,12 +773,9 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
       yAxis.push(axis);
     }
 
-    // =========================
-    // SERIES — dynamic per selected variable
-    // =========================
+    // SERIES
     const series: any[] = [];
     const legendData: string[] = [];
-
     const type = this.chartType();
     const isBar = type === 'bar';
     const isArea = type === 'area';
@@ -717,12 +783,15 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
     for (const v of activeVars) {
       legendData.push(v.label);
       const isDashed = v.key === 'rssi' || v.key === 'snr';
+      const pointCount = data[v.key]?.filter(p => p[1] !== null).length ?? 0;
+      const sparse = pointCount < 10;
       const s: any = {
         name: v.label,
         type: isBar ? 'bar' : 'line',
         yAxisIndex: varAxisIndex[v.key],
         data: data[v.key],
-        showSymbol: false, smooth: false, sampling: 'lttb',
+        showSymbol: sparse, symbolSize: sparse ? 6 : 4,
+        smooth: false, sampling: 'lttb',
         connectNulls: false
       };
       if (isBar) {
@@ -739,31 +808,73 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const rightAxes = activeVars.filter(v => v.position === 'right').length;
-    const gridRight = Math.max(65, 65 + (rightAxes - 1) * 60);
+    const gridRight = Math.max(55, 55 + (rightAxes - 1) * 60);
+    const chartVars = this.chartVariables;
 
     const option: any = {
-      tooltip: { trigger: 'axis' },
-      legend: { data: legendData, top: 0 },
-      toolbox: {
-        right: gridRight + 10,
-        itemSize: 20, itemGap: 12,
-        iconStyle: { borderColor: '#475569', borderWidth: 1.5 },
-        emphasis: { iconStyle: { borderColor: '#007bff' } },
-        feature: {
-          dataZoom: {
-            yAxisIndex: 'none',
-            title: { zoom: 'Seleccionar rango', back: 'Restaurar' },
-            brushStyle: { borderWidth: 1, color: 'rgba(0,123,255,0.15)', borderColor: '#007bff' }
-          },
-          restore: { title: 'Restaurar' }
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(15,23,42,0.92)',
+        borderColor: 'rgba(255,255,255,0.08)',
+        borderWidth: 1,
+        textStyle: { color: '#e2e8f0', fontSize: 12 },
+        axisPointer: this.crosshairEnabled()
+          ? { type: 'cross', crossStyle: { color: '#94a3b8', type: 'dashed' } }
+          : { type: 'line', lineStyle: { color: '#94a3b8', type: 'dashed' } },
+        formatter: (params: any) => {
+          if (!Array.isArray(params) || params.length === 0) return '';
+          const date = new Date(params[0].value[0]);
+          const dateStr = date.toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+          let html = `<div style="margin-bottom:6px;font-weight:600;color:#f1f5f9">${dateStr}</div>`;
+          for (const p of params) {
+            const cv = chartVars.find(cv => cv.label === p.seriesName);
+            const unit = cv?.unit || '';
+            const val = p.value[1] !== null && p.value[1] !== undefined ? Number(p.value[1]).toFixed(2) : '—';
+            html += `<div style="display:flex;align-items:center;gap:6px;margin:3px 0">`;
+            html += `<span style="width:8px;height:8px;border-radius:50%;background:${p.color};display:inline-block"></span>`;
+            html += `<span style="flex:1;color:#cbd5e1">${p.seriesName}</span>`;
+            html += `<span style="font-weight:600;color:#f1f5f9">${val} ${unit}</span>`;
+            html += `</div>`;
+          }
+          return html;
         }
       },
-      grid: { left: 55, right: gridRight, bottom: 70, top: 55 },
-      xAxis: { type: 'time', boundaryGap: false },
+      legend: { data: legendData, top: 0 },
+      brush: {
+        toolbox: [],
+        xAxisIndex: 0,
+        throttleType: 'debounce',
+        throttleDelay: 300
+      },
+      grid: { left: 55, right: gridRight, bottom: 70, top: 45 },
+      xAxis: {
+        type: 'time',
+        boundaryGap: false,
+        axisLabel: {
+          fontSize: 11,
+          formatter: (value: number) => {
+            const d = new Date(value);
+            return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
+              + '\n' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+          }
+        },
+        splitLine: { show: false }
+      },
       yAxis,
       dataZoom: [
-        { type: 'inside',  xAxisIndex: 0, filterMode: 'filter' },
-        { type: 'slider',  xAxisIndex: 0, bottom: 8, height: 22, handleSize: '80%' }
+        { type: 'inside', xAxisIndex: 0, filterMode: 'filter' },
+        {
+          type: 'slider', xAxisIndex: 0, bottom: 8, height: 22,
+          handleSize: '80%',
+          handleStyle: { color: '#94a3b8', borderColor: '#64748b' },
+          borderColor: 'transparent',
+          backgroundColor: 'rgba(148,163,184,0.08)',
+          fillerColor: 'rgba(0,123,255,0.12)',
+          dataBackground: {
+            lineStyle: { color: '#cbd5e1', width: 0.5 },
+            areaStyle: { color: 'rgba(203,213,225,0.15)' }
+          }
+        }
       ],
       series
     };
@@ -916,5 +1027,129 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
     this.mainChart.setOption({ series }, true);
   }
 
+  // =========================
+  // TOOLBAR ACTIONS
+  // =========================
+  toggleCrosshair() {
+    this.crosshairEnabled.set(!this.crosshairEnabled());
+    if (Object.keys(this.lastChartData).length > 0 && this.chartType() !== 'gauge') {
+      this.updateMainChart(this.lastChartData);
+    }
+  }
+
+  setBrushType(type: 'lineX' | 'rect' | 'polygon') {
+    if (!this.mainChart) return;
+    const current = this.activeBrushType();
+    if (current === type) {
+      // Toggle off
+      this.activeBrushType.set('none');
+      this.mainChart.dispatchAction({
+        type: 'takeGlobalCursor',
+        key: 'brush',
+        brushOption: { brushType: false, brushMode: 'single' }
+      });
+    } else {
+      // Activate this brush type
+      this.activeBrushType.set(type);
+      this.mainChart.dispatchAction({
+        type: 'takeGlobalCursor',
+        key: 'brush',
+        brushOption: { brushType: type, brushMode: 'single' }
+      });
+    }
+  }
+
+  resetZoom() {
+    if (!this.mainChart) return;
+    this.activeBrushType.set('none');
+    this.mainChart.dispatchAction({
+      type: 'takeGlobalCursor',
+      key: 'brush',
+      brushOption: { brushType: false, brushMode: 'single' }
+    });
+    this.mainChart.dispatchAction({ type: 'dataZoom', dataZoomIndex: 0, start: 0, end: 100 });
+    this.mainChart.dispatchAction({ type: 'dataZoom', dataZoomIndex: 1, start: 0, end: 100 });
+  }
+
+  toggleFullscreen() {
+    const next = !this.isFullscreen();
+    this.isFullscreen.set(next);
+    if (next) {
+      document.addEventListener('keydown', this.escHandler);
+    } else {
+      document.removeEventListener('keydown', this.escHandler);
+    }
+    setTimeout(() => {
+      this.mainChart?.resize();
+      this.totalizerChart?.resize();
+    }, 50);
+  }
+
+  downloadChartPng() {
+    if (!this.mainChart) return;
+    const url = this.mainChart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${this.pozoNombre()}_grafica.png`;
+    a.click();
+  }
+
+  exportCsv() {
+    const selected = this.selectedVars();
+    const activeVars = this.chartVariables.filter(v => selected.has(v.key));
+    if (activeVars.length === 0) return;
+
+    const allTimestamps = new Set<number>();
+    for (const v of activeVars) {
+      const d = this.lastChartData[v.key];
+      if (d) d.forEach(p => allTimestamps.add(p[0]));
+    }
+    const sorted = Array.from(allTimestamps).sort((a, b) => a - b);
+
+    const lookups: Record<string, Map<number, number | null>> = {};
+    for (const v of activeVars) {
+      const map = new Map<number, number | null>();
+      const d = this.lastChartData[v.key];
+      if (d) d.forEach(p => map.set(p[0], p[1]));
+      lookups[v.key] = map;
+    }
+
+    const headers = ['Fecha', ...activeVars.map(v => `${v.label} (${v.unit})`)];
+    const rows = sorted.map(ts => {
+      const date = new Date(ts).toLocaleString('es-MX');
+      const values = activeVars.map(v => {
+        const val = lookups[v.key].get(ts);
+        return val !== null && val !== undefined ? val.toString() : '';
+      });
+      return [date, ...values].join(',');
+    });
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${this.pozoNombre()}_telemetria.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private computeVariableStats() {
+    const stats: Record<string, { min: number; max: number; avg: number; current: number }> = {};
+    for (const v of this.chartVariables) {
+      if (!this.selectedVars().has(v.key)) continue;
+      const data = this.lastChartData[v.key];
+      if (!data || data.length === 0) continue;
+      const values = data.map(d => d[1]).filter((x): x is number => x !== null);
+      if (values.length === 0) continue;
+      stats[v.key] = {
+        min: Math.round(Math.min(...values) * 1000) / 1000,
+        max: Math.round(Math.max(...values) * 1000) / 1000,
+        avg: Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 1000) / 1000,
+        current: Math.round(values[values.length - 1] * 1000) / 1000
+      };
+    }
+    this.variableStats.set(stats);
+  }
 
 }
