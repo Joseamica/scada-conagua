@@ -3,7 +3,7 @@ import {
   ElementRef, signal, computed, inject, effect, DestroyRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import * as echarts from 'echarts';
 
@@ -176,10 +176,15 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
     }
   };
 
+  private preselectedDevEUI: string | null = null;
+
   constructor(
     private router: Router,
+    private route: ActivatedRoute,
     private telemetryService: TelemetryService
-  ) {}
+  ) {
+    this.preselectedDevEUI = this.route.snapshot.queryParams['devEUI'] || null;
+  }
 
   // =========================
   // LIFECYCLE
@@ -263,7 +268,10 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
         this.sitesDisponibles.set(mapped);
 
         if (mapped.length > 0) {
-          this.selectedSites.set([mapped[0].devEUI]);
+          const target = this.preselectedDevEUI
+            ? mapped.find(s => s.devEUI.trim() === this.preselectedDevEUI!.trim())
+            : null;
+          this.selectedSites.set([target ? target.devEUI : mapped[0].devEUI]);
           this.loadCharts();
         }
       },

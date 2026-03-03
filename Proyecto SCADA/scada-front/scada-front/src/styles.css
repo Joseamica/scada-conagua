@@ -352,5 +352,11 @@ body, html {
   background-color: #9ca3af; /* Sin intervención */
 }
 
+/* ===== DATE INPUT DARK MODE FIX ===== */
+html[data-theme="dark"] input[type="date"] {
+  color-scheme: dark;
+}
 
-
+html[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(0.8);
+}

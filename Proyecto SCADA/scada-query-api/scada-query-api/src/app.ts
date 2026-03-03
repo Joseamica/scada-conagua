@@ -179,22 +179,79 @@ app.get('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
     try {
         const result = await pool.query(`
             SELECT
-                s.dev_eui,
-                COALESCE(i.site_name, s.dev_eui) AS site_name,
+                COALESCE(TRIM(i.dev_eui), TRIM(s.dev_eui)) AS dev_eui,
+                COALESCE(i.site_name, s.dev_eui, i.dev_eui) AS site_name,
                 i.municipality,
                 i.site_type,
                 s.last_flow_value,
                 s.last_pressure_value,
                 s.last_updated_at
-            FROM scada.site_status s
-            LEFT JOIN scada.inventory i ON TRIM(i.dev_eui) = TRIM(s.dev_eui)
-            WHERE s.dev_eui IS NOT NULL AND TRIM(s.dev_eui) != ''
+            FROM scada.inventory i
+            LEFT JOIN scada.site_status s ON TRIM(s.dev_eui) = TRIM(i.dev_eui)
+            WHERE TRIM(COALESCE(i.dev_eui, '')) != ''
             ORDER BY site_name
         `);
         res.json(result.rows);
     } catch (e) {
         console.error('❌ Sites catalog error:', e);
         res.status(500).json({ error: 'Internal Database Error' });
+    }
+});
+
+// Crear un nuevo sitio en el inventario
+app.post('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
+    const { dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude } = req.body;
+
+    if (!site_name || !dev_eui || !municipality) {
+        return res.status(400).json({ error: 'site_name, dev_eui y municipality son obligatorios.' });
+    }
+
+    // dev_eui max 16 chars (char(16) column)
+    if (dev_eui.length > 16) {
+        return res.status(400).json({ error: 'dev_eui no puede exceder 16 caracteres.' });
+    }
+
+    try {
+        // Check duplicate dev_eui
+        const existing = await pool.query(
+            'SELECT dev_eui FROM scada.inventory WHERE TRIM(dev_eui) = $1',
+            [dev_eui.trim()]
+        );
+        if (existing.rows.length > 0) {
+            return res.status(409).json({ error: 'Ya existe un sitio con ese DevEUI.' });
+        }
+
+        // gw_eui is NOT NULL + UNIQUE — use provided value or generate placeholder
+        const effectiveGwEui = gw_eui?.trim() || `GW-${dev_eui.trim()}`.substring(0, 16);
+
+        const result = await pool.query(
+            `INSERT INTO scada.inventory (dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING dev_eui`,
+            [
+                dev_eui.trim(),
+                effectiveGwEui,
+                site_name.trim(),
+                site_type || null,
+                municipality.trim(),
+                latitude || null,
+                longitude || null,
+            ]
+        );
+
+        await auditLog(req.user!.id, 'SITE_CREATED', { dev_eui, site_name, municipality }, req.ip!);
+
+        res.status(201).json({
+            dev_eui: result.rows[0].dev_eui.trim(),
+            message: 'Sitio creado correctamente.',
+        });
+    } catch (e: any) {
+        // Handle unique constraint on gw_eui
+        if (e.code === '23505') {
+            return res.status(409).json({ error: 'Conflicto: DevEUI o Gateway ID duplicado.' });
+        }
+        console.error('❌ Error creating site:', e);
+        res.status(500).json({ error: 'Error interno al crear el sitio.' });
     }
 });
 

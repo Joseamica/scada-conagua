@@ -1,4 +1,4 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 
@@ -26,7 +26,8 @@ import {
   heroMagnifyingGlass
 } from '@ng-icons/heroicons/outline';
 
-import { PozosStore } from '../../../core/stores/pozos.store';
+import { TelemetryService } from '../../../core/services/telemetry';
+import { AuthService } from '../../../core/services/auth.service';
 
 // JSON Estados / Municipios
 import estadosJson from '../../../../assets/data/estados.json';
@@ -65,14 +66,15 @@ import estadosJson from '../../../../assets/data/estados.json';
   templateUrl: './telemetria-dashboard.html',
   styleUrls: ['./telemetria-dashboard.css']
 })
-export class TelemetriaDashboard {
+export class TelemetriaDashboard implements OnInit {
 
   // =========================
   // FILTROS (signals)
   // =========================
-  estadoSel = signal<string>('ESTADO DE MEXICO');
-  municipioSel = signal<string>('ECATEPEC DE MORELOS');
+  estadoSel = signal<string>('');
+  municipioSel = signal<string>('');
   tipoSel = signal<string | null>(null);
+  statusSel = signal<string>('');
   busqueda = signal<string>('');
   filtersCollapsed = signal(false);
 
@@ -110,19 +112,7 @@ export class TelemetriaDashboard {
   // =========================
   // SITIOS ACTIVOS
   // =========================
-  sites = computed(() =>
-    this.pozosActivos().map(nombre => ({
-      name: nombre,
-      type: 'Pozo',
-      estado: 'ESTADO DE MEXICO',
-      municipio: 'ECATEPEC DE MORELOS',
-      zone: 'Zona operativa',
-      value: 'N/A',
-      unit: 'L/s',
-      status: 'ok',
-      timestamp: '-'
-    }))
-  );
+  sites = signal<any[]>([]);
 
   // =========================
   // KPI COMPUTED
@@ -138,14 +128,12 @@ export class TelemetriaDashboard {
   // =========================
   // FILTRO CENTRAL
   // =========================
-  private readonly DEFAULT_ESTADO = 'ESTADO DE MEXICO';
-  private readonly DEFAULT_MUNICIPIO = 'ECATEPEC DE MORELOS';
-
   activeFilterCount = computed(() => {
     let count = 0;
-    if (this.estadoSel() && this.estadoSel() !== this.DEFAULT_ESTADO) count++;
-    if (this.municipioSel() && this.municipioSel() !== this.DEFAULT_MUNICIPIO) count++;
+    if (this.estadoSel()) count++;
+    if (this.municipioSel()) count++;
     if (this.tipoSel()) count++;
+    if (this.statusSel()) count++;
     if (this.busqueda()) count++;
     return count;
   });
@@ -161,6 +149,7 @@ export class TelemetriaDashboard {
       if (this.estadoSel() && site.estado !== this.estadoSel()) return false;
       if (this.municipioSel() && site.municipio !== this.municipioSel()) return false;
       if (this.tipoSel() && site.type !== this.tipoSel()) return false;
+      if (this.statusSel() && site.status !== this.statusSel()) return false;
 
       if (q) {
         return site.name.toLowerCase().includes(q);
@@ -182,10 +171,83 @@ export class TelemetriaDashboard {
     return `${h}:${m}`;
   }
 
-  constructor(private router: Router, private pozosStore: PozosStore) {}
+  constructor(
+    private router: Router,
+    private telemetryService: TelemetryService,
+    private authService: AuthService
+  ) {}
 
-  get pozosActivos() {
-    return this.pozosStore.highlightWells;
+  ngOnInit(): void {
+    this.loadSites();
+  }
+
+  private loadSites(): void {
+    this.telemetryService.getSites().subscribe({
+      next: (apiSites) => {
+        const mapped = apiSites.map(s => {
+          const siteType = s.site_type
+            ? s.site_type.charAt(0).toUpperCase() + s.site_type.slice(1).toLowerCase()
+            : 'Pozo';
+          const municipio = s.municipality?.toUpperCase().trim() || 'SIN MUNICIPIO';
+          const flow = s.last_flow_value != null ? Number(s.last_flow_value) : null;
+          const hasTelemetry = s.last_updated_at != null;
+          const hasFlow = flow != null && flow > 0.01;
+
+          let status: string;
+          if (!hasTelemetry) {
+            status = 'pending';
+          } else if (hasFlow) {
+            status = 'ok';
+          } else {
+            status = 'no-signal';
+          }
+
+          return {
+            devEUI: s.dev_eui,
+            name: s.site_name,
+            type: siteType,
+            estado: 'ESTADO DE MEXICO',
+            municipio,
+            zone: s.municipality || 'Sin zona',
+            value: flow != null ? flow.toFixed(2) : 'N/A',
+            unit: 'L/s',
+            status,
+            timestamp: hasTelemetry ? this.formatTimestamp(s.last_updated_at!) : 'Esperando primera lectura',
+          };
+        });
+
+        // Municipal scope isolation
+        const user = this.authService.currentUser();
+        if (user?.scope === 'Municipal' && user.estado_id && user.scope_id) {
+          const estadoEntry = (estadosJson as any)[String(user.estado_id)];
+          if (estadoEntry?.municipios) {
+            const userMunicipio = estadoEntry.municipios[String(user.scope_id)];
+            if (userMunicipio) {
+              const normalizedUserMunicipio = this.normalize(userMunicipio);
+              this.sites.set(mapped.filter(s => this.normalize(s.municipio) === normalizedUserMunicipio));
+              this.lastUpdated.set(this.formatNow());
+              return;
+            }
+          }
+        }
+
+        this.sites.set(mapped);
+        this.lastUpdated.set(this.formatNow());
+      },
+      error: (err) => {
+        console.error('TelemetriaDashboard: Error al cargar sitios', err);
+      },
+    });
+  }
+
+  private formatTimestamp(isoString: string): string {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '-';
+    const day = d.getDate().toString().padStart(2, '0');
+    const mon = (d.getMonth() + 1).toString().padStart(2, '0');
+    const h = d.getHours().toString().padStart(2, '0');
+    const m = d.getMinutes().toString().padStart(2, '0');
+    return `${day}/${mon} ${h}:${m}`;
   }
 
   // =========================
@@ -204,6 +266,7 @@ export class TelemetriaDashboard {
     this.estadoSel.set('');
     this.municipioSel.set('');
     this.tipoSel.set(null);
+    this.statusSel.set('');
     this.busqueda.set('');
   }
 
@@ -213,7 +276,7 @@ export class TelemetriaDashboard {
 
   openAdvancedCharts(site: any) {
     this.router.navigate(['/telemetria/avanzadas'], {
-      state: { site }
+      queryParams: { devEUI: site.devEUI }
     });
   }
 
@@ -225,7 +288,9 @@ export class TelemetriaDashboard {
     });
   }
 
-  editarSitio(site: any, index: number) {
-    this.router.navigate(['/sitios/editar', index]);
+  editarSitio(site: any) {
+    if (site.devEUI) {
+      this.router.navigate(['/sitios/editar', site.devEUI]);
+    }
   }
 }

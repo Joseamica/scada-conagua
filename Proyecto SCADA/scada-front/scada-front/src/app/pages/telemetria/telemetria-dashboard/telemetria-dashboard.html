@@ -147,6 +147,20 @@
               </select>
             </div>
 
+            <!-- STATUS -->
+            <div class="field">
+              <label for="filterStatus">Status</label>
+              <select
+                id="filterStatus"
+                [value]="statusSel()"
+                (change)="statusSel.set($any($event.target).value)">
+                <option value="">Todos</option>
+                <option value="ok">Con gasto</option>
+                <option value="no-signal">Sin señal</option>
+                <option value="pending">Pendiente</option>
+              </select>
+            </div>
+
             <div class="tool-actions">
               <button
                 class="btn btn-outline btn-sm"
@@ -238,7 +252,7 @@
                     <th scope="col">Zona</th>
                     <th scope="col" class="col-numeric">Valor</th>
                     <th scope="col">Unidad</th>
-                    <th scope="col">Estado</th>
+                    <th scope="col">Status</th>
                     <th scope="col" class="col-date">Última lectura</th>
                     <th scope="col" class="col-actions">Acciones</th>
                   </tr>
@@ -252,6 +266,7 @@
                         <span class="site-dot"
                           [class.site-dot--ok]="site.status === 'ok'"
                           [class.site-dot--warn]="site.status === 'no-signal'"
+                          [class.site-dot--pending]="site.status === 'pending'"
                           aria-hidden="true">
                         </span>
                         {{ site.name }}
@@ -266,11 +281,12 @@
                     <td>
                       <span class="pill"
                         [ngClass]="{
-                          'pill--ok':   site.status === 'ok',
-                          'pill--warn': site.status === 'no-signal'
+                          'pill--ok':      site.status === 'ok',
+                          'pill--warn':    site.status === 'no-signal',
+                          'pill--pending': site.status === 'pending'
                         }">
                         <span class="pill-dot" aria-hidden="true"></span>
-                        {{ site.status === 'ok' ? 'Con gasto' : 'Sin señal' }}
+                        {{ site.status === 'ok' ? 'Con gasto' : site.status === 'pending' ? 'Pendiente' : 'Sin señal' }}
                       </span>
                     </td>
                     <td class="mono cell-date">{{ site.timestamp }}</td>
@@ -286,7 +302,7 @@
 
                         <button
                           class="btn-action btn-action--edit"
-                          (click)="editarSitio(site, i)"
+                          (click)="editarSitio(site)"
                           title="Editar sitio"
                           aria-label="Editar {{ site.name }}">
                           <ng-icon name="heroPencilSquare" size="16"></ng-icon>

@@ -23,6 +23,8 @@ export type AuditAction =
   | 'PUMP_COMMAND_FAILED'
   // Entities
   | 'ENTITY_CREATED'
+  // Sites / Inventory
+  | 'SITE_CREATED'
   // Data Export
   | 'EXPORT_CHART_PNG'
   | 'EXPORT_TELEMETRY_CSV'

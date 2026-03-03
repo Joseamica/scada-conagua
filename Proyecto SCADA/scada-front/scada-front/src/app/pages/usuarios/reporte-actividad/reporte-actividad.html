@@ -39,55 +39,61 @@
 
       <!-- FILTER PANEL -->
       <div class="filters" *ngIf="filtersOpen()">
-        <div class="filter-grid">
+        <div class="filter-row">
 
-          <label class="field">
-            <span>Fecha desde</span>
-            <input
-              type="date"
-              [value]="fechaDesde()"
-              (change)="fechaDesde.set(($any($event.target)).value); applyDateFilters()">
-          </label>
+          <!-- Date range picker (same as pozo-detalle) -->
+          <div class="date-range-group">
+            <span class="filter-label">
+              RANGO DE FECHAS
+            </span>
+            <app-date-range-picker
+              (rangeApplied)="onRangeApplied($event)">
+            </app-date-range-picker>
+          </div>
 
-          <label class="field">
-            <span>Fecha hasta</span>
-            <input
-              type="date"
-              [value]="fechaHasta()"
-              (change)="fechaHasta.set(($any($event.target)).value); applyDateFilters()">
-          </label>
+          <!-- Select filters -->
+          <div class="select-filters">
+            <div class="select-field">
+              <span class="filter-label">
+                <ng-icon name="heroUserGroup" size="15"></ng-icon>
+                ROL
+              </span>
+              <select
+                [value]="filterRol()"
+                (change)="filterRol.set(($any($event.target)).value)">
+                <option value="ALL">Todos</option>
+                <option *ngFor="let r of roleOptions" [value]="r">{{ r }}</option>
+              </select>
+            </div>
 
-          <label class="field">
-            <span>Rol</span>
-            <select
-              [value]="filterRol()"
-              (change)="filterRol.set(($any($event.target)).value)">
-              <option value="ALL">Todos</option>
-              <option *ngFor="let r of roleOptions" [value]="r">{{ r }}</option>
-            </select>
-          </label>
+            <div class="select-field">
+              <span class="filter-label">
+                <ng-icon name="heroGlobeAmericas" size="15"></ng-icon>
+                NIVEL
+              </span>
+              <select
+                [value]="filterNivel()"
+                (change)="filterNivel.set(($any($event.target)).value)">
+                <option value="ALL">Todos</option>
+                <option value="Federal">Federal</option>
+                <option value="Estatal">Estatal</option>
+                <option value="Municipal">Municipal</option>
+              </select>
+            </div>
 
-          <label class="field">
-            <span>Nivel</span>
-            <select
-              [value]="filterNivel()"
-              (change)="filterNivel.set(($any($event.target)).value)">
-              <option value="ALL">Todos</option>
-              <option value="Federal">Federal</option>
-              <option value="Estatal">Estatal</option>
-              <option value="Municipal">Municipal</option>
-            </select>
-          </label>
-
-          <label class="field">
-            <span>Accion</span>
-            <select
-              [value]="filterAccion()"
-              (change)="filterAccion.set(($any($event.target)).value)">
-              <option value="ALL">Todas</option>
-              <option *ngFor="let a of actionOptions()" [value]="a">{{ a }}</option>
-            </select>
-          </label>
+            <div class="select-field">
+              <span class="filter-label">
+                <ng-icon name="heroBolt" size="15"></ng-icon>
+                ACCION
+              </span>
+              <select
+                [value]="filterAccion()"
+                (change)="filterAccion.set(($any($event.target)).value)">
+                <option value="ALL">Todas</option>
+                <option *ngFor="let a of actionOptions" [value]="a.key">{{ a.label }}</option>
+              </select>
+            </div>
+          </div>
 
         </div>
       </div>
@@ -117,7 +123,11 @@
                 <td>{{ l.full_name || l.email }}</td>
                 <td>{{ l.role_name }}</td>
                 <td>{{ l.entity_name || l.scope || '—' }}</td>
-                <td>{{ l.action }}</td>
+                <td>
+                  <span class="action-badge" [attr.data-cat]="actionCategory(l.action)">
+                    {{ translateAction(l.action) }}
+                  </span>
+                </td>
                 <td class="mono">{{ l.ip_address }}</td>
                 <td class="mono col-date">{{ formatDate(l.created_at) }}</td>
               </tr>

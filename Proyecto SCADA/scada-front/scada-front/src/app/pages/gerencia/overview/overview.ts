@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, ElementRef, inject, signal, computed, effect } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, ElementRef, inject, signal, computed, effect, untracked } from '@angular/core';
 import { Location, CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
@@ -36,7 +36,10 @@ const SITIOS_SOURCES: GisSource[] = [
 ];
 
 const MUNICIPIO_NAMES: Record<number, string> = { 33: 'Ecatepec', 39: 'Ixtapaluca', 25: 'Chalco' };
-const MUNICIPIO_COLORS: Record<number, string> = { 33: '#6b0027', 39: '#007bff', 25: '#0d9488' };
+const MUNICIPIO_COLORS: Record<string, Record<number, string>> = {
+  light: { 33: '#6b0027', 39: '#007bff', 25: '#0d9488' },
+  dark:  { 33: '#f43f5e', 39: '#60a5fa', 25: '#2dd4bf' },
+};
 
 type ChartType = 'line' | 'bar' | 'area';
 
@@ -81,6 +84,13 @@ export class Overview implements OnInit, AfterViewInit, OnDestroy {
 
   private themeEffect = effect(() => {
     const theme = this.themeService.resolved();
+    // Update municipio series colors for the new theme (untracked to avoid loop)
+    const palette = MUNICIPIO_COLORS[theme] || MUNICIPIO_COLORS['light'];
+    const current = untracked(() => this.municipioSeries());
+    if (current.length > 0) {
+      this.municipioSeries.set(current.map(m => ({ ...m, color: palette[m.id] || m.color })));
+    }
+
     if (this.chart && this.lastChartData.size > 0) {
       this.renderChart();
       this.chart.resize();
@@ -342,10 +352,12 @@ export class Overview implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // Build municipality series data
+    const theme = this.themeService.resolved();
+    const palette = MUNICIPIO_COLORS[theme] || MUNICIPIO_COLORS['light'];
     const series = this.scopedSources.map(s => ({
       id: s.municipioId,
       name: MUNICIPIO_NAMES[s.municipioId] || `Mun. ${s.municipioId}`,
-      color: MUNICIPIO_COLORS[s.municipioId] || '#6b0027',
+      color: palette[s.municipioId] || '#6b0027',
       liveFlow: 0
     }));
     this.municipioSeries.set(series);

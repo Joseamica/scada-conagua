@@ -1,9 +1,8 @@
-import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
-import { Subscription, combineLatest, debounceTime } from 'rxjs';
 import {
   heroArrowLeft,
   heroMapPin,
@@ -16,8 +15,10 @@ import {
   heroSparkles,
 } from '@ng-icons/heroicons/outline';
 
+import { HttpErrorResponse } from '@angular/common/http';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { TelemetryService } from '../../../core/services/telemetry';
 
 const estadosJson = require('../../../../assets/data/estados.json');
 
@@ -46,10 +47,14 @@ interface EstadoMunicipio {
   templateUrl: './sitio-form.html',
   styleUrls: ['./sitio-form.css'],
 })
-export class SitioForm implements OnInit, OnDestroy {
+export class SitioForm implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private fb = inject(FormBuilder);
+  private telemetry = inject(TelemetryService);
+
+  saving = signal(false);
+  errorMsg = signal('');
 
   modo: 'create' | 'edit' = 'create';
   sitioId: string | null = null;
@@ -77,12 +82,13 @@ export class SitioForm implements OnInit, OnDestroy {
     { id: 2, nombre: 'ICH' },
   ];
 
-  // Auto-detection
+  // Auto-detection state
   autoDetected = signal(false);
   locationVisible = signal(false);
+  detectionFailed = signal(false);
+  missingCoords = signal(false);
   private geoFeatures: any[] = [];
   private baseEstadosData: Record<string, { estado: string; municipios: Record<string, string> }> = {};
-  private coordSub?: Subscription;
 
   form = this.fb.group({
     nombre: ['', Validators.required],
@@ -91,7 +97,7 @@ export class SitioForm implements OnInit, OnDestroy {
     estado: ['', Validators.required],
     municipio: ['', Validators.required],
     proveedor: [null as number | null, Validators.required],
-    devEUI: [''],
+    devEUI: ['', Validators.required],
     gatewayId: [''],
     utrId: [''],
     lat: [0],
@@ -119,7 +125,7 @@ export class SitioForm implements OnInit, OnDestroy {
       .then((r) => r.json())
       .then((geo) => {
         this.geoFeatures = geo.features;
-        // If coords already present (e.g. from GIS query params), detect now
+        // If coords come pre-filled from GIS, detect immediately
         const lat = this.form.value.lat;
         const lng = this.form.value.lng;
         if (lat && lng) {
@@ -130,19 +136,11 @@ export class SitioForm implements OnInit, OnDestroy {
         /* GeoJSON unavailable — form works normally */
       });
 
-    // Subscribe to lat/lng changes with debounce
-    this.coordSub = combineLatest([
-      this.form.get('lat')!.valueChanges,
-      this.form.get('lng')!.valueChanges,
-    ])
-      .pipe(debounceTime(400))
-      .subscribe(([lat, lng]) => this.detectLocation(+(lat ?? 0), +(lng ?? 0)));
-
     // detectar si viene edicion
     this.sitioId = this.route.snapshot.paramMap.get('id');
     if (this.sitioId) {
       this.modo = 'edit';
-      this.locationVisible.set(true); // edit mode always shows estado/municipio
+      this.locationVisible.set(true);
       this.loadSitio();
     }
 
@@ -151,10 +149,6 @@ export class SitioForm implements OnInit, OnDestroy {
     if (qp['lat']) {
       this.form.patchValue({ lat: qp['lat'], lng: qp['lng'] });
     }
-  }
-
-  ngOnDestroy() {
-    this.coordSub?.unsubscribe();
   }
 
   loadSitio() {
@@ -167,13 +161,41 @@ export class SitioForm implements OnInit, OnDestroy {
       return;
     }
 
+    this.errorMsg.set('');
+
     if (this.modo === 'create') {
-      console.log('crear sitio', this.form.value);
+      const v = this.form.value;
+      const payload = {
+        dev_eui: v.devEUI?.trim() || '',
+        gw_eui: v.gatewayId?.trim() || undefined,
+        site_name: v.nombre?.trim() || '',
+        site_type: v.tipo || 'pozo',
+        municipality: v.municipio?.trim() || '',
+        latitude: v.lat || undefined,
+        longitude: v.lng || undefined,
+      };
+
+      this.saving.set(true);
+      this.telemetry.createSite(payload).subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.router.navigate(['/telemetria']);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.saving.set(false);
+          if (err.status === 409) {
+            this.errorMsg.set(err.error?.error || 'Ya existe un sitio con ese DevEUI.');
+          } else if (err.status === 400) {
+            this.errorMsg.set(err.error?.error || 'Datos incompletos o invalidos.');
+          } else {
+            this.errorMsg.set('Error al guardar el sitio. Intenta de nuevo.');
+          }
+        },
+      });
     } else {
       console.log('editar sitio', this.form.value);
+      this.router.navigate(['/telemetria']);
     }
-
-    this.router.navigate(['/telemetria']);
   }
 
   onRenderSelected(event: any) {
@@ -196,12 +218,25 @@ export class SitioForm implements OnInit, OnDestroy {
     this.router.navigate(['/telemetria']);
   }
 
-  // --- Auto-detection ---
+  // --- Public: triggered by button ---
+
+  detectarUbicacion() {
+    const lat = +(this.form.value.lat ?? 0);
+    const lng = +(this.form.value.lng ?? 0);
+    if (!lat || !lng) {
+      this.missingCoords.set(true);
+      return;
+    }
+    this.missingCoords.set(false);
+    this.detectLocation(lat, lng);
+  }
+
+  // --- Auto-detection internals ---
 
   private detectLocation(lat: number, lng: number) {
     if (!lat || !lng || this.geoFeatures.length === 0) {
       this.autoDetected.set(false);
-      // Keep locationVisible if user already has values to edit
+      this.detectionFailed.set(false);
       return;
     }
 
@@ -222,7 +257,10 @@ export class SitioForm implements OnInit, OnDestroy {
       }
     }
 
+    // No polygon matched — show fields for manual input
     this.autoDetected.set(false);
+    this.detectionFailed.set(true);
+    this.locationVisible.set(true);
   }
 
   private pointInPolygon(lat: number, lng: number, coords: number[][]): boolean {
@@ -241,6 +279,8 @@ export class SitioForm implements OnInit, OnDestroy {
     const estadoData = this.baseEstadosData[cveEnt];
     if (!estadoData) {
       this.autoDetected.set(false);
+      this.detectionFailed.set(true);
+      this.locationVisible.set(true);
       return;
     }
 
@@ -249,9 +289,12 @@ export class SitioForm implements OnInit, OnDestroy {
     const munName = estadoData.municipios[munKey];
     if (!munName) {
       this.autoDetected.set(false);
+      this.detectionFailed.set(true);
+      this.locationVisible.set(true);
       return;
     }
 
+    this.detectionFailed.set(false);
     this.form.patchValue({ estado: estadoData.estado });
 
     // Wait a tick for municipiosFiltrados to be populated, then set municipio
@@ -262,6 +305,8 @@ export class SitioForm implements OnInit, OnDestroy {
         this.locationVisible.set(true);
       } else {
         this.autoDetected.set(false);
+        this.detectionFailed.set(true);
+        this.locationVisible.set(true);
       }
     }, 50);
   }

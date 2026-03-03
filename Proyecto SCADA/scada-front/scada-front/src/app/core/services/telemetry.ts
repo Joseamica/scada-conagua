@@ -77,6 +77,19 @@ export class TelemetryService {
     return this.http.get<TelemetryHistoryResponse>(`${environment.apiQueryUrl}/telemetry/${devEUI}/${measurement}`, { params });
   }
 
+  // Crear un nuevo sitio en el inventario
+  createSite(payload: {
+    dev_eui: string;
+    gw_eui?: string;
+    site_name: string;
+    site_type: string;
+    municipality: string;
+    latitude?: number;
+    longitude?: number;
+  }): Observable<{ dev_eui: string; message: string }> {
+    return this.http.post<{ dev_eui: string; message: string }>(`${this.BASE_URL}/sites`, payload);
+  }
+
   // Método de control para usar la interfaz estricta
   sendControlCommand(payload: SCADAControlRequest): Observable<any> {
     // Se define endpoint src/app.ts: app.post('/api/v1/control')

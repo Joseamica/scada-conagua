@@ -103,8 +103,12 @@
           <div class="grid-3">
 
             <div class="field">
-              <label>DevEUI</label>
+              <label>DevEUI <span class="required">*</span></label>
               <input formControlName="devEUI" placeholder="Ej. a84041b4e1835e0f">
+              <span class="field-error"
+                *ngIf="form.get('devEUI')?.touched && form.get('devEUI')?.hasError('required')">
+                El DevEUI es obligatorio
+              </span>
             </div>
 
             <div class="field">
@@ -136,21 +140,33 @@
         <div class="form-card-body">
           <div class="grid-2">
 
-            <div class="field">
-              <label>Latitud</label>
-              <input formControlName="lat" type="number" step="any" placeholder="19.3456">
-            </div>
-
-            <div class="field">
-              <label>Longitud</label>
-              <input formControlName="lng" type="number" step="any" placeholder="-98.7654">
-            </div>
-
-            @if (!locationVisible()) {
-              <div class="field field--full">
-                <div class="auto-hint">
+            <div class="field field--full coord-row">
+              <div class="field">
+                <label>Latitud</label>
+                <input formControlName="lat" type="number" step="any" placeholder="19.3456">
+              </div>
+              <div class="field">
+                <label>Longitud</label>
+                <input formControlName="lng" type="number" step="any" placeholder="-98.7654">
+              </div>
+              <div class="field coord-row-btn">
+                <button type="button" class="btn-detect" (click)="detectarUbicacion()">
                   <ng-icon name="heroSparkles" size="14"></ng-icon>
-                  <span>Ingresa latitud y longitud para detectar estado y municipio automaticamente</span>
+                  Detectar
+                </button>
+              </div>
+            </div>
+
+            @if (missingCoords()) {
+              <div class="field field--full">
+                <span class="field-error">Ingresa latitud y longitud antes de detectar</span>
+              </div>
+            }
+
+            @if (detectionFailed()) {
+              <div class="field field--full">
+                <div class="auto-hint auto-hint--warn">
+                  No se detecto municipio en estas coordenadas. Selecciona manualmente.
                 </div>
               </div>
             }
@@ -248,13 +264,22 @@
         </div>
       </section>
 
+      <!-- Error banner -->
+      @if (errorMsg()) {
+        <div class="form-error-banner">{{ errorMsg() }}</div>
+      }
+
       <!-- Actions -->
       <div class="form-actions">
-        <button type="button" class="btn btn-outline" (click)="cancelar()">
+        <button type="button" class="btn btn-outline" (click)="cancelar()" [disabled]="saving()">
           Cancelar
         </button>
-        <button type="submit" class="btn btn-primary">
-          {{ modo === 'create' ? 'Guardar sitio' : 'Actualizar sitio' }}
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          @if (saving()) {
+            Guardando...
+          } @else {
+            {{ modo === 'create' ? 'Guardar sitio' : 'Actualizar sitio' }}
+          }
         </button>
       </div>
 

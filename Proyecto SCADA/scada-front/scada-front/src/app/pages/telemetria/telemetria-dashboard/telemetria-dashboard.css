@@ -543,6 +543,11 @@
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
 }
 
+.site-dot--pending {
+  background: #6b7280;
+  box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.15);
+}
+
 /* Cell: Type badge */
 .type-badge {
   font-size: 12px;
@@ -634,6 +639,9 @@
 
 .pill--warn { background: var(--warning-bg); border-color: var(--warning); color: var(--warning); }
 .pill--warn .pill-dot { background: #f59e0b; }
+
+.pill--pending { background: rgba(107, 114, 128, 0.1); border-color: #6b7280; color: #6b7280; }
+.pill--pending .pill-dot { background: #6b7280; }
 
 .pill--bad  { background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger); }
 .pill--bad .pill-dot { background: #ef4444; }

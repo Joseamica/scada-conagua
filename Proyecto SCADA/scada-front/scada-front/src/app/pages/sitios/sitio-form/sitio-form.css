@@ -215,6 +215,60 @@
   flex-shrink: 0;
 }
 
+.auto-hint--warn {
+  color: var(--warning, #f59e0b);
+  background: rgba(245, 158, 11, 0.06);
+  border-color: var(--warning, #f59e0b);
+}
+
+.coord-row {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.coord-row > .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.coord-row-btn {
+  flex: 0 0 auto !important;
+}
+
+.btn-detect {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+
+.btn-detect:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-card-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-detect:active {
+  transform: translateY(0);
+}
+
+.btn-detect ng-icon {
+  color: var(--accent);
+}
+
 
 /* Remove number input arrows */
 .field input[type='number']::-webkit-inner-spin-button,
@@ -393,6 +447,30 @@
   background: var(--bg-card-hover);
   border-color: var(--border-strong);
   box-shadow: var(--shadow-sm);
+}
+
+/* =========================
+   ERROR BANNER
+========================= */
+.form-error-banner {
+  padding: 12px 16px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid var(--danger, #ef4444);
+  border-radius: 10px;
+  color: var(--danger, #ef4444);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+/* =========================
+   DISABLED STATE
+========================= */
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 /* =========================
