@@ -1,20 +1,17 @@
-# Usa la versión LTS que definimos ayer
-FROM node:20-alpine
-
-WORKDIR /app
-
-# Instalar dependencias necesarias para compilar paquetes nativos
+# Stage 1: Build
+FROM node:20-alpine AS builder
 RUN apk add --no-cache python3 make g++
-
+WORKDIR /usr/src/app
 COPY package*.json ./
-RUN npm install
-
+RUN npm ci
 COPY . .
-
-# Compilar TypeScript
 RUN npm run build
 
-# Exponer el puerto del Health Check
+# Stage 2: Runtime
+FROM node:20-alpine
+WORKDIR /usr/src/app
+COPY package*.json ./
+RUN npm ci --omit=dev
+COPY --from=builder /usr/src/app/dist ./dist
 EXPOSE 3000
-
-CMD ["npm", "start"]
+CMD ["node", "dist/server.js"]

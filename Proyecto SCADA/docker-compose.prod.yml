@@ -1,0 +1,80 @@
+# docker-compose.prod.yml
+# Secrets come from --env-file /home/opc/scada.env
+services:
+  postgres-metadata:
+    image: postgres:15-alpine
+    container_name: postgres_scada_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DATABASE}
+    volumes:
+      - postgres_metadata_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scada_user -d scada_metadata"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+  scada-query-api:
+    build:
+      context: ./scada-query-api/scada-query-api
+      dockerfile: Dockerfile
+    image: scada-query-api:latest
+    container_name: scada_query_api
+    restart: unless-stopped
+    depends_on:
+      postgres-metadata:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - PG_HOST=postgres-metadata
+      - PG_USER=${PG_USER}
+      - PG_PASSWORD=${PG_PASSWORD}
+      - PG_DATABASE=${PG_DATABASE}
+      - PG_PORT=5432
+      - JWT_SECRET=${JWT_SECRET}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - INFLUX_URL=${INFLUX_URL}
+      - INFLUX_TOKEN=${INFLUX_TOKEN}
+      - INFLUX_ORG=${INFLUX_ORG}
+      - INFLUX_BUCKET=${INFLUX_BUCKET}
+      - INFLUX_BUCKET_IGNITION=${INFLUX_BUCKET_IGNITION}
+    ports:
+      - "3001:3001"
+
+  scada-ingestion-api:
+    build:
+      context: ./scada-igestion-api/scada-igestion-api
+      dockerfile: Dockerfile
+    image: scada-ingestion-api:latest
+    container_name: scada_ingestion_api
+    restart: unless-stopped
+    depends_on:
+      postgres-metadata:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - PG_HOST=postgres-metadata
+      - PG_USER=${PG_USER}
+      - PG_PASSWORD=${PG_PASSWORD}
+      - PG_DATABASE=${PG_DATABASE}
+      - PG_PORT=5432
+      - INFLUX_URL=${INFLUX_URL}
+      - INFLUX_TOKEN=${INFLUX_TOKEN}
+      - INFLUX_ORG=${INFLUX_ORG}
+      - INFLUX_BUCKET=${INFLUX_BUCKET}
+      - INFLUX_BUCKET_IGNITION=${INFLUX_BUCKET_IGNITION}
+      - MQTT_HOST=${MQTT_HOST}
+      - MQTT_PORT=${MQTT_PORT}
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_metadata_data:
+    external: true
