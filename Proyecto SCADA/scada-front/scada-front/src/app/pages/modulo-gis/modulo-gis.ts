@@ -99,6 +99,7 @@ export class ModuloGis implements OnInit, OnDestroy {
   map!: L.Map;
   private popupChart: echarts.ECharts | null = null;
   private municipioChartCache = new Map<number, [number, number | null][]>();
+  private pozoChartCache = new Map<string, [number, number | null][]>();
 
   // LayerGroups
   pozosLayer = L.layerGroup();
@@ -415,6 +416,11 @@ export class ModuloGis implements OnInit, OnDestroy {
           <div class="scada-popup-meta">
             <div><b>Proveedor:</b> ${d.proveedor}</div>
           </div>
+
+          <div class="scada-popup-chart" id="popup-chart-pozo-${this.slugify(name)}">
+            <div class="scada-popup-chart-loading">Cargando...</div>
+          </div>
+
           <button
             class="scada-popup-btn"
             data-url="${detailUrl}"
@@ -549,14 +555,28 @@ export class ModuloGis implements OnInit, OnDestroy {
                 '.scada-popup-btn'
               ) as HTMLButtonElement | null;
 
-              if (!btn) return;
+              if (btn) {
+                btn.onclick = () => {
+                  const url = btn.getAttribute('data-url');
+                  if (url) this.router.navigateByUrl(url);
+                };
+              }
 
-              btn.onclick = () => {
-                const url = btn.getAttribute('data-url');
-                if (url) {
-                  this.router.navigateByUrl(url);
-                }
-              };
+              // Render mini chart for this well
+              const normalized = this.normalizeKey(name);
+              const pid = POZO_NAME_TO_ID[normalized];
+              const pData = pid ? POZOS_DATA[pid] : null;
+              const devEui = (pData?.devEui || '').trim();
+              if (devEui) {
+                this.renderPozoPopupChart(devEui, this.slugify(name));
+              }
+            });
+
+            marker.on('popupclose', () => {
+              if (this.popupChart) {
+                this.popupChart.dispose();
+                this.popupChart = null;
+              }
             });
           });
 
@@ -1174,6 +1194,41 @@ export class ModuloGis implements OnInit, OnDestroy {
         // Check element still exists (popup might have closed)
         const chartEl = document.getElementById(`popup-chart-${municipioId}`);
         if (chartEl) this.drawMiniChart(chartEl, sorted);
+      },
+      error: () => {
+        if (el) el.innerHTML = '<div class="scada-popup-chart-empty">Error al cargar</div>';
+      }
+    });
+  }
+
+  private renderPozoPopupChart(devEui: string, slug: string) {
+    if (this.popupChart) {
+      this.popupChart.dispose();
+      this.popupChart = null;
+    }
+
+    const el = document.getElementById(`popup-chart-pozo-${slug}`);
+    if (!el) return;
+
+    const cached = this.pozoChartCache.get(devEui);
+    if (cached) {
+      this.drawMiniChart(el, cached);
+      return;
+    }
+
+    this.telemetryService.getHistory(devEui, 'caudal_lts', '-24h', {}).subscribe({
+      next: (res: any) => {
+        const data = (res.data || [])
+          .map((p: any): [number, number | null] => {
+            const ts = new Date(p.timestamp).getTime();
+            const v = p.value != null && p.value > 0.01 ? p.value : null;
+            return [ts, v != null ? Math.round(v * 100) / 100 : null];
+          })
+          .sort((a: any, b: any) => a[0] - b[0]);
+
+        this.pozoChartCache.set(devEui, data);
+        const chartEl = document.getElementById(`popup-chart-pozo-${slug}`);
+        if (chartEl) this.drawMiniChart(chartEl, data);
       },
       error: () => {
         if (el) el.innerHTML = '<div class="scada-popup-chart-empty">Error al cargar</div>';
