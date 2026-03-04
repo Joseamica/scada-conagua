@@ -376,7 +376,8 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
     this.chartType.set(t);
     if (Object.keys(this.lastChartData).length === 0) return;
     if (t === 'radar') {
-      setTimeout(() => { this.radarChart?.resize(); this.renderRadar(); }, 50);
+      // Radar needs ALL variables — re-fetch instead of rendering from cached data
+      this.loadCharts();
     } else {
       setTimeout(() => { this.chart?.resize(); this.renderChart(); }, 50);
     }
@@ -778,6 +779,9 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
     }
+
+    // Ensure correct dimensions after toggling from chart-hidden (0x0)
+    this.radarChart.resize();
 
     const stats = this.variableStats();
     // Radar always uses ALL variables that have data

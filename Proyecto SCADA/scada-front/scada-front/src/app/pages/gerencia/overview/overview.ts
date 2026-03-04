@@ -8,7 +8,8 @@ import {
   heroArrowsPointingOut, heroArrowsPointingIn,
   heroMagnifyingGlassPlus, heroArrowPath, heroArrowDownTray,
   heroCursorArrowRays, heroTableCells, heroChartBarSquare,
-  heroViewfinderCircle, heroPencil, heroChartPie
+  heroViewfinderCircle, heroPencil, heroChartPie,
+  heroSquares2x2, heroBars3
 } from '@ng-icons/heroicons/outline';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
@@ -60,7 +61,8 @@ const CHART_TYPE_OPTIONS: { key: ChartType; label: string; icon: string }[] = [
       heroArrowsPointingOut, heroArrowsPointingIn,
       heroMagnifyingGlassPlus, heroArrowPath, heroArrowDownTray,
       heroCursorArrowRays, heroTableCells, heroChartBarSquare,
-      heroViewfinderCircle, heroPencil, heroChartPie
+      heroViewfinderCircle, heroPencil, heroChartPie,
+      heroSquares2x2, heroBars3
     })
   ],
   templateUrl: './overview.html',
@@ -203,6 +205,7 @@ export class Overview implements OnInit, AfterViewInit, OnDestroy {
   activeBrushType = signal<'none' | 'lineX' | 'rect' | 'polygon'>('none');
   isFullscreen = signal(false);
   loading = signal(false);
+  viewMode = signal<'default' | 'sideBySide'>('sideBySide');
 
   // Municipality toggles
   municipioSeries = signal<{ id: number; name: string; color: string; liveFlow: number }[]>([]);
@@ -321,6 +324,14 @@ export class Overview implements OnInit, AfterViewInit, OnDestroy {
 
   isMunicipioSelected(id: number): boolean {
     return this.selectedMunicipios().has(id);
+  }
+
+  setViewMode(mode: 'default' | 'sideBySide') {
+    this.viewMode.set(mode);
+    setTimeout(() => {
+      this.chart?.resize();
+      this.detalleMap?.invalidateSize();
+    }, 50);
   }
 
   constructor(private router: Router) {}

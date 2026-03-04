@@ -360,3 +360,46 @@ html[data-theme="dark"] input[type="date"] {
 html[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1) brightness(0.8);
 }
+
+/* ===== LEAFLET DARK MODE FIX (tooltips + popups) ===== */
+html[data-theme="dark"] .leaflet-tooltip {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #334155 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+}
+
+html[data-theme="dark"] .leaflet-tooltip-top::before {
+  border-top-color: #334155 !important;
+}
+
+html[data-theme="dark"] .leaflet-tooltip-bottom::before {
+  border-bottom-color: #334155 !important;
+}
+
+html[data-theme="dark"] .leaflet-popup-content-wrapper {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #334155 !important;
+}
+
+html[data-theme="dark"] .leaflet-popup-content {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .leaflet-popup-content * {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .leaflet-popup-tip {
+  background: #1e293b !important;
+}
+
+html[data-theme="dark"] .leaflet-popup-close-button {
+  color: #94a3b8 !important;
+}
+
+/* Layer control icons (SVG imgs) — invert for dark mode */
+html[data-theme="dark"] .leaflet-control-layers .layer-label img {
+  filter: invert(1) brightness(0.85);
+}

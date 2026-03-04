@@ -240,7 +240,7 @@ export class ModuloGis implements OnInit, OnDestroy {
   // ===============================
   if (!data) {
     // Sitio no está en POZOS_DATA (creado dinámicamente) — mostrar activo por defecto
-    return `assets/icons/map/well-yellow.svg`;
+    return `assets/icons/map/well.svg`;
   }
 
   const status = (data.estatus || '').toLowerCase().trim();
@@ -479,10 +479,10 @@ export class ModuloGis implements OnInit, OnDestroy {
               pozoId = this.slugify(name);
             }
 
-            const data = POZOS_DATA[pozoId]; // 👈 ahora sí existe
-            const estado = (data?.estatus || '').toLowerCase().trim();
+            const data = POZOS_DATA[pozoId];
+            const estado = (data?.estatus || 'activo').toLowerCase().trim();
 
-            // 👇 agregar al layer correcto
+            // Agregar al layer correcto (default activo para sitios dinámicos)
             if (estado === 'activo') {
               marker.addTo(this.pozosActivosLayer);
             }

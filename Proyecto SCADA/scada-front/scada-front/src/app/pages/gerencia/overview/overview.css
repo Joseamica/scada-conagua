@@ -159,6 +159,82 @@
   color: var(--text-muted);
 }
 
+/* ===== VIEW MODE BAR ===== */
+
+.view-mode-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.view-mode-segmented {
+  display: flex;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-card);
+}
+
+.view-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border-right: 1px solid var(--border-default);
+}
+
+.view-mode-btn:last-child {
+  border-right: none;
+}
+
+.view-mode-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.view-mode-btn.active {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+/* ===== VIEW CONTAINER ===== */
+
+.view-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.view-container.side-by-side {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.view-container.side-by-side .chart-card-main {
+  margin-bottom: 0;
+}
+
+.view-container.side-by-side .chart {
+  height: 320px;
+}
+
+.view-container.side-by-side .map-card {
+  margin-top: 0;
+}
+
+.view-container.side-by-side .map-container {
+  min-height: 320px;
+  flex: 1;
+}
+
 /* ===== CONTENT CARD ===== */
 
 .content-card {
@@ -696,6 +772,12 @@
 }
 
 /* ===== RESPONSIVE ===== */
+
+@media (max-width: 900px) {
+  .view-container.side-by-side {
+    grid-template-columns: 1fr;
+  }
+}
 
 @media (max-width: 1024px) {
   .kpi-row {
