@@ -19,6 +19,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
 import { TelemetryService } from '../../../core/services/telemetry';
+import { POZOS_DATA } from '../../pozos/pozos-data';
+import { POZOS_LAYOUT } from '../../pozos/pozos-layout';
 
 const estadosJson = require('../../../../assets/data/estados.json');
 
@@ -155,10 +157,15 @@ export class SitioForm implements OnInit {
     if (!this.sitioId) return;
     this.telemetry.getSite(this.sitioId).subscribe({
       next: (site) => {
+        // Normalize site_type to lowercase to match form values (DB stores 'Pozo', form uses 'pozo')
+        const normalizedType = (site.site_type || 'pozo').toLowerCase();
+        const validTypes = this.tiposSitio.map((t) => t.value);
+        const tipo = validTypes.includes(normalizedType) ? normalizedType : 'pozo';
+
         // Patch form with existing data
         this.form.patchValue({
           nombre: site.site_name,
-          tipo: site.site_type || 'pozo',
+          tipo,
           devEUI: site.dev_eui,
           gatewayId: site.gw_eui,
           lat: site.latitude || 0,
@@ -166,6 +173,29 @@ export class SitioForm implements OnInit {
         });
         // Disable devEUI in edit mode — it's the primary key
         this.form.get('devEUI')?.disable();
+
+        // Look up proveedor and render from hardcoded data by devEUI
+        const devEui = (site.dev_eui || '').trim();
+        const dataKey = Object.keys(POZOS_DATA).find(
+          (k) => (POZOS_DATA[k].devEui || '').trim() === devEui,
+        );
+        if (dataKey) {
+          const pozoData = POZOS_DATA[dataKey];
+          // Map proveedor name → id
+          const provMatch = this.proveedores.find(
+            (p) => p.nombre.toLowerCase() === (pozoData.proveedor || '').toLowerCase(),
+          );
+          if (provMatch) {
+            this.form.patchValue({ proveedor: provMatch.id });
+          }
+
+          // Load render from layout data
+          const layoutData = POZOS_LAYOUT[dataKey];
+          if (layoutData?.render) {
+            this.form.patchValue({ render: 'assets/pozos/' + layoutData.render });
+            this.renderFileName = layoutData.render;
+          }
+        }
 
         // Trigger location detection from lat/lng to populate estado + municipio
         if (site.latitude && site.longitude) {
