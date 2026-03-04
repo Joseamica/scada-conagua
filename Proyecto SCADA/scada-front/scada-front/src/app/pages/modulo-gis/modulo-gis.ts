@@ -136,6 +136,14 @@ export class ModuloGis implements OnInit, OnDestroy {
         : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
       this.tileLayer.setUrl(url);
     }
+    // Re-render popup chart after theme transition settles
+    if (this.popupChart && !this.popupChart.isDisposed()) {
+      setTimeout(() => {
+        if (this.popupChart && !this.popupChart.isDisposed()) {
+          this.popupChart.resize();
+        }
+      }, 150);
+    }
   });
 
   constructor(
