@@ -1212,27 +1212,105 @@ export class ModuloGis implements OnInit, OnDestroy {
 
     const cached = this.pozoChartCache.get(devEui);
     if (cached) {
-      this.drawMiniChart(el, cached);
+      this.drawPozoMiniChart(el, cached);
       return;
     }
 
-    this.telemetryService.getHistory(devEui, 'caudal_lts', '-24h', {}).subscribe({
+    forkJoin({
+      caudal: this.telemetryService.getHistory(devEui, 'caudal_lts', '-24h', {}),
+      presion: this.telemetryService.getHistory(devEui, 'presion_kg', '-24h', {})
+    }).subscribe({
       next: (res: any) => {
-        const data = (res.data || [])
-          .map((p: any): [number, number | null] => {
-            const ts = new Date(p.timestamp).getTime();
-            const v = p.value != null && p.value > 0.01 ? p.value : null;
-            return [ts, v != null ? Math.round(v * 100) / 100 : null];
-          })
-          .sort((a: any, b: any) => a[0] - b[0]);
+        const toSorted = (raw: any[], floor: boolean) =>
+          (raw || [])
+            .map((p: any): [number, number | null] => {
+              const ts = new Date(p.timestamp).getTime();
+              const v = p.value;
+              return [ts, v != null && (!floor || v > 0.01) ? Math.round(v * 100) / 100 : null];
+            })
+            .sort((a: any, b: any) => a[0] - b[0]);
 
-        this.pozoChartCache.set(devEui, data);
+        const result = {
+          caudal: toSorted(res.caudal?.data, true),
+          presion: toSorted(res.presion?.data, false)
+        };
+
+        this.pozoChartCache.set(devEui, result as any);
         const chartEl = document.getElementById(`popup-chart-pozo-${slug}`);
-        if (chartEl) this.drawMiniChart(chartEl, data);
+        if (chartEl) this.drawPozoMiniChart(chartEl, result as any);
       },
       error: () => {
         if (el) el.innerHTML = '<div class="scada-popup-chart-empty">Error al cargar</div>';
       }
+    });
+  }
+
+  private drawPozoMiniChart(el: HTMLElement, data: any) {
+    el.innerHTML = '';
+    const caudal = data.caudal || data;
+    const presion = data.presion || [];
+
+    if ((!Array.isArray(caudal) || caudal.length === 0) && presion.length === 0) {
+      el.innerHTML = '<div class="scada-popup-chart-empty">Sin datos</div>';
+      return;
+    }
+
+    if (this.popupChart) { this.popupChart.dispose(); this.popupChart = null; }
+    this.popupChart = echarts.init(el);
+
+    const series: any[] = [];
+    const yAxis: any[] = [];
+
+    if (caudal.length > 0) {
+      yAxis.push({ type: 'value', show: false, scale: true });
+      series.push({
+        type: 'line', data: Array.isArray(caudal) ? caudal : [], yAxisIndex: 0,
+        showSymbol: false, smooth: true,
+        lineStyle: { width: 1.5, color: '#007bff' },
+        areaStyle: { color: 'rgba(0,123,255,0.12)' },
+        connectNulls: false
+      });
+    }
+
+    if (presion.length > 0) {
+      yAxis.push({ type: 'value', show: false, scale: true });
+      series.push({
+        type: 'line', data: presion, yAxisIndex: yAxis.length - 1,
+        showSymbol: false, smooth: true,
+        lineStyle: { width: 1.2, color: '#28a745', type: 'dashed' },
+        connectNulls: false
+      });
+    }
+
+    this.popupChart.setOption({
+      backgroundColor: 'transparent',
+      grid: { left: 4, right: 4, top: 8, bottom: 4 },
+      xAxis: { type: 'time', show: false },
+      yAxis,
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(15,23,42,0.92)',
+        borderColor: 'rgba(255,255,255,0.08)',
+        borderWidth: 1,
+        textStyle: { color: '#e2e8f0', fontSize: 11 },
+        formatter: (params: any) => {
+          if (!Array.isArray(params) || params.length === 0) return '';
+          const d = new Date(params[0].value[0]);
+          const time = d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+          let html = `<div style="margin-bottom:4px;color:#94a3b8">${time}</div>`;
+          for (const p of params) {
+            const val = p.value[1] != null ? Number(p.value[1]).toFixed(1) : '—';
+            const label = p.seriesIndex === 0 ? 'Caudal' : 'Presión';
+            const unit = p.seriesIndex === 0 ? 'L/s' : 'Kg/cm²';
+            html += `<div style="display:flex;gap:4px;align-items:center">`;
+            html += `<span style="width:6px;height:6px;border-radius:50%;background:${p.color}"></span>`;
+            html += `<span style="color:#cbd5e1">${label}:</span>`;
+            html += `<b style="color:#f1f5f9">${val} ${unit}</b></div>`;
+          }
+          return html;
+        }
+      },
+      series
     });
   }
 
