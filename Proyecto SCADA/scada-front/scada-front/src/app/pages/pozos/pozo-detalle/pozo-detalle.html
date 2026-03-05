@@ -89,56 +89,83 @@
         <div class="content-card render-card">
           <div class="content-body">
             <div class="iso-canvas">
-              <img
-                *ngIf="layout()"
-                class="iso-render"
-                [src]="'assets/pozos/' + layout().render"
-                alt="Render del pozo"
-              />
-              <!-- COMUNICACIÓN HOTSPOT -->
-              <div class="hotspot"
-                   [style.left.%]="layout().overlays.lteBox.x"
-                   [style.top.%]="layout().overlays.lteBox.y"
-                   (click)="toggleOverlay()">
-                <div class="dot"></div>
-                <div class="tooltip tooltip--panel" *ngIf="overlayVisible()">
-                  <div class="tooltip-row">
-                    <div class="iso-comm">
-                      <div>LTE RSSI: <b>{{ commStats().lteRssi }} dBm</b></div>
-                      <div>SNR: <b>{{ commStats().snr }} dB</b></div>
-                      <div><b>Altan Redes</b></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <!-- PRESIÓN HOTSPOT -->
-              <div class="hotspot"
-                   [style.left.%]="layout().overlays.presion.x"
-                   [style.top.%]="layout().overlays.presion.y">
-                <div class="tooltip3 tooltip--panel">
-                  <div class="tooltip-row">
-                    <span class="label">Presión:</span> <br>
-                    <span class="value">{{ datos().presion }} Kg/cm2</span>
-                  </div>
-                </div>
-              </div>
-              <!-- CAUDAL HOTSPOT -->
-              <div class="hotspot"
-                   [style.left.%]="layout().overlays.caudal.x"
-                   [style.top.%]="layout().overlays.caudal.y">
-                <div class="tooltip2 tooltip--meter">
-                  <div class="meter-body">
-                    <div class="meter-screen">
-                      <div class="flow-main">
-                        <span class="flow-value">{{ datos().caudal }}</span>
-                        <span class="flow-unit">Lt/s</span>
+
+              @if (layout()) {
+                <!-- Sitio con render isométrico -->
+                <img
+                  class="iso-render"
+                  [src]="'assets/pozos/' + layout().render"
+                  alt="Render del pozo"
+                />
+                <!-- COMUNICACIÓN HOTSPOT -->
+                <div class="hotspot"
+                     [style.left.%]="layout().overlays.lteBox.x"
+                     [style.top.%]="layout().overlays.lteBox.y"
+                     (click)="toggleOverlay()">
+                  <div class="dot"></div>
+                  <div class="tooltip tooltip--panel" *ngIf="overlayVisible()">
+                    <div class="tooltip-row">
+                      <div class="iso-comm">
+                        <div>LTE RSSI: <b>{{ commStats().lteRssi }} dBm</b></div>
+                        <div>SNR: <b>{{ commStats().snr }} dB</b></div>
+                        <div><b>Altan Redes</b></div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <!-- Overlay para cerrar -->
-              <div class="overlay-click" *ngIf="overlayVisible()" (click)="cerrarOverlay()"></div>
+                <!-- PRESIÓN HOTSPOT -->
+                <div class="hotspot"
+                     [style.left.%]="layout().overlays.presion.x"
+                     [style.top.%]="layout().overlays.presion.y">
+                  <div class="tooltip3 tooltip--panel">
+                    <div class="tooltip-row">
+                      <span class="label">Presión:</span> <br>
+                      <span class="value">{{ datos().presion }} Kg/cm2</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- CAUDAL HOTSPOT -->
+                <div class="hotspot"
+                     [style.left.%]="layout().overlays.caudal.x"
+                     [style.top.%]="layout().overlays.caudal.y">
+                  <div class="tooltip2 tooltip--meter">
+                    <div class="meter-body">
+                      <div class="meter-screen">
+                        <div class="flow-main">
+                          <span class="flow-value">{{ datos().caudal }}</span>
+                          <span class="flow-unit">Lt/s</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Overlay para cerrar -->
+                <div class="overlay-click" *ngIf="overlayVisible()" (click)="cerrarOverlay()"></div>
+              } @else {
+                <!-- Sitio sin render — mostrar métricas directas -->
+                <div class="no-render-placeholder">
+                  <div class="no-render-metrics">
+                    <div class="no-render-metric">
+                      <span class="no-render-label">Caudal</span>
+                      <span class="no-render-value">{{ datos().caudal }} <small>Lt/s</small></span>
+                    </div>
+                    <div class="no-render-metric">
+                      <span class="no-render-label">Presión</span>
+                      <span class="no-render-value">{{ datos().presion }} <small>Kg/cm²</small></span>
+                    </div>
+                    <div class="no-render-metric">
+                      <span class="no-render-label">LTE RSSI</span>
+                      <span class="no-render-value">{{ commStats().lteRssi }} <small>dBm</small></span>
+                    </div>
+                    <div class="no-render-metric">
+                      <span class="no-render-label">SNR</span>
+                      <span class="no-render-value">{{ commStats().snr }} <small>dB</small></span>
+                    </div>
+                  </div>
+                  <p class="no-render-hint">Render isométrico pendiente</p>
+                </div>
+              }
+
             </div>
           </div>
         </div>

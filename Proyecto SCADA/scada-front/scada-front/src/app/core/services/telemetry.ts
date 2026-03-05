@@ -44,7 +44,7 @@ export class TelemetryService {
     private readonly BASE_URL = environment.apiQueryUrl;
   
   // Catálogo completo de sitios del inventario (incluye last_flow_value para agregaciones)
-  getSites(): Observable<{ dev_eui: string; site_name: string; municipality: string; site_type: string; last_flow_value: number | null; last_pressure_value: number | null; last_updated_at: string | null; rssi?: number; snr?: number }[]> {
+  getSites(): Observable<{ dev_eui: string; site_name: string; municipality: string; site_type: string; last_flow_value: number | null; last_pressure_value: number | null; last_updated_at: string | null; rssi?: number; snr?: number; latitude?: number | null; longitude?: number | null; proveedor?: string | null; estatus?: string | null }[]> {
     return this.http.get<any[]>(`${this.BASE_URL}/sites`);
   }
 
@@ -86,6 +86,8 @@ export class TelemetryService {
     municipality: string;
     latitude?: number;
     longitude?: number;
+    proveedor?: string;
+    estatus?: string;
   }): Observable<{ dev_eui: string; message: string }> {
     return this.http.post<{ dev_eui: string; message: string }>(`${this.BASE_URL}/sites`, payload);
   }
@@ -94,6 +96,7 @@ export class TelemetryService {
   getSite(devEUI: string): Observable<{
     dev_eui: string; gw_eui: string; site_name: string; site_type: string;
     municipality: string; latitude: number | null; longitude: number | null;
+    proveedor: string | null; estatus: string | null;
   }> {
     return this.http.get<any>(`${this.BASE_URL}/sites/${devEUI.trim()}`);
   }
@@ -102,6 +105,7 @@ export class TelemetryService {
   updateSite(devEUI: string, payload: {
     site_name: string; site_type: string; municipality: string;
     gw_eui?: string; latitude?: number; longitude?: number;
+    proveedor?: string; estatus?: string;
   }): Observable<{ message: string }> {
     return this.http.put<{ message: string }>(`${this.BASE_URL}/sites/${devEUI.trim()}`, payload);
   }

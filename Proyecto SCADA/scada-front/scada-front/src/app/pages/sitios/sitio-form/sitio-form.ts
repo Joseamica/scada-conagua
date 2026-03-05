@@ -174,19 +174,32 @@ export class SitioForm implements OnInit {
         // Disable devEUI in edit mode — it's the primary key
         this.form.get('devEUI')?.disable();
 
-        // Look up proveedor and render from hardcoded data by devEUI
+        // Patch proveedor from API if available, fallback to POZOS_DATA
+        if (site.proveedor) {
+          const provMatch = this.proveedores.find(
+            (p) => p.nombre.toLowerCase() === site.proveedor!.toLowerCase(),
+          );
+          if (provMatch) this.form.patchValue({ proveedor: provMatch.id });
+        }
+        if (site.estatus) {
+          this.form.patchValue({ estatus: site.estatus });
+        }
+
+        // Fallback: look up proveedor and render from hardcoded data by devEUI
         const devEui = (site.dev_eui || '').trim();
         const dataKey = Object.keys(POZOS_DATA).find(
           (k) => (POZOS_DATA[k].devEui || '').trim() === devEui,
         );
         if (dataKey) {
           const pozoData = POZOS_DATA[dataKey];
-          // Map proveedor name → id
-          const provMatch = this.proveedores.find(
-            (p) => p.nombre.toLowerCase() === (pozoData.proveedor || '').toLowerCase(),
-          );
-          if (provMatch) {
-            this.form.patchValue({ proveedor: provMatch.id });
+          // Only use hardcoded proveedor if API didn't provide one
+          if (!site.proveedor) {
+            const provMatch = this.proveedores.find(
+              (p) => p.nombre.toLowerCase() === (pozoData.proveedor || '').toLowerCase(),
+            );
+            if (provMatch) {
+              this.form.patchValue({ proveedor: provMatch.id });
+            }
           }
 
           // Load render from layout data
@@ -256,6 +269,8 @@ export class SitioForm implements OnInit {
         municipality: v.municipio?.trim() || '',
         latitude: v.lat || undefined,
         longitude: v.lng || undefined,
+        proveedor: this.proveedores.find((p) => p.id === v.proveedor)?.nombre || undefined,
+        estatus: v.estatus || 'activo',
       };
 
       this.saving.set(true);
@@ -284,6 +299,8 @@ export class SitioForm implements OnInit {
         gw_eui: v.gatewayId?.trim() || undefined,
         latitude: v.lat || undefined,
         longitude: v.lng || undefined,
+        proveedor: this.proveedores.find((p) => p.id === v.proveedor)?.nombre || undefined,
+        estatus: v.estatus || 'activo',
       };
 
       this.saving.set(true);

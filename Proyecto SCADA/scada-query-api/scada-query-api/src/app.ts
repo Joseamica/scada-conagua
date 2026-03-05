@@ -187,7 +187,11 @@ app.get('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
                 s.last_pressure_value,
                 s.last_updated_at,
                 s.rssi,
-                s.snr
+                s.snr,
+                i.latitude,
+                i.longitude,
+                i.proveedor,
+                i.estatus
             FROM scada.inventory i
             LEFT JOIN scada.site_status s ON TRIM(s.dev_eui) = TRIM(i.dev_eui)
             WHERE TRIM(COALESCE(i.dev_eui, '')) != ''
@@ -202,7 +206,7 @@ app.get('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
 
 // Crear un nuevo sitio en el inventario
 app.post('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
-    const { dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude } = req.body;
+    const { dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude, proveedor, estatus } = req.body;
 
     if (!site_name || !dev_eui || !municipality) {
         return res.status(400).json({ error: 'site_name, dev_eui y municipality son obligatorios.' });
@@ -227,8 +231,8 @@ app.post('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
         const effectiveGwEui = gw_eui?.trim() || `GW-${dev_eui.trim()}`.substring(0, 16);
 
         const result = await pool.query(
-            `INSERT INTO scada.inventory (dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `INSERT INTO scada.inventory (dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude, proveedor, estatus)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING dev_eui`,
             [
                 dev_eui.trim(),
@@ -238,6 +242,8 @@ app.post('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
                 municipality.trim(),
                 latitude || null,
                 longitude || null,
+                proveedor || null,
+                estatus || 'activo',
             ]
         );
 
@@ -265,7 +271,7 @@ app.get('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
     }
     try {
         const result = await pool.query(
-            `SELECT dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude, is_active
+            `SELECT dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude, is_active, proveedor, estatus
              FROM scada.inventory WHERE TRIM(dev_eui) = $1`,
             [devEUI.trim()]
         );
@@ -282,6 +288,8 @@ app.get('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
             latitude: row.latitude ? Number(row.latitude) : null,
             longitude: row.longitude ? Number(row.longitude) : null,
             is_active: row.is_active,
+            proveedor: row.proveedor || null,
+            estatus: row.estatus || 'activo',
         });
     } catch (e) {
         console.error('❌ Error fetching site:', e);
@@ -296,7 +304,7 @@ app.put('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
         return res.status(400).json({ error: 'Invalid devEUI format.' });
     }
 
-    const { site_name, site_type, municipality, latitude, longitude, gw_eui } = req.body;
+    const { site_name, site_type, municipality, latitude, longitude, gw_eui, proveedor, estatus } = req.body;
     if (!site_name || !municipality) {
         return res.status(400).json({ error: 'site_name y municipality son obligatorios.' });
     }
@@ -332,6 +340,12 @@ app.put('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
             setClauses.push(`gw_eui = $${values.length + 1}`);
             values.push(gw_eui.trim().substring(0, 16));
         }
+
+        setClauses.push(`proveedor = $${values.length + 1}`);
+        values.push(proveedor || null);
+
+        setClauses.push(`estatus = $${values.length + 1}`);
+        values.push(estatus || 'activo');
 
         values.push(devEUI.trim());
         await pool.query(

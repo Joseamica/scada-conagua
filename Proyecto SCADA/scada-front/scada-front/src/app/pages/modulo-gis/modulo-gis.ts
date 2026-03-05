@@ -98,6 +98,7 @@ const MUNICIPIOS_CON_POZO = new Set<number>(
 export class ModuloGis implements OnInit, OnDestroy {
   map!: L.Map;
   private popupChart: echarts.ECharts | null = null;
+  private popupChartGeneration = 0;
   private municipioChartCache = new Map<number, [number, number | null][]>();
   private pozoChartCache = new Map<string, [number, number | null][]>();
 
@@ -125,6 +126,7 @@ export class ModuloGis implements OnInit, OnDestroy {
   selectedPozoName: string | null = null;
 
   private gastoByMunicipio = new Map<number, number>();
+  private apiSitesByName = new Map<string, any>();
   private telemetryService = inject(TelemetryService);
   private themeService = inject(ThemeService);
   private tileLayer?: L.TileLayer;
@@ -187,6 +189,20 @@ export class ModuloGis implements OnInit, OnDestroy {
       .trim();
   }
 
+  /** Cache ALL sites from API — needed for dynamic popup lookup */
+  private loadApiSitesCache() {
+    this.telemetryService.getSites().subscribe({
+      next: (sites) => {
+        this.apiSitesByName.clear();
+        sites.forEach(site => {
+          const key = this.normalizeKey(site.site_name || '');
+          if (key) this.apiSitesByName.set(key, site);
+        });
+      },
+      error: () => {}
+    });
+  }
+
   private buildGastoByMunicipio() {
     this.gastoByMunicipio.clear();
 
@@ -202,6 +218,13 @@ export class ModuloGis implements OnInit, OnDestroy {
     // Fetch live flow data from API
     this.telemetryService.getSites().subscribe({
       next: (sites) => {
+        // Also update cache from this response
+        this.apiSitesByName.clear();
+        sites.forEach(site => {
+          const key = this.normalizeKey(site.site_name || '');
+          if (key) this.apiSitesByName.set(key, site);
+        });
+
         sites.forEach(site => {
           const devEui = (site.dev_eui || '').trim().toLowerCase();
           const munId = devEuiToMunicipio.get(devEui);
@@ -366,68 +389,71 @@ export class ModuloGis implements OnInit, OnDestroy {
 
   private buildPozoPopup(name: string): string {
     const normalized = this.normalizeKey(name);
-    const pozoId = POZO_NAME_TO_ID[normalized];
-
-    if (!pozoId) {
-      return `<strong>${name}</strong>`;
-    } 
+    const pozoId = POZO_NAME_TO_ID[normalized] || this.slugify(name);
     const d = POZOS_DATA[pozoId];
     const l = POZOS_LAYOUT[pozoId];
 
-    if (!d) {
-      return `<strong>${name}</strong>`;
-    }
+    // Site exists in hardcoded data — full popup
+    if (d) {
+      const detailUrl = `${DETAIL_BASE_URL}/${this.slugify(name)}`;
+      return `
+        <div class="scada-popup">
+          ${l?.render ? `
+            <div class="scada-popup-render">
+              <img src="assets/pozos/${l.render}" alt="${d.nombre}" />
+            </div>
+          ` : ''}
 
-    const renderHtml = l?.render
-    ? `
-      <div class="popup-render">
-        <img src="assets/renders/pozos/${l.render}" />
-      </div>
-    `
-    : '';
-
-    const detailUrl = `${DETAIL_BASE_URL}/${this.slugify(name)}`;
-    return `
-      <div class="scada-popup">
-        ${renderHtml ? `
-          <div class="scada-popup-render">
-            <img src="assets/pozos/${l.render}" alt="${d.nombre}" />
-          </div>
-        ` : ''}
-
-          <div class="scada-popup-header">
-            ${d.nombre}
-          </div>
+          <div class="scada-popup-header">${d.nombre}</div>
 
           <div class="scada-popup-metrics">
-            <div class="metric">
-              <span>Latitud:</span>
-              <b>${d.lat}</b>
-            </div>
-            <div class="metric">
-              <span>Longitud:</span>
-              <b>${d.lng}</b>
-            </div>
+            <div class="metric"><span>Latitud:</span> <b>${d.lat}</b></div>
+            <div class="metric"><span>Longitud:</span> <b>${d.lng}</b></div>
           </div>
 
-          <div class="scada-popup-meta">
-            <div><b>Estatus:</b> ${d.estatus}</div>
-          </div>
-          <div class="scada-popup-meta">
-            <div><b>Proveedor:</b> ${d.proveedor}</div>
-          </div>
+          <div class="scada-popup-meta"><div><b>Estatus:</b> ${d.estatus}</div></div>
+          <div class="scada-popup-meta"><div><b>Proveedor:</b> ${d.proveedor}</div></div>
 
           <div class="scada-popup-chart" id="popup-chart-pozo-${this.slugify(name)}">
             <div class="scada-popup-chart-loading">Cargando...</div>
           </div>
 
-          <button
-            class="scada-popup-btn"
-            data-url="${detailUrl}"
-          >
+          <button class="scada-popup-btn" data-url="${detailUrl}">
             Ver isométrico →
           </button>
-       </div>
+        </div>
+      `;
+    }
+
+    // Dynamic site (not in POZOS_DATA) — build popup from API cache
+    const nameKey = this.normalizeKey(name);
+    const apiSite = this.apiSitesByName.get(nameKey);
+    const devEui = (apiSite?.dev_eui || '').trim();
+    // Navigate to isometric view using devEUI as slug
+    const detailUrl = devEui ? `${DETAIL_BASE_URL}/${devEui}` : '';
+
+    return `
+      <div class="scada-popup">
+        <div class="scada-popup-header">${name}</div>
+
+        <div class="scada-popup-metrics">
+          ${apiSite?.municipality ? `<div class="metric"><span>Municipio:</span> <b>${apiSite.municipality}</b></div>` : ''}
+          ${apiSite?.site_type ? `<div class="metric"><span>Tipo:</span> <b>${apiSite.site_type}</b></div>` : ''}
+          ${apiSite?.last_flow_value != null ? `<div class="metric"><span>Caudal:</span> <b>${Number(apiSite.last_flow_value).toFixed(2)} L/s</b></div>` : ''}
+          ${apiSite?.last_pressure_value != null ? `<div class="metric"><span>Presión:</span> <b>${Number(apiSite.last_pressure_value).toFixed(2)} kg/cm²</b></div>` : ''}
+        </div>
+
+        ${devEui ? `
+          <div class="scada-popup-chart" id="popup-chart-pozo-${this.slugify(name)}">
+            <div class="scada-popup-chart-loading">Cargando...</div>
+          </div>
+          <button class="scada-popup-btn" data-url="${detailUrl}">
+            Ver isométrico →
+          </button>
+        ` : `
+          <div class="scada-popup-meta"><div>Sitio sin datos de telemetría</div></div>
+        `}
+      </div>
     `;
   }
 
@@ -544,7 +570,7 @@ export class ModuloGis implements OnInit, OnDestroy {
             const detailUrl = `${DETAIL_BASE_URL}/${this.slugify(name)}`;
 
             marker.bindPopup(
-              this.buildPozoPopup(name),
+              () => this.buildPozoPopup(name),
               { minWidth: 260 }
             );
            marker.on('popupopen', (e: any) => {
@@ -566,7 +592,11 @@ export class ModuloGis implements OnInit, OnDestroy {
               const normalized = this.normalizeKey(name);
               const pid = POZO_NAME_TO_ID[normalized];
               const pData = pid ? POZOS_DATA[pid] : null;
-              const devEui = (pData?.devEui || '').trim();
+              let devEui = (pData?.devEui || '').trim();
+              // Fallback: look up devEUI from API cache for dynamic sites
+              if (!devEui) {
+                devEui = (this.apiSitesByName.get(this.normalizeKey(name))?.dev_eui || '').trim();
+              }
               if (devEui) {
                 this.renderPozoPopupChart(devEui, this.slugify(name));
               }
@@ -596,7 +626,102 @@ export class ModuloGis implements OnInit, OnDestroy {
             if (l.bringToFront) l.bringToFront();
           });
         });
+      })
+      .catch(() => {
+        // KML failed (404, network error) — still count it so fitBounds can proceed
+        if (onReady) onReady(L.latLngBounds([]));
       });
+  }
+
+  /**
+   * Add markers for inventory sites (created via form) that aren't already on the map from KML.
+   * Called after all KML sources finish loading so markersIndex is fully populated.
+   */
+  private addDynamicSiteMarkers() {
+    this.telemetryService.getSites().subscribe({
+      next: (sites) => {
+        // Update the API cache while we're at it
+        this.apiSitesByName.clear();
+        sites.forEach(site => {
+          const key = this.normalizeKey(site.site_name || '');
+          if (key) this.apiSitesByName.set(key, site);
+        });
+
+        sites.forEach(site => {
+          const lat = Number(site.latitude);
+          const lng = Number(site.longitude);
+          if (!lat || !lng) return; // No coordinates — can't place on map
+
+          const name = site.site_name || site.dev_eui;
+          const key = this.normalizeKey(name);
+          if (this.markersIndex.has(key)) return; // Already on map from KML
+
+          const marker = L.marker([lat, lng]);
+          const siteEstatus = (site as any).estatus || 'activo';
+          const targetLayer =
+            siteEstatus === 'obra'
+              ? this.pozosObraLayer
+              : siteEstatus === 'inactivo'
+                ? this.pozosInactivosLayer
+                : this.pozosActivosLayer;
+          marker.addTo(targetLayer);
+
+          const iconUrl = this.resolveSiteIconUrl(name);
+          this.setMarkerIconMeta(marker, iconUrl);
+          this.applyIconScaleToMarker(marker);
+          if (this.map.getZoom() < 10) marker.setOpacity(0);
+
+          this.markersIndex.set(key, marker);
+
+          marker.bindTooltip(name, {
+            direction: 'top',
+            offset: [0, -8],
+            opacity: 0.9
+          });
+
+          marker.on('mouseover', () => marker.openTooltip());
+          marker.on('mouseout', () => {
+            if (this.selectedPozoName !== key) marker.closeTooltip();
+          });
+          marker.on('click', () => {
+            this.selectedPozoName = key;
+            this.closeAllTooltipsExcept(key);
+            marker.openTooltip();
+          });
+
+          marker.bindPopup(
+            () => this.buildPozoPopup(name),
+            { minWidth: 260 }
+          );
+
+          marker.on('popupopen', (e: any) => {
+            const popupEl = e.popup.getElement() as HTMLElement;
+            if (!popupEl) return;
+
+            const btn = popupEl.querySelector('.scada-popup-btn') as HTMLButtonElement | null;
+            if (btn) {
+              btn.onclick = () => {
+                const url = btn.getAttribute('data-url');
+                if (url) this.router.navigateByUrl(url);
+              };
+            }
+
+            const devEui = (site.dev_eui || '').trim();
+            if (devEui) {
+              this.renderPozoPopupChart(devEui, this.slugify(name));
+            }
+          });
+
+          marker.on('popupclose', () => {
+            if (this.popupChart) {
+              this.popupChart.dispose();
+              this.popupChart = null;
+            }
+          });
+        });
+      },
+      error: () => {}
+    });
   }
 
   // ─────────────────────────────
@@ -1000,6 +1125,7 @@ export class ModuloGis implements OnInit, OnDestroy {
 
     // 4) GeoJSON / overlays — conditional loading based on scope
     this.loadMunicipios();
+    this.loadApiSitesCache(); // Always cache API sites for dynamic popups
     if (!isMunicipal) {
       // State-level overlays: skip for Municipal users (saves ~4MB + 60s)
       this.buildGastoByMunicipio();
@@ -1059,15 +1185,24 @@ export class ModuloGis implements OnInit, OnDestroy {
     const totalSources = filteredSources.length;
     const allBounds = L.latLngBounds([]);
 
-    filteredSources.forEach(src => {
-      this.loadSitiosKml(src.path, (layerBounds) => {
-        if (layerBounds?.isValid()) allBounds.extend(layerBounds);
-        loadedCount++;
-        if (loadedCount === totalSources && allBounds.isValid()) {
-          this.map.fitBounds(allBounds, { padding: [40, 40], maxZoom: 14 });
-        }
+    if (totalSources === 0) {
+      // No KML sources — still load dynamic markers from API
+      this.addDynamicSiteMarkers();
+    } else {
+      filteredSources.forEach(src => {
+        this.loadSitiosKml(src.path, (layerBounds) => {
+          if (layerBounds?.isValid()) allBounds.extend(layerBounds);
+          loadedCount++;
+          if (loadedCount === totalSources) {
+            if (allBounds.isValid()) {
+              this.map.fitBounds(allBounds, { padding: [40, 40], maxZoom: 14 });
+            }
+            // Add markers for inventory sites not already placed by KML
+            this.addDynamicSiteMarkers();
+          }
+        });
       });
-    });
+    }
 
     // ─────────────────────────────
     // 🟦 KML DE CAPAS (skip for Municipal — state-level infrastructure)
@@ -1142,6 +1277,8 @@ export class ModuloGis implements OnInit, OnDestroy {
       this.popupChart = null;
     }
 
+    const gen = ++this.popupChartGeneration;
+
     const el = document.getElementById(`popup-chart-${municipioId}`);
     if (!el) return;
 
@@ -1175,6 +1312,7 @@ export class ModuloGis implements OnInit, OnDestroy {
 
     forkJoin(requests).subscribe({
       next: (res: any) => {
+        if (gen !== this.popupChartGeneration) return; // stale response, skip
         // Aggregate: sum flows per timestamp bucket
         const buckets = new Map<number, number>();
         for (const data of Object.values(res) as any[]) {
@@ -1207,6 +1345,8 @@ export class ModuloGis implements OnInit, OnDestroy {
       this.popupChart = null;
     }
 
+    const gen = ++this.popupChartGeneration;
+
     const el = document.getElementById(`popup-chart-pozo-${slug}`);
     if (!el) return;
 
@@ -1221,6 +1361,7 @@ export class ModuloGis implements OnInit, OnDestroy {
       presion: this.telemetryService.getHistory(devEui, 'presion_kg', '-24h', {})
     }).subscribe({
       next: (res: any) => {
+        if (gen !== this.popupChartGeneration) return; // stale response, skip
         const toSorted = (raw: any[], floor: boolean) =>
           (raw || [])
             .map((p: any): [number, number | null] => {

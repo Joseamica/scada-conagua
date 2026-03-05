@@ -160,7 +160,9 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   });
 
   goToAdvanced() {
-    this.router.navigate(['/telemetria/avanzadas']);
+    this.router.navigate(['/telemetria/avanzadas'], {
+      queryParams: { devEUI: this.pozoId() },
+    });
   }
 
   // VIEWCHILD
@@ -511,14 +513,42 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   // =========================
   ngOnInit() {
     const slug = this.route.snapshot.paramMap.get('id')!;
-    const staticData = POZOS_DATA[slug];
+    let staticData = POZOS_DATA[slug];
+    let layoutKey = slug;
+
+    // If slug is a devEUI (not a human-readable slug), find the matching entry
+    if (!staticData) {
+      const entry = Object.entries(POZOS_DATA).find(
+        ([, v]) => (v as any).devEui === slug
+      );
+      if (entry) {
+        layoutKey = entry[0];
+        staticData = entry[1] as any;
+      }
+    }
 
     if (staticData?.devEui) {
+      // Sitio hardcodeado — usar datos estáticos
       this.pozoId.set(staticData.devEui);
       this.lat.set(staticData.lat);
       this.lng.set(staticData.lng);
-      this.layout.set(POZOS_LAYOUT[slug]);
+      this.layout.set(POZOS_LAYOUT[layoutKey]);
       this.startAutoRefresh(staticData.devEui);
+    } else {
+      // Sitio dinámico — el slug es el devEUI, cargar desde API
+      const devEui = slug;
+      this.pozoId.set(devEui);
+      this.telemetryService.getSite(devEui).subscribe({
+        next: (site) => {
+          this.pozoNombre.set(site.site_name || devEui);
+          if (site.latitude) this.lat.set(site.latitude);
+          if (site.longitude) this.lng.set(site.longitude);
+        },
+        error: () => {
+          this.pozoNombre.set(devEui);
+        },
+      });
+      this.startAutoRefresh(devEui);
     }
   }
 
@@ -592,6 +622,11 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   // =========================
   loadLiveStatus(devEUI: string) {
     this.telemetryService.getSiteStatus(devEUI).subscribe({
+      error: (err: any) => {
+        if (err.status === 404) {
+          this.pozoNombre.set(this.pozoNombre() || devEUI);
+        }
+      },
       next: (data: any) => {
         if (this.isCommandPending()) {
           console.warn(`[SCADA] Refresh ignorado para ${devEUI} debido a comando en proceso.`);
@@ -602,19 +637,25 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
 
         // Sincronizamos el estado visual de la bomba
         const isActive = data.bomba_activa === true || data.bomba_activa === 't';
-        this.estadoBomba.set(isActive ? 'on' : 'off');
+        const hasExplicitBomba = data.bomba_activa != null;
 
         const flowVal = Number(data.last_flow_value) || 0;
         const pressureVal = Number(data.last_pressure_value) || 0;
         const batteryVal = Number(data.battery_level) || 0;
 
         // 1. Sincronización básica de UI
-        this.pozoNombre.set(data.site_name);
-        this.isOnline.set(data.is_cfe_on);
+        this.pozoNombre.set(data.site_name || this.pozoNombre());
+        // PostgreSQL puede devolver 't'/'f' strings — no usar truthiness directa
+        const cfeOn = data.is_cfe_on === true || data.is_cfe_on === 't';
+        this.isOnline.set(cfeOn);
         this.batteryLevel.set(batteryVal);
         this.liveTotalFlow.set(Number(data.last_total_flow) || 0);
-        this.estadoBomba.set(flowVal > 0 ? 'on' : 'off');
-        this.estadoEnergia.set(data.is_cfe_on ? 'on' : 'off');
+        this.estadoBomba.set(
+          hasExplicitBomba ? (isActive ? 'on' : 'off') : (flowVal > 0 ? 'on' : 'off')
+        );
+        this.estadoEnergia.set(cfeOn ? 'on' : 'off');
+        const hasFault = data.fallo_arrancador === true || data.fallo_arrancador === 't';
+        this.fallaArrancador.set(hasFault ? 'on' : 'off');
         const rawRssi = Number(data.rssi);
         this.commStats.set({ lteRssi: rawRssi > 0 ? -rawRssi : rawRssi, snr: Number(data.snr) });
 
