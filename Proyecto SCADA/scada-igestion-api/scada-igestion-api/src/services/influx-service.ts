@@ -82,5 +82,6 @@ export const writeGroupedIgnitionToInflux = async (data: any): Promise<void> => 
         await writeApi.close();
     } catch (error) {
         console.error('❌ Error InfluxDB Grouped Write:', error);
+        throw error;
     }
 };

@@ -179,9 +179,24 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
     }
 });
 
+// Rate limit tracking for /resend-2fa (in-memory, resets on restart)
+const resendAttempts = new Map<string, { count: number; firstAttempt: number }>();
+const RESEND_RATE_LIMIT = 3;
+const RESEND_RATE_WINDOW = 900000; // 15 minutes in ms
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of resendAttempts) {
+        if (now - entry.firstAttempt >= RESEND_RATE_WINDOW) {
+            resendAttempts.delete(key);
+        }
+    }
+}, RESEND_RATE_WINDOW);
+
 // Endpoint para el reenvío de code 2FA — requiere tempToken para evitar abuso
 router.post('/resend-2fa', async (req: Request, res: Response) => {
     const { tempToken } = req.body;
+    const SAFE_MSG = 'A new security code has been sent.';
 
     if (!tempToken) {
         return res.status(400).json({ error: 'Temp token is required.' });
@@ -191,20 +206,38 @@ router.post('/resend-2fa', async (req: Request, res: Response) => {
         const decoded = jwt.verify(tempToken, process.env['JWT_SECRET'] as string) as any;
 
         if (decoded.type !== '2FA_PENDING') {
-            return res.status(200).json({ message: 'A new security code has been sent.' });
+            return res.status(200).json({ message: SAFE_MSG });
+        }
+
+        const userId = String(decoded.userId);
+
+        // Rate limiting by userId
+        const now = Date.now();
+        const entry = resendAttempts.get(userId);
+        if (entry) {
+            if (now - entry.firstAttempt < RESEND_RATE_WINDOW) {
+                if (entry.count >= RESEND_RATE_LIMIT) {
+                    return res.status(200).json({ message: SAFE_MSG });
+                }
+                entry.count++;
+            } else {
+                resendAttempts.set(userId, { count: 1, firstAttempt: now });
+            }
+        } else {
+            resendAttempts.set(userId, { count: 1, firstAttempt: now });
         }
 
         const user = await findUserById(decoded.userId);
 
         if (!user) {
             // Generic response — no user enumeration
-            return res.status(200).json({ message: 'A new security code has been sent.' });
+            return res.status(200).json({ message: SAFE_MSG });
         }
 
         const newCode = await generateAndSave2FACode(user.id);
         await send2FACode(user.email, newCode);
 
-        res.status(200).json({ message: 'A new security code has been sent.' });
+        res.status(200).json({ message: SAFE_MSG });
 
     } catch (error: any) {
         if (error.name === 'TokenExpiredError') {

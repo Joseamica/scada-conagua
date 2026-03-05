@@ -52,8 +52,9 @@ export async function getTelemetryData(
         const queryApi = influxDB.getQueryApi(org);
 
         // 5. Filtro dinámico: Ignition usa tag 'pozo', Chirpstack usa tag 'devEui'
-        const tagFilter = isIgnition 
-            ? `r["pozo"] == "${siteName}"` 
+        const safeSiteName = siteName.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\n\r]/g, '');
+        const tagFilter = isIgnition
+            ? `r["pozo"] == "${safeSiteName}"`
             : `r["devEui"] == "${devEUI}"`;
 
         const rangeClause = stop

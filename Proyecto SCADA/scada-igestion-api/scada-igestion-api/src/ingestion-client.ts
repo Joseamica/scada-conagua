@@ -28,50 +28,63 @@ interface BufferEntry {
     fields: Record<string, any>; // Aquí guardaremos presión, caudal, etc.
     tags: Record<string, string>;
     timer: NodeJS.Timeout | null;
+    retries: number;
 }	
 
 // Conexión al Broker Mosquitto: Definición de la variable 'client'
-const client: mqtt.MqttClient = mqtt.connect(MQTT_URL); // <-- Definición aquí
+const client: mqtt.MqttClient = mqtt.connect(MQTT_URL, {
+    reconnectPeriod: 5000,
+    keepalive: 60,
+    clientId: `scada-ingestion-${process.env.HOSTNAME || process.pid}-${Date.now()}`,
+    clean: false,
+});
 
 const flushBufferToInflux = async (key: string) => {
     const entry = ignitionBuffer.get(key);
     if (!entry) return;
 
+    // Snapshot data before async write to avoid race condition:
+    // new MQTT messages can mutate entry.fields while writeGroupedIgnitionToInflux is awaited
+    const snapshot = {
+        municipio: entry.municipio,
+        pozo_name: entry.pozo_name,
+        fields: { ...entry.fields },
+        tags: { ...entry.tags }
+    };
+    const timerAtStart = entry.timer;
+
     try {
-        // Llamada al servicio
-        await writeGroupedIgnitionToInflux({
-            municipio: entry.municipio,
-            pozo_name: entry.pozo_name,
-            fields: entry.fields,
-            tags: entry.tags
-        });
-        // 2. 📊 SALIDA DE LOG ESTILO CHIRPSTACK
-        const f = entry.fields; // Alias corto para legibilidad
-        
-        // Mapeo de estados para emojis
+        await writeGroupedIgnitionToInflux(snapshot);
+
+        // Log
+        const f = snapshot.fields;
         const bombaStatus = f.bomba === true ? 'ON' : 'OFF';
         const senalVal = f.senal || 0;
         const senalRango = senalVal >= 80 ? 'Excelente' : senalVal >= 25 ? 'Bueno' : 'Malo';
 
         console.log(`---------------------------------------------------------`);
-        // Usamos [IGNITION] para diferenciar el origen rápidamente en OCI
-        console.log(`📡 [IGNITION] ${entry.pozo_name} - NEW UPLINK AGGREGATED`);
-
-        // Línea 1: Unidades Físicas (Incluyendo el Odómetro que acabamos de agregar)
+        console.log(`📡 [IGNITION] ${snapshot.pozo_name} - NEW UPLINK AGGREGATED`);
         console.log(`📊 Operación: Presión=${f.presion || 0} kg/cm² | Caudal=${f.caudal || 0} lt/s | Total=${f.caudal_totalizado || 0} m³`);
-
-        // Línea 2: Estados lógicos
-        // Nota: Ignition no envía CFE/Arrancador en tu muestra, ponemos fallback
-        console.log(`⚙️  Estados: Bomba=${bombaStatus} | Calidad Link=${entry.tags.calidad || 'N/A'}`);
-
-        // Línea 3: Salud del Nodo (Basado en el % de señal de Ignition)
+        console.log(`⚙️  Estados: Bomba=${bombaStatus} | Calidad Link=${snapshot.tags.calidad || 'N/A'}`);
         console.log(`🔋 Señal: ${senalVal}% (${senalRango}) | Timestamp: ${new Date().toLocaleTimeString()}`);
         console.log(`---------------------------------------------------------`);
 
+        // Only delete if no new data arrived during the async write.
+        // If new data arrived, entry.timer will have been replaced by the message handler.
+        if (entry.timer === timerAtStart) {
+            ignitionBuffer.delete(key);
+        }
     } catch (err) {
-        console.error(`❌ Error al procesar log/escritura de ${entry.pozo_name}:`, err);
-    } finally {
-        ignitionBuffer.delete(key);
+        entry.retries++;
+        if (entry.retries < 3) {
+            console.warn(`⚠️ InfluxDB write failed for ${snapshot.pozo_name} (attempt ${entry.retries}/3). Retrying...`);
+            entry.timer = setTimeout(async () => {
+                await flushBufferToInflux(key);
+            }, FLUSH_TIMEOUT * 2);
+        } else {
+            console.error(`❌ InfluxDB write failed for ${snapshot.pozo_name} after 3 attempts. Data discarded.`, err);
+            ignitionBuffer.delete(key);
+        }
     }
 };
 
@@ -106,13 +119,17 @@ client.on('message', async (topic: string, message: Buffer): Promise<void> => {
             			pozo_name: processed.pozo_name,
             			fields: {},
             			tags: { calidad: processed.calidad },
-            			timer: null
+            			timer: null,
+            			retries: 0
         		};
         		ignitionBuffer.set(bufferKey, entry);
     		}
 
     		// Agregamos la variable al "combo"
     		entry.fields[processed.variable] = processed.valor;
+
+    		// Datos nuevos = intento fresco, resetear contador de reintentos
+    		entry.retries = 0;
 
     		// Si ya existe un timer, lo reiniciamos (Debounce)
     		if (entry.timer) clearTimeout(entry.timer);
@@ -162,6 +179,10 @@ client.on('message', async (topic: string, message: Buffer): Promise<void> => {
 client.on('error', (err: Error): void => {
     console.error('🛑 Error de Conexión MQTT:', err);
 });
+
+client.on('offline', () => console.warn('⚠️ MQTT Client offline — esperando reconexión...'));
+client.on('reconnect', () => console.log('🔄 MQTT Client reconectando...'));
+client.on('disconnect', () => console.warn('⚠️ MQTT Client desconectado por el broker.'));
 
 export { client };
 
