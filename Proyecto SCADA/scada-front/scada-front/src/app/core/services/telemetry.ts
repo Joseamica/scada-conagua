@@ -44,7 +44,7 @@ export class TelemetryService {
     private readonly BASE_URL = environment.apiQueryUrl;
   
   // Catálogo completo de sitios del inventario (incluye last_flow_value para agregaciones)
-  getSites(): Observable<{ dev_eui: string; site_name: string; municipality: string; site_type: string; last_flow_value: number | null; last_pressure_value: number | null; last_updated_at: string | null; rssi?: number; snr?: number; latitude?: number | null; longitude?: number | null; proveedor?: string | null; estatus?: string | null }[]> {
+  getSites(): Observable<{ dev_eui: string; site_name: string; municipality: string; site_type: string; last_flow_value: number | null; last_pressure_value: number | null; last_updated_at: string | null; rssi?: number; snr?: number; latitude?: number | null; longitude?: number | null; proveedor?: string | null; estatus?: string | null; render_url?: string | null }[]> {
     return this.http.get<any[]>(`${this.BASE_URL}/sites`);
   }
 
@@ -96,7 +96,7 @@ export class TelemetryService {
   getSite(devEUI: string): Observable<{
     dev_eui: string; gw_eui: string; site_name: string; site_type: string;
     municipality: string; latitude: number | null; longitude: number | null;
-    proveedor: string | null; estatus: string | null;
+    proveedor: string | null; estatus: string | null; render_url: string | null;
   }> {
     return this.http.get<any>(`${this.BASE_URL}/sites/${devEUI.trim()}`);
   }
@@ -108,6 +108,16 @@ export class TelemetryService {
     proveedor?: string; estatus?: string;
   }): Observable<{ message: string }> {
     return this.http.put<{ message: string }>(`${this.BASE_URL}/sites/${devEUI.trim()}`, payload);
+  }
+
+  // Subir imagen de render para un sitio
+  uploadRender(devEUI: string, file: File): Observable<{ render_url: string; message: string }> {
+    const formData = new FormData();
+    formData.append('render', file);
+    return this.http.post<{ render_url: string; message: string }>(
+      `${this.BASE_URL}/sites/${devEUI.trim()}/render`,
+      formData,
+    );
   }
 
   // Método de control para usar la interfaz estricta

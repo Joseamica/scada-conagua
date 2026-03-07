@@ -231,7 +231,7 @@
       <Point><coordinates>-98.853643,19.303035,0</coordinates></Point>
   </Placemark>
   <Placemark id="sitios__sitios_chalcokmz.25">
-	<name>POZO PUEBLO NUEVO 2</name>
+	<name>POZO PUEBLO NUEVO II</name>
 	<ExtendedData><SchemaData schemaUrl="#sitios__sitios_chalcokmz">
 		<SimpleData name="tessellate">-1</SimpleData>
 		<SimpleData name="extrude">0</SimpleData>

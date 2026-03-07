@@ -14,16 +14,18 @@ import { TelemetriaDashboard } from './pages/telemetria/telemetria-dashboard/tel
 import { TelemetriaAvanzada } from './pages/telemetria/telemetria-avanzada/telemetria-avanzada';
 import { Overview } from './pages/gerencia/overview/overview';
 import { authGuard } from './core/guards/auth.guard';
+import { guestGuard } from './core/guards/guest.guard';
 import { roleGuard } from './core/guards/role.guard';
 import { totpSetupGuard } from './core/guards/totp-setup.guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
-  { path: 'login', component: Login },
+  { path: 'login', component: Login, canActivate: [guestGuard] },
   {
     path: 'auth/login/token',
     loadComponent: () =>
       import('./auth/login/token/token').then((m) => m.Token),
+    canActivate: [guestGuard],
   },
 
   {

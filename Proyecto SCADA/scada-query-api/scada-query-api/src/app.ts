@@ -1,6 +1,9 @@
 //scada-query-api/src/app.ts
 //
 import express, { Application, Request, Response } from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 // cors package available if needed for more complex CORS config
 import { sendSCADACommand } from './services/control-service';
 import { getTelemetryData } from './services/influx-query-service';
@@ -12,6 +15,33 @@ import entityRoutes from './routes/entity-routes';
 import { isAuth } from './middlewares/auth-middleware';
 import { auditLog } from './services/audit-service';
 import { getPermissions } from './services/permission-service';
+
+// --- Render uploads config ---
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads', 'renders');
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+
+const renderStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const devEUI = (req.params.devEUI || 'unknown').trim();
+        cb(null, `${devEUI}${ext}`);
+    },
+});
+
+const upload = multer({
+    storage: renderStorage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+    fileFilter: (_req, file, cb) => {
+        if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Solo se permiten imágenes PNG, JPG o WEBP.'));
+        }
+    },
+});
 
 const app: Application = express();
 
@@ -54,6 +84,9 @@ app.use((req, res, next) => {
     }
     next();
 });
+
+// Serve uploaded render images as static files
+app.use('/api/v1/uploads/renders', express.static(UPLOADS_DIR));
 
 // Health Check
 app.get('/', (req: Request, res: Response): void => {
@@ -191,7 +224,8 @@ app.get('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
                 i.latitude,
                 i.longitude,
                 i.proveedor,
-                i.estatus
+                i.estatus,
+                i.render_url
             FROM scada.inventory i
             LEFT JOIN scada.site_status s ON TRIM(s.dev_eui) = TRIM(i.dev_eui)
             WHERE TRIM(COALESCE(i.dev_eui, '')) != ''
@@ -271,7 +305,7 @@ app.get('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
     }
     try {
         const result = await pool.query(
-            `SELECT dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude, is_active, proveedor, estatus
+            `SELECT dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude, is_active, proveedor, estatus, render_url
              FROM scada.inventory WHERE TRIM(dev_eui) = $1`,
             [devEUI.trim()]
         );
@@ -290,6 +324,7 @@ app.get('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
             is_active: row.is_active,
             proveedor: row.proveedor || null,
             estatus: row.estatus || 'activo',
+            render_url: row.render_url || null,
         });
     } catch (e) {
         console.error('❌ Error fetching site:', e);
@@ -362,6 +397,66 @@ app.put('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
         }
         console.error('❌ Error updating site:', e);
         res.status(500).json({ error: 'Error interno al actualizar el sitio.' });
+    }
+});
+
+// Subir imagen de render para un sitio
+app.post('/api/v1/sites/:devEUI/render', isAuth, (req: Request, res: Response, next: Function) => {
+    upload.single('render')(req, res, (err: any) => {
+        if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ error: 'La imagen no puede exceder 10 MB.' });
+            }
+            return res.status(400).json({ error: err.message });
+        }
+        if (err) {
+            return res.status(400).json({ error: err.message });
+        }
+        next();
+    });
+}, async (req: Request, res: Response) => {
+    const { devEUI } = req.params;
+    if (!RE_DEV_EUI.test(devEUI)) {
+        return res.status(400).json({ error: 'Invalid devEUI format.' });
+    }
+    if (!req.file) {
+        return res.status(400).json({ error: 'No se envió ningún archivo.' });
+    }
+
+    try {
+        // Check that site exists
+        const existing = await pool.query(
+            'SELECT dev_eui, render_url FROM scada.inventory WHERE TRIM(dev_eui) = $1',
+            [devEUI.trim()]
+        );
+        if (existing.rows.length === 0) {
+            // Clean up uploaded file
+            fs.unlinkSync(req.file.path);
+            return res.status(404).json({ error: 'Sitio no encontrado.' });
+        }
+
+        // Delete old render file if extension changed
+        const oldUrl = existing.rows[0].render_url;
+        if (oldUrl) {
+            const oldFilename = path.basename(oldUrl);
+            const oldPath = path.join(UPLOADS_DIR, oldFilename);
+            if (oldPath !== req.file.path && fs.existsSync(oldPath)) {
+                fs.unlinkSync(oldPath);
+            }
+        }
+
+        const renderUrl = `/api/v1/uploads/renders/${req.file.filename}`;
+        await pool.query(
+            'UPDATE scada.inventory SET render_url = $1 WHERE TRIM(dev_eui) = $2',
+            [renderUrl, devEUI.trim()]
+        );
+
+        await auditLog(req.user!.id, 'SITE_RENDER_UPLOADED', { dev_eui: devEUI, render_url: renderUrl }, req.ip!);
+
+        res.json({ render_url: renderUrl, message: 'Render subido correctamente.' });
+    } catch (e) {
+        console.error('❌ Error uploading render:', e);
+        res.status(500).json({ error: 'Error interno al subir el render.' });
     }
 });
 

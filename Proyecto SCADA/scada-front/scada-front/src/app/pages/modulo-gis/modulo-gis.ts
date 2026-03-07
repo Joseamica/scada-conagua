@@ -396,11 +396,14 @@ export class ModuloGis implements OnInit, OnDestroy {
     // Site exists in hardcoded data — full popup
     if (d) {
       const detailUrl = `${DETAIL_BASE_URL}/${this.slugify(name)}`;
+      // Prefer API-uploaded render over static asset
+      const hcApiSite = this.apiSitesByName.get(this.normalizeKey(name));
+      const hcRenderSrc = hcApiSite?.render_url || (l?.render ? `assets/pozos/${l.render}` : '');
       return `
         <div class="scada-popup">
-          ${l?.render ? `
+          ${hcRenderSrc ? `
             <div class="scada-popup-render">
-              <img src="assets/pozos/${l.render}" alt="${d.nombre}" />
+              <img src="${hcRenderSrc}" alt="${d.nombre}" />
             </div>
           ` : ''}
 
@@ -432,8 +435,16 @@ export class ModuloGis implements OnInit, OnDestroy {
     // Navigate to isometric view using devEUI as slug
     const detailUrl = devEui ? `${DETAIL_BASE_URL}/${devEui}` : '';
 
+    // For hardcoded sites, check if API has a render_url override
+    const renderUrl = apiSite?.render_url;
+
     return `
       <div class="scada-popup">
+        ${renderUrl ? `
+          <div class="scada-popup-render">
+            <img src="${renderUrl}" alt="${name}" />
+          </div>
+        ` : ''}
         <div class="scada-popup-header">${name}</div>
 
         <div class="scada-popup-metrics">

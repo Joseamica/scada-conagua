@@ -61,6 +61,7 @@ export class SitioForm implements OnInit {
   modo: 'create' | 'edit' = 'create';
   sitioId: string | null = null;
   renderFileName = '';
+  selectedRenderFile: File | null = null;
 
   tiposSitio = [
     { value: 'pozo', label: 'Pozo', icon: 'heroWrenchScrewdriver' },
@@ -185,6 +186,12 @@ export class SitioForm implements OnInit {
           this.form.patchValue({ estatus: site.estatus });
         }
 
+        // Prefer render_url from API (uploaded render)
+        if (site.render_url) {
+          this.form.patchValue({ render: site.render_url });
+          this.renderFileName = site.render_url.split('/').pop() || '';
+        }
+
         // Fallback: look up proveedor and render from hardcoded data by devEUI
         const devEui = (site.dev_eui || '').trim();
         const dataKey = Object.keys(POZOS_DATA).find(
@@ -202,11 +209,13 @@ export class SitioForm implements OnInit {
             }
           }
 
-          // Load render from layout data
-          const layoutData = POZOS_LAYOUT[dataKey];
-          if (layoutData?.render) {
-            this.form.patchValue({ render: 'assets/pozos/' + layoutData.render });
-            this.renderFileName = layoutData.render;
+          // Load render from layout data only if no API render_url
+          if (!site.render_url) {
+            const layoutData = POZOS_LAYOUT[dataKey];
+            if (layoutData?.render) {
+              this.form.patchValue({ render: 'assets/pozos/' + layoutData.render });
+              this.renderFileName = layoutData.render;
+            }
           }
         }
 
@@ -275,9 +284,24 @@ export class SitioForm implements OnInit {
 
       this.saving.set(true);
       this.telemetry.createSite(payload).subscribe({
-        next: () => {
-          this.saving.set(false);
-          this.router.navigate(['/telemetria']);
+        next: (res) => {
+          const devEui = res.dev_eui || payload.dev_eui;
+          if (this.selectedRenderFile) {
+            this.telemetry.uploadRender(devEui, this.selectedRenderFile).subscribe({
+              next: () => {
+                this.saving.set(false);
+                this.router.navigate(['/telemetria']);
+              },
+              error: () => {
+                // Site created but render upload failed — still navigate
+                this.saving.set(false);
+                this.router.navigate(['/telemetria']);
+              },
+            });
+          } else {
+            this.saving.set(false);
+            this.router.navigate(['/telemetria']);
+          }
         },
         error: (err: HttpErrorResponse) => {
           this.saving.set(false);
@@ -306,8 +330,22 @@ export class SitioForm implements OnInit {
       this.saving.set(true);
       this.telemetry.updateSite(this.sitioId!, payload).subscribe({
         next: () => {
-          this.saving.set(false);
-          this.router.navigate(['/telemetria']);
+          if (this.selectedRenderFile) {
+            this.telemetry.uploadRender(this.sitioId!, this.selectedRenderFile).subscribe({
+              next: () => {
+                this.saving.set(false);
+                this.router.navigate(['/telemetria']);
+              },
+              error: () => {
+                // Site updated but render upload failed — still navigate
+                this.saving.set(false);
+                this.router.navigate(['/telemetria']);
+              },
+            });
+          } else {
+            this.saving.set(false);
+            this.router.navigate(['/telemetria']);
+          }
         },
         error: (err: HttpErrorResponse) => {
           this.saving.set(false);
@@ -326,6 +364,7 @@ export class SitioForm implements OnInit {
   onRenderSelected(event: any) {
     const file = event.target.files[0];
     if (!file) return;
+    this.selectedRenderFile = file;
     this.renderFileName = file.name;
     const reader = new FileReader();
     reader.onload = () => {
@@ -337,6 +376,7 @@ export class SitioForm implements OnInit {
   removeRender() {
     this.form.patchValue({ render: '' });
     this.renderFileName = '';
+    this.selectedRenderFile = null;
   }
 
   cancelar() {

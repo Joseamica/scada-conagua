@@ -26,6 +26,7 @@ export type AuditAction =
   // Sites / Inventory
   | 'SITE_CREATED'
   | 'SITE_UPDATED'
+  | 'SITE_RENDER_UPLOADED'
   // Data Export
   | 'EXPORT_CHART_PNG'
   | 'EXPORT_TELEMETRY_CSV'

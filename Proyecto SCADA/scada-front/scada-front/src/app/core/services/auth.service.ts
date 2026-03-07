@@ -49,11 +49,35 @@ export class AuthService {
     this.currentUser.set(user);
   }
 
-  private loadSession() {
+  /** Decodifica el JWT y verifica si expiró */
+  isTokenExpired(): boolean {
     const token = localStorage.getItem('scada_token');
-    const userData = localStorage.getItem('scada_user_data');
+    if (!token) return true;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp * 1000 < Date.now();
+    } catch {
+      return true;
+    }
+  }
 
-    if (token && userData) {
+  /** Limpia sesión sin llamar al backend (para tokens inválidos/expirados) */
+  clearSessionAndRedirect() {
+    localStorage.removeItem('scada_token');
+    localStorage.removeItem('scada_user_data');
+    this.currentUser.set(null);
+    this.router.navigate(['/login']);
+  }
+
+  private loadSession() {
+    if (this.isTokenExpired()) {
+      localStorage.removeItem('scada_token');
+      localStorage.removeItem('scada_user_data');
+      return;
+    }
+
+    const userData = localStorage.getItem('scada_user_data');
+    if (userData) {
       try {
         this.currentUser.set(JSON.parse(userData));
       } catch (e) {

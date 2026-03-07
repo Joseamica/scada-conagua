@@ -710,11 +710,10 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
     forkJoin(requests).subscribe({
       next: (res: any) => {
         // Convertir a [timestamp_ms, value] para ECharts time axis
-        // Valores <= 0.01 se tratan como null (bomba apagada en sitios Ignition)
         const toPoint = (p: any): [number, number | null] => {
           const ts = new Date(p.timestamp).getTime();
           const v = p.value;
-          return [ts, (v != null && v > 0.01) ? v : null];
+          return [ts, v != null ? Number(v) : null];
         };
 
         // Build chart data for selected variables
@@ -753,7 +752,7 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
               pressure:  pressureData.data[i]?.value ?? 0,
               timestamp: new Date(p.timestamp)
             }))
-            .filter((r: TelemetryReading) => !isNaN(r.timestamp.getTime()) && (r.flow > 0.01 || r.pressure > 0.01));
+            .filter((r: TelemetryReading) => !isNaN(r.timestamp.getTime()));
           readings.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
           this.calculateStatistics(readings);
         }
