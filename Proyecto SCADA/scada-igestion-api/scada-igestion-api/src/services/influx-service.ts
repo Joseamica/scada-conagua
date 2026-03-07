@@ -33,10 +33,18 @@ export const writeTelemetryToInflux = async (data: TelemetryProcessed): Promise<
 
 	    // --- ESTADOS (Booleanos) ---
             .booleanField('is_cfe_on', !!data.is_cfe_on)
-            .booleanField('bomba_activa', !!data.bomba_activa)    
+            .booleanField('bomba_activa', !!data.bomba_activa)
             .booleanField('fallo_arrancador', !!data.fallo_arrancador)
 
             .timestamp(data.timestamp);
+
+        // --- Nivel y lluvia: solo se escriben si existen ---
+        if (data.nivel_m != null) {
+            point.floatField('nivel_m', data.nivel_m);
+        }
+        if (data.lluvia_mm != null) {
+            point.floatField('lluvia_mm', data.lluvia_mm);
+        }
 
         writeApi.writePoint(point);
         await writeApi.flush();

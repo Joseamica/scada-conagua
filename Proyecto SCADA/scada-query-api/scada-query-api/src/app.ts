@@ -114,7 +114,8 @@ export const getSiteStatus = async (req: Request, res: Response) => {
             SELECT i.site_name, i.municipality, i.site_type, i.latitude, i.longitude,
                    s.last_flow_value, s.last_pressure_value, s.battery_level,
                    s.is_cfe_on, s.last_updated_at, s.rssi, s.snr,
-		   s.bomba_activa, s.fallo_arrancador, s.last_total_flow
+		   s.bomba_activa, s.fallo_arrancador, s.last_total_flow,
+		   s.last_nivel_value, s.last_lluvia_value
             FROM scada.inventory i
             LEFT JOIN scada.site_status s ON TRIM(i.dev_eui) = TRIM(s.dev_eui)
             WHERE TRIM(i.dev_eui) = $1
@@ -225,7 +226,9 @@ app.get('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
                 i.longitude,
                 i.proveedor,
                 i.estatus,
-                i.render_url
+                i.render_url,
+                s.last_nivel_value,
+                s.last_lluvia_value
             FROM scada.inventory i
             LEFT JOIN scada.site_status s ON TRIM(s.dev_eui) = TRIM(i.dev_eui)
             WHERE TRIM(COALESCE(i.dev_eui, '')) != ''

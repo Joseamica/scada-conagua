@@ -4,13 +4,32 @@ Todos los cambios notables del proyecto se documentan aquí.
 
 ## [Unreleased]
 
+### scada-igestion-api
+- **feat:** Soporte para sensores de nivel (adc_3) y lluvia (adc_4) en pipeline de ingesta
+- **feat:** Campos opcionales `nivel_m` y `lluvia_mm` en `TelemetryProcessed`
+- **feat:** Transformer extrae adc_3/adc_4 con spread condicional (backwards-compatible)
+- **feat:** InfluxDB writer escribe nivel_m/lluvia_mm solo cuando existen
+- **feat:** PostgreSQL UPSERT con COALESCE para no sobreescribir nivel/lluvia con NULL
+- **feat:** Switch cases Ignition para variables `nivel` y `lluvia`
+- **fix:** Mapeo de `datos.nivel` en pozo-detalle apuntaba a batteryVal en vez de last_nivel_value
+- **test:** 6 tests para transformer de nivel/lluvia (dead zone, scaling, metadata override)
+
 ### scada-query-api
+- **feat:** Migracion `012_add_nivel_lluvia_columns.sql` — columnas `last_nivel_value` y `last_lluvia_value` en site_status
+- **feat:** Campos nivel/lluvia en queries de `getSiteStatus` y `/api/v1/sites`
+- **feat:** Mapping Ignition `nivel_m`/`lluvia_mm` en influx-query-service
+- **feat:** Campos `last_nivel_value`/`last_lluvia_value` en interfaz `SiteStatus`
 - **feat:** Endpoint `POST /api/v1/sites/:devEUI/render` para subir imágenes de render (multer, 10MB, PNG/JPG/WEBP)
 - **feat:** Migración `011_add_render_url.sql` — columna `render_url` en inventario
 - **feat:** `GET /api/v1/sites` y `GET /api/v1/sites/:devEUI` ahora incluyen `render_url`
 - **feat:** Archivos estáticos servidos en `/api/v1/uploads/renders/`
 
 ### scada-front
+- **feat:** Campos nivel/lluvia en modelos `SiteLiveStatus` y servicio de telemetria
+- **feat:** Metricas de nivel y lluvia condicionales en popup GIS
+- **feat:** Variables `nivel_m` y `lluvia_mm` en CHART_VARIABLES de pozo-detalle
+- **fix:** `datos.nivel` ahora mapea `last_nivel_value` en vez de `battery_level`
+- **fix:** Dedup GIS: sitios creados via formulario ya no generan marcador duplicado si un KML marker existe dentro de 100m (proximity check)
 - **feat:** Subida de renders en `sitio-form` — archivo se sube al backend después de crear/editar sitio
 - **feat:** `TelemetryService.uploadRender()` — método para subir imagen de render vía FormData
 - **feat:** GIS popup ahora muestra render subido desde API, con fallback a assets estáticos

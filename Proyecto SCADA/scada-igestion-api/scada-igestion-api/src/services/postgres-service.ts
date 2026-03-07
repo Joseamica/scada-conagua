@@ -71,8 +71,10 @@ export const updateIgnitionSiteStatus = async (data: any): Promise<void> => {
             case 'bomba': column = 'bomba_activa'; break;
             case 'senal': column = 'rssi'; break;
             case 'caudal_totalizado': // Mapeo para el "odómetro"
-                column = 'last_total_flow'; 
+                column = 'last_total_flow';
                 break;
+            case 'nivel': column = 'last_nivel_value'; break;
+            case 'lluvia': column = 'last_lluvia_value'; break;
         }
 
         if (column) {
@@ -112,20 +114,22 @@ export const updateSiteStatus = async (devEUI: string, data: TelemetryProcessed)
 
     const query = `
         INSERT INTO scada.site_status (
-            dev_eui, 
-            last_flow_value, 
-            last_pressure_value, 
+            dev_eui,
+            last_flow_value,
+            last_pressure_value,
             battery_level,
             rssi,
             snr,
             is_cfe_on,
-            bomba_activa,      -- Añadido
-            fallo_arrancador,  -- Añadido
+            bomba_activa,
+            fallo_arrancador,
+            last_nivel_value,
+            last_lluvia_value,
             last_updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        ON CONFLICT (dev_eui) 
-        DO UPDATE SET 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        ON CONFLICT (dev_eui)
+        DO UPDATE SET
             last_flow_value = EXCLUDED.last_flow_value,
             last_pressure_value = EXCLUDED.last_pressure_value,
             battery_level = EXCLUDED.battery_level,
@@ -134,6 +138,8 @@ export const updateSiteStatus = async (devEUI: string, data: TelemetryProcessed)
             is_cfe_on = EXCLUDED.is_cfe_on,
             bomba_activa = EXCLUDED.bomba_activa,
             fallo_arrancador = EXCLUDED.fallo_arrancador,
+            last_nivel_value = COALESCE(EXCLUDED.last_nivel_value, scada.site_status.last_nivel_value),
+            last_lluvia_value = COALESCE(EXCLUDED.last_lluvia_value, scada.site_status.last_lluvia_value),
             last_updated_at = EXCLUDED.last_updated_at;
     `;
 
@@ -145,8 +151,10 @@ export const updateSiteStatus = async (devEUI: string, data: TelemetryProcessed)
         data.rssi,
         data.snr,
         data.is_cfe_on,
-        data.bomba_activa,    // Mapeo desde el transformador
-        data.fallo_arrancador, // Mapeo desde el transformador (True = Falla)
+        data.bomba_activa,
+        data.fallo_arrancador,
+        data.nivel_m ?? null,
+        data.lluvia_mm ?? null,
         data.timestamp
     ];
 

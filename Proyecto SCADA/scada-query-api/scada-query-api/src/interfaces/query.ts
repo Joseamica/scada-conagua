@@ -35,6 +35,8 @@ export interface SiteStatus {
     last_flow_value: number;
     last_pressure_value: number;
     last_total_flow: number; // <-- El odómetro sensores de caudal
+    last_nivel_value?: number;
+    last_lluvia_value?: number;
     
     // Salud y Conectividad
     battery_level: number;

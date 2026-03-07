@@ -7,6 +7,8 @@ import { ChirpstackUplinkPayload, TelemetryProcessed } from '../interfaces/telem
 const SENSOR_V_MAX = 5.0; // <--- PLACEHOLDER: Actulizar este parámetro cuando se cuente con la ficha técnica del medidor final
 const PRESSURE_MAX_KG = 10.197; // Valor estandar  100m de columna de agua
 const VELOCIDAD_MAX_SENSOR = 5.48; // m/s (Ajustado para que 6" ≈ 100 L/s tomando como base una tubería de  6" pulgadas)
+const NIVEL_MAX_M = 10.0;     // 0-10 metros
+const LLUVIA_MAX_MM = 100.0;  // 0-100 mm/hr
 
 /**
  * Calculo del porcentage de carga de las baterías (DC 24V)
@@ -93,6 +95,12 @@ export const transformTelemetry = ( payload: ChirpstackUplinkPayload, siteMetada
 	battery: calculateBattery(data.adv_2),
         battery_voltage: (typeof data.adv_2 === 'number') ? data.adv_2 : 0,
         rssi: currentRssi,
-        snr: currentSnr
+        snr: currentSnr,
+        ...(typeof data.adc_3 === 'number' && data.adc_3 > 4.05
+            ? { nivel_m: scale(data.adc_3, siteMetadata?.nivel_max ? parseFloat(siteMetadata.nivel_max) : NIVEL_MAX_M) }
+            : {}),
+        ...(typeof data.adc_4 === 'number' && data.adc_4 > 4.05
+            ? { lluvia_mm: scale(data.adc_4, siteMetadata?.lluvia_max ? parseFloat(siteMetadata.lluvia_max) : LLUVIA_MAX_MM) }
+            : {}),
     };
 };

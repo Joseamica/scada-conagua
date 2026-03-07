@@ -39,7 +39,9 @@ export async function getTelemetryData(
                 'presion_kg': 'value_presion',
                 'caudal_lts': 'value_caudal',
                 'last_total_flow': 'value_caudal_totalizado',
-                'rssi': 'value_senal'
+                'rssi': 'value_senal',
+                'nivel_m': 'value_nivel',
+                'lluvia_mm': 'value_lluvia'
             };
             influxField = mapping[measurementField] || measurementField;
         }

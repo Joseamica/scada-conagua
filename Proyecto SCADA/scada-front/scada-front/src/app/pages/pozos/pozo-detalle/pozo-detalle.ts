@@ -82,6 +82,8 @@ const CHART_VARIABLES: ChartVariable[] = [
   { key: 'presion_kg',  label: 'Presión',   unit: 'Kg/cm²', color: '#28a745', position: 'right', defaultOn: true },
   { key: 'rssi',        label: 'Señal LTE', unit: '%',      color: '#ffc107', position: 'right', defaultOn: false },
   { key: 'snr',         label: 'SNR',       unit: 'dB',     color: '#9333ea', position: 'right', defaultOn: false },
+  { key: 'nivel_m',    label: 'Nivel',     unit: 'm',      color: '#06b6d4', position: 'left',  defaultOn: false },
+  { key: 'lluvia_mm',  label: 'Lluvia',    unit: 'mm',     color: '#8b5cf6', position: 'right', defaultOn: false },
 ];
 
 type ChartType = 'line' | 'bar' | 'area' | 'gauge';
@@ -313,6 +315,8 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
       case 'presion_kg': return this.datos().presion;
       case 'rssi': return this.signalPercent();
       case 'snr': return this.commStats().snr;
+      case 'nivel_m': return this.datos().nivel;
+      case 'lluvia_mm': return this.datos().lluvia;
       default: return 0;
     }
   }
@@ -322,6 +326,7 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
     caudal: 0,
     presion: 0,
     nivel: 0,
+    lluvia: 0,
     nombre: 'Cargando...',
     alerta: 'Sincronizando...',
     lte: { rssi: 0, snr: 0 }
@@ -663,7 +668,8 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
         this.datos.set({
           caudal: flowVal,
           presion: pressureVal,
-          nivel: batteryVal
+          nivel: Number(data.last_nivel_value) || 0,
+          lluvia: Number(data.last_lluvia_value) || 0,
         });
       }
     });

@@ -30,8 +30,8 @@
           <ng-icon name="heroExclamationTriangle" size="20"></ng-icon>
         </div>
         <div class="kpi-body">
-          <span class="kpi-value">{{ sitesSinSenal() }}</span>
-          <span class="kpi-label">Sin señal</span>
+          <span class="kpi-value">{{ sitesSinGasto() }}</span>
+          <span class="kpi-label">Sin gasto</span>
         </div>
       </div>
 
@@ -156,7 +156,7 @@
                 (change)="statusSel.set($any($event.target).value)">
                 <option value="">Todos</option>
                 <option value="ok">Con gasto</option>
-                <option value="no-signal">Sin señal</option>
+                <option value="no-flow">Sin gasto</option>
                 <option value="pending">Pendiente</option>
               </select>
             </div>
@@ -266,7 +266,7 @@
                       <span class="cell-name">
                         <span class="site-dot"
                           [class.site-dot--ok]="site.status === 'ok'"
-                          [class.site-dot--warn]="site.status === 'no-signal'"
+                          [class.site-dot--warn]="site.status === 'no-flow'"
                           [class.site-dot--pending]="site.status === 'pending'"
                           aria-hidden="true">
                         </span>
@@ -283,11 +283,11 @@
                       <span class="pill"
                         [ngClass]="{
                           'pill--ok':      site.status === 'ok',
-                          'pill--warn':    site.status === 'no-signal',
+                          'pill--warn':    site.status === 'no-flow',
                           'pill--pending': site.status === 'pending'
                         }">
                         <span class="pill-dot" aria-hidden="true"></span>
-                        {{ site.status === 'ok' ? 'Con gasto' : site.status === 'pending' ? 'Pendiente' : 'Sin señal' }}
+                        {{ site.status === 'ok' ? 'Con gasto' : site.status === 'pending' ? 'Pendiente' : 'Sin gasto' }}
                       </span>
                     </td>
                     <td class="col-signal">

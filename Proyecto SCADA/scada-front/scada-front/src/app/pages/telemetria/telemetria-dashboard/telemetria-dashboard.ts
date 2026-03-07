@@ -121,8 +121,8 @@ export class TelemetriaDashboard implements OnInit {
     this.sites().filter(s => s.status === 'ok').length
   );
 
-  sitesSinSenal = computed(() =>
-    this.sites().filter(s => s.status === 'no-signal').length
+  sitesSinGasto = computed(() =>
+    this.sites().filter(s => s.status === 'no-flow').length
   );
 
   // =========================
@@ -199,7 +199,7 @@ export class TelemetriaDashboard implements OnInit {
           } else if (hasFlow) {
             status = 'ok';
           } else {
-            status = 'no-signal';
+            status = 'no-flow';
           }
 
           return {

@@ -38,6 +38,8 @@ export interface TelemetryProcessed {
     battery_voltage: number;  // Voltaje crudo (adv_2) 1/3 de la carga total de las baterías (DC 24V)
     rssi: number;             // Calidad de señal
     snr: number;              // Relación señal-ruido
+    nivel_m?: number;         // Nivel de agua (metros) - sensor adc_3
+    lluvia_mm?: number;       // Precipitacion (mm) - sensor adc_4
 }
 
 export interface IgnitionPayload {

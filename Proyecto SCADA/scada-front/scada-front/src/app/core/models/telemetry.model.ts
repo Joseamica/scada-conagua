@@ -45,6 +45,8 @@ export interface SiteLiveStatus {
     last_flow_value: number;
     last_pressure_value: number;
     last_total_flow: number;     // 🚀 Nuevo: Odómetro Ignition
+    last_nivel_value?: number;
+    last_lluvia_value?: number;
     last_updated_at: string;
     is_cfe_on: boolean;
     bomba_activa: boolean;       // 🚀 Nuevo: Estado Motor

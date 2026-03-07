@@ -452,6 +452,8 @@ export class ModuloGis implements OnInit, OnDestroy {
           ${apiSite?.site_type ? `<div class="metric"><span>Tipo:</span> <b>${apiSite.site_type}</b></div>` : ''}
           ${apiSite?.last_flow_value != null ? `<div class="metric"><span>Caudal:</span> <b>${Number(apiSite.last_flow_value).toFixed(2)} L/s</b></div>` : ''}
           ${apiSite?.last_pressure_value != null ? `<div class="metric"><span>Presión:</span> <b>${Number(apiSite.last_pressure_value).toFixed(2)} kg/cm²</b></div>` : ''}
+          ${apiSite?.last_nivel_value != null ? `<div class="metric"><span>Nivel:</span> <b>${Number(apiSite.last_nivel_value).toFixed(2)} m</b></div>` : ''}
+          ${apiSite?.last_lluvia_value != null ? `<div class="metric"><span>Lluvia:</span> <b>${Number(apiSite.last_lluvia_value).toFixed(1)} mm</b></div>` : ''}
         </div>
 
         ${devEui ? `
@@ -666,6 +668,16 @@ export class ModuloGis implements OnInit, OnDestroy {
           const name = site.site_name || site.dev_eui;
           const key = this.normalizeKey(name);
           if (this.markersIndex.has(key)) return; // Already on map from KML
+
+          // Proximity dedup: skip if a KML marker is within ~100m (same physical site, different name)
+          const siteLatLng = L.latLng(lat, lng);
+          let nearbyKml = false;
+          this.markersIndex.forEach((existingMarker) => {
+            if (!nearbyKml && existingMarker.getLatLng().distanceTo(siteLatLng) < 100) {
+              nearbyKml = true;
+            }
+          });
+          if (nearbyKml) return;
 
           const marker = L.marker([lat, lng]);
           const siteEstatus = (site as any).estatus || 'activo';
