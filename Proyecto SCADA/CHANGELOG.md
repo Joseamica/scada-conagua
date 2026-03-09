@@ -31,6 +31,9 @@ Todos los cambios notables del proyecto se documentan aquí.
 - **feat:** Exported `queryApi` from `influx-query-service.ts` for reuse
 
 ### scada-front (Variables — Phase 4)
+- **feat:** ICH-style formula editor in `VariableViewEditor` — split layout with incógnitas table (editable names + column origins, clickable to insert) and formula editor panel (OPERADORES bar + function buttons: IF, ABS, ROUND, MIN, MAX, SQRT, POW, ISNULL)
+- **feat:** ICH-style formula editor in `TagBrowser` wizard Step 2 — same split layout for inline variable view creation
+- **feat:** Incógnita name auto-generation from column aliases (e.g., `i_Pozo_001_Salesianos_caudal_lts`), with custom rename support and automatic translation to canonical `i_N` format before API calls
 - **feat:** `VariableViewEditor` — two-panel editor for variable views: columns definition (tag browser, alias, aggregation select) + formulas definition (alias, expression, validate/add) + execution results table
 - **feat:** Variable view execution — fetches latest values from site_status, evaluates formulas with `i_N` notation, displays computed results
 - **feat:** `VariableExplorer` — view cards now clickable, navigate to `/variables/view/:id`
