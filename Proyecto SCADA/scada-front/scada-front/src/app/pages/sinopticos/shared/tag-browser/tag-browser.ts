@@ -45,6 +45,15 @@ interface SiteNode {
   expanded: boolean;
 }
 
+interface WizardColumn {
+  devEUI: string;
+  measurement: string;
+  siteName: string;
+  municipality: string;
+  alias: string;
+  aggregation: string;
+}
+
 @Component({
   selector: 'tag-browser',
   standalone: true,
@@ -64,6 +73,14 @@ interface SiteNode {
 
       @if (isOpen()) {
         <div class="tag-dropdown">
+          <!-- Create view button -->
+          <button class="create-view-btn" (click)="openWizard(); $event.stopPropagation()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
+            </svg>
+            Crear Vista de Variables
+          </button>
+
           <input
             class="tag-search"
             type="text"
@@ -215,6 +232,216 @@ interface SiteNode {
         </div>
       }
     </div>
+
+    <!-- Wizard Modal -->
+    @if (wizardOpen()) {
+      <div class="wizard-overlay" (click)="closeWizard()">
+        <div class="wizard-dialog" (click)="$event.stopPropagation()">
+          <!-- Header -->
+          <div class="wizard-header">
+            <h3>Crear Vista de Variables</h3>
+            <button class="wizard-close" (click)="closeWizard()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Steps indicator -->
+          <div class="wizard-steps">
+            @for (s of wizardStepLabels; track s; let i = $index) {
+              <div class="wizard-step" [class.active]="wizardStep() === i" [class.done]="wizardStep() > i">
+                <span class="step-num">{{ wizardStep() > i ? '&#10003;' : i + 1 }}</span>
+                <span class="step-label">{{ s }}</span>
+              </div>
+              @if (i < wizardStepLabels.length - 1) {
+                <div class="step-line" [class.done]="wizardStep() > i"></div>
+              }
+            }
+          </div>
+
+          <!-- Step 0: Name -->
+          @if (wizardStep() === 0) {
+            <div class="wizard-body">
+              <label class="wizard-label">Nombre de la vista</label>
+              <input
+                class="wizard-input"
+                type="text"
+                placeholder="ej: Presion pozos Chalco"
+                [(ngModel)]="wizardName"
+                (keydown.enter)="wizardNextStep()"
+                autofocus
+              />
+              <label class="wizard-label">Descripcion (opcional)</label>
+              <input
+                class="wizard-input"
+                type="text"
+                placeholder="ej: Monitoreo de presion en 5 pozos"
+                [(ngModel)]="wizardDesc"
+              />
+            </div>
+          }
+
+          <!-- Step 1: Columns -->
+          @if (wizardStep() === 1) {
+            <div class="wizard-body">
+              <p class="wizard-hint">Selecciona las variables que quieres incluir en la vista.</p>
+
+              <!-- Added columns -->
+              @if (wizardColumns().length > 0) {
+                <div class="wizard-columns-list">
+                  @for (col of wizardColumns(); track col.devEUI + col.measurement; let i = $index) {
+                    <div class="wizard-col-item">
+                      <span class="wizard-col-num">{{ i + 1 }}</span>
+                      <div class="wizard-col-info">
+                        <span class="wizard-col-alias">{{ col.alias }}</span>
+                        <span class="wizard-col-tag">{{ col.siteName }} / {{ col.measurement }}</span>
+                      </div>
+                      <select class="wizard-agg-select" [(ngModel)]="col.aggregation">
+                        <option value="LAST_VALUE">Ultimo</option>
+                        <option value="AVG">Promedio</option>
+                        <option value="MIN">Minimo</option>
+                        <option value="MAX">Maximo</option>
+                        <option value="SUM">Suma</option>
+                      </select>
+                      <button class="wizard-col-remove" (click)="wizardRemoveColumn(i)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Inline tag picker for adding columns -->
+              <div class="wizard-tag-picker">
+                <input
+                  class="wizard-tag-search"
+                  type="text"
+                  placeholder="Buscar sitio o variable para agregar..."
+                  [(ngModel)]="wizardSearchTerm"
+                  (input)="onWizardSearch()"
+                />
+                <div class="wizard-tag-tree">
+                  @for (muni of wizardFilteredTree(); track muni.name) {
+                    <div class="tree-municipality">
+                      <div class="tree-node tree-muni" (click)="toggleWizardMuni(muni)">
+                        <svg class="tree-arrow" [class.expanded]="muni.expanded" width="10" height="10" viewBox="0 0 10 10">
+                          <path d="M3 2l4 3-4 3z" fill="currentColor" />
+                        </svg>
+                        <span>{{ muni.name }}</span>
+                        <span class="tree-count">{{ muni.sites.length }}</span>
+                      </div>
+                      @if (muni.expanded) {
+                        @for (site of muni.sites; track site.devEUI) {
+                          <div class="tree-site-group">
+                            <div class="tree-node tree-site" (click)="toggleWizardSite(site)">
+                              <svg class="tree-arrow" [class.expanded]="site.expanded" width="10" height="10" viewBox="0 0 10 10">
+                                <path d="M3 2l4 3-4 3z" fill="currentColor" />
+                              </svg>
+                              <span class="site-name">{{ site.siteName }}</span>
+                            </div>
+                            @if (site.expanded) {
+                              @for (m of site.measurements; track m) {
+                                <div
+                                  class="tree-node tree-measurement"
+                                  [class.already-added]="isColumnAdded(site.devEUI, m)"
+                                  (click)="wizardAddColumn(site, m, muni.name)"
+                                >
+                                  <span class="measurement-dot"></span>
+                                  {{ m }}
+                                  @if (isColumnAdded(site.devEUI, m)) {
+                                    <svg class="added-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                      <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                  }
+                                </div>
+                              }
+                            }
+                          </div>
+                        }
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Step 2: Formula (optional) -->
+          @if (wizardStep() === 2) {
+            <div class="wizard-body">
+              <p class="wizard-hint">
+                Opcionalmente agrega una formula que combine las columnas.
+                Usa <code>i_1</code>, <code>i_2</code>, etc. para referenciar columnas por su numero de orden.
+              </p>
+
+              @if (wizardColumns().length > 0) {
+                <div class="wizard-col-ref">
+                  @for (col of wizardColumns(); track col.devEUI + col.measurement; let i = $index) {
+                    <span class="ref-chip"><code>i_{{ i + 1 }}</code> = {{ col.alias }}</span>
+                  }
+                </div>
+              }
+
+              <label class="wizard-label">Alias de la formula</label>
+              <input
+                class="wizard-input"
+                type="text"
+                placeholder="ej: gasto_total"
+                [(ngModel)]="wizardFormulaAlias"
+              />
+              <label class="wizard-label">Expresion</label>
+              <input
+                class="wizard-input wizard-input-mono"
+                type="text"
+                placeholder="ej: i_1 + i_2 * 0.5"
+                [(ngModel)]="wizardFormulaExpr"
+              />
+              <div class="wizard-formula-help">
+                Funciones: IF(cond, a, b), ABS, ROUND, MIN, MAX, SQRT, POW
+              </div>
+
+              <div class="wizard-skip-hint">
+                Puedes saltar este paso y agregar formulas despues.
+              </div>
+            </div>
+          }
+
+          <!-- Footer -->
+          <div class="wizard-footer">
+            @if (wizardStep() > 0) {
+              <button class="wizard-btn wizard-btn-secondary" (click)="wizardPrevStep()">
+                Atras
+              </button>
+            }
+            <div class="wizard-footer-spacer"></div>
+            @if (wizardStep() < 2) {
+              <button
+                class="wizard-btn wizard-btn-primary"
+                (click)="wizardNextStep()"
+                [disabled]="wizardStep() === 0 && !wizardName.trim() || wizardStep() === 1 && wizardColumns().length === 0"
+              >
+                Siguiente
+              </button>
+            } @else {
+              <button
+                class="wizard-btn wizard-btn-primary"
+                (click)="wizardCreate()"
+                [disabled]="wizardCreating()"
+              >
+                @if (wizardCreating()) {
+                  Creando...
+                } @else {
+                  Crear Vista
+                }
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [
     `
@@ -505,6 +732,425 @@ interface SiteNode {
       .column-leaf {
         border-left: 2px solid #059669;
       }
+
+      /* === Create View Button === */
+      .create-view-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        font-family: 'Inter', system-ui, sans-serif;
+        color: var(--accent);
+        background: var(--accent-light, rgba(59, 130, 246, 0.08));
+        border: none;
+        border-bottom: 1px solid var(--border-default);
+        cursor: pointer;
+        transition: background 0.15s;
+        text-align: left;
+      }
+
+      .create-view-btn:hover {
+        background: var(--accent-light, rgba(59, 130, 246, 0.15));
+      }
+
+      /* === Wizard Modal === */
+      .wizard-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: wizFadeIn 0.15s ease;
+        padding: 16px;
+      }
+
+      @keyframes wizFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      .wizard-dialog {
+        width: 100%;
+        max-width: 520px;
+        max-height: 85vh;
+        background: var(--bg-card);
+        border: 1px solid var(--border-strong);
+        border-radius: 14px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        animation: wizSlideUp 0.2s ease;
+      }
+
+      @keyframes wizSlideUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .wizard-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px 12px;
+        border-bottom: 1px solid var(--border-default);
+      }
+
+      .wizard-header h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .wizard-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-muted);
+        padding: 4px;
+        border-radius: 6px;
+        transition: background 0.1s;
+      }
+
+      .wizard-close:hover {
+        background: var(--bg-card-hover);
+        color: var(--text-primary);
+      }
+
+      /* Steps indicator */
+      .wizard-steps {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border-default);
+      }
+
+      .wizard-step {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .step-num {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        background: var(--bg-card-hover);
+        color: var(--text-muted);
+        transition: all 0.2s;
+        flex-shrink: 0;
+      }
+
+      .wizard-step.active .step-num {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .wizard-step.done .step-num {
+        background: #059669;
+        color: #fff;
+      }
+
+      .step-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+
+      .wizard-step.active .step-label {
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+
+      .step-line {
+        flex: 1;
+        height: 2px;
+        background: var(--border-default);
+        margin: 0 8px;
+        border-radius: 1px;
+        min-width: 16px;
+      }
+
+      .step-line.done {
+        background: #059669;
+      }
+
+      /* Body */
+      .wizard-body {
+        padding: 16px 20px;
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+      }
+
+      .wizard-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+        margin-top: 12px;
+      }
+
+      .wizard-label:first-child {
+        margin-top: 0;
+      }
+
+      .wizard-input {
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 13px;
+        font-family: 'Inter', system-ui, sans-serif;
+        color: var(--text-primary);
+        background: var(--bg-card-hover);
+        border: 1px solid var(--border-default);
+        border-radius: 6px;
+        outline: none;
+        transition: border-color 0.15s;
+        box-sizing: border-box;
+      }
+
+      .wizard-input:focus {
+        border-color: var(--accent);
+      }
+
+      .wizard-input-mono {
+        font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+        font-size: 12px;
+      }
+
+      .wizard-hint {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin: 0 0 12px;
+        line-height: 1.4;
+      }
+
+      .wizard-hint code {
+        background: var(--bg-card-hover);
+        padding: 1px 4px;
+        border-radius: 3px;
+        font-size: 11px;
+      }
+
+      /* Wizard columns list */
+      .wizard-columns-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 12px;
+      }
+
+      .wizard-col-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        background: var(--bg-card-hover);
+        border-radius: 6px;
+        font-size: 12px;
+      }
+
+      .wizard-col-num {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .wizard-col-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+
+      .wizard-col-alias {
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .wizard-col-tag {
+        font-size: 10px;
+        color: var(--text-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .wizard-agg-select {
+        padding: 2px 4px;
+        font-size: 10px;
+        font-family: 'Inter', system-ui, sans-serif;
+        background: var(--bg-card);
+        border: 1px solid var(--border-default);
+        border-radius: 4px;
+        color: var(--text-secondary);
+        cursor: pointer;
+      }
+
+      .wizard-col-remove {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-muted);
+        padding: 2px;
+        border-radius: 4px;
+        flex-shrink: 0;
+        transition: color 0.1s;
+      }
+
+      .wizard-col-remove:hover {
+        color: #ef4444;
+      }
+
+      /* Wizard inline tag picker */
+      .wizard-tag-picker {
+        border: 1px solid var(--border-default);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .wizard-tag-search {
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 12px;
+        font-family: 'Inter', system-ui, sans-serif;
+        color: var(--text-primary);
+        background: var(--bg-card-hover);
+        border: none;
+        border-bottom: 1px solid var(--border-default);
+        outline: none;
+        box-sizing: border-box;
+      }
+
+      .wizard-tag-search::placeholder {
+        color: var(--text-muted);
+        opacity: 0.6;
+      }
+
+      .wizard-tag-tree {
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 4px 0;
+      }
+
+      .already-added {
+        opacity: 0.5;
+      }
+
+      .added-check {
+        margin-left: auto;
+        color: #059669;
+      }
+
+      /* Formula reference chips */
+      .wizard-col-ref {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+
+      .ref-chip {
+        font-size: 11px;
+        padding: 3px 8px;
+        background: var(--bg-card-hover);
+        border-radius: 4px;
+        color: var(--text-secondary);
+      }
+
+      .ref-chip code {
+        font-weight: 700;
+        color: var(--accent);
+        font-size: 10px;
+      }
+
+      .wizard-formula-help {
+        font-size: 10px;
+        color: var(--text-muted);
+        margin-top: 8px;
+        font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+      }
+
+      .wizard-skip-hint {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 16px;
+        font-style: italic;
+      }
+
+      /* Footer */
+      .wizard-footer {
+        display: flex;
+        align-items: center;
+        padding: 12px 20px;
+        border-top: 1px solid var(--border-default);
+        gap: 8px;
+      }
+
+      .wizard-footer-spacer {
+        flex: 1;
+      }
+
+      .wizard-btn {
+        padding: 8px 16px;
+        font-size: 12px;
+        font-weight: 600;
+        font-family: 'Inter', system-ui, sans-serif;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.15s, opacity 0.15s;
+      }
+
+      .wizard-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      .wizard-btn-primary {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .wizard-btn-primary:hover:not(:disabled) {
+        filter: brightness(1.1);
+      }
+
+      .wizard-btn-secondary {
+        background: var(--bg-card-hover);
+        color: var(--text-secondary);
+      }
+
+      .wizard-btn-secondary:hover {
+        background: var(--border-default);
+      }
     `,
   ],
 })
@@ -528,6 +1174,19 @@ export class TagBrowser implements OnInit {
   views = signal<VariableView[]>([]);
   expandedViews = signal<Set<number>>(new Set());
   viewDetails = signal<Map<number, VariableViewDetail>>(new Map());
+
+  // Wizard state
+  wizardOpen = signal(false);
+  wizardStep = signal(0);
+  wizardCreating = signal(false);
+  wizardName = '';
+  wizardDesc = '';
+  wizardColumns = signal<WizardColumn[]>([]);
+  wizardFormulaAlias = '';
+  wizardFormulaExpr = '';
+  wizardSearchTerm = '';
+  private wizardTree = signal<MunicipalityNode[]>([]);
+  wizardStepLabels = ['Nombre', 'Columnas', 'Formula'];
 
   currentLabel = computed(() => {
     const dev = this.currentDevEUI();
@@ -689,6 +1348,163 @@ export class TagBrowser implements OnInit {
 
   onSearch(): void {
     // filteredTree computed reacts to searchTerm binding
+  }
+
+  // ---- Wizard ----
+
+  openWizard(): void {
+    this.wizardOpen.set(true);
+    this.wizardStep.set(0);
+    this.wizardName = '';
+    this.wizardDesc = '';
+    this.wizardColumns.set([]);
+    this.wizardFormulaAlias = '';
+    this.wizardFormulaExpr = '';
+    this.wizardSearchTerm = '';
+    this.isOpen.set(false);
+    // Clone the tag tree for the wizard's own expand state
+    const cloned = this.tree().map((m) => ({
+      ...m,
+      expanded: false,
+      sites: m.sites.map((s) => ({ ...s, expanded: false })),
+    }));
+    this.wizardTree.set(cloned);
+  }
+
+  closeWizard(): void {
+    this.wizardOpen.set(false);
+  }
+
+  wizardNextStep(): void {
+    if (this.wizardStep() === 0 && !this.wizardName.trim()) return;
+    if (this.wizardStep() === 1 && this.wizardColumns().length === 0) return;
+    this.wizardStep.update((s) => Math.min(s + 1, 2));
+  }
+
+  wizardPrevStep(): void {
+    this.wizardStep.update((s) => Math.max(s - 1, 0));
+  }
+
+  wizardFilteredTree(): MunicipalityNode[] {
+    const search = this.wizardSearchTerm.toLowerCase().trim();
+    const base = this.wizardTree();
+    if (!search) return base;
+    return base
+      .map((muni) => {
+        const filteredSites = muni.sites
+          .map((site) => {
+            const matchSite =
+              site.siteName.toLowerCase().includes(search) ||
+              site.devEUI.toLowerCase().includes(search);
+            const filteredMeasurements = site.measurements.filter((m) =>
+              m.toLowerCase().includes(search),
+            );
+            if (matchSite) return { ...site, expanded: true };
+            if (filteredMeasurements.length > 0)
+              return { ...site, measurements: filteredMeasurements, expanded: true };
+            return null;
+          })
+          .filter((s): s is SiteNode => s !== null);
+        if (filteredSites.length > 0) return { ...muni, sites: filteredSites, expanded: true };
+        if (muni.name.toLowerCase().includes(search)) return { ...muni, expanded: true };
+        return null;
+      })
+      .filter((m): m is MunicipalityNode => m !== null);
+  }
+
+  toggleWizardMuni(muni: MunicipalityNode): void {
+    muni.expanded = !muni.expanded;
+    this.wizardTree.update((t) => [...t]);
+  }
+
+  toggleWizardSite(site: SiteNode): void {
+    site.expanded = !site.expanded;
+    this.wizardTree.update((t) => [...t]);
+  }
+
+  onWizardSearch(): void {
+    // triggers change detection for wizardFilteredTree()
+  }
+
+  wizardAddColumn(site: SiteNode, measurement: string, municipality: string): void {
+    if (this.isColumnAdded(site.devEUI, measurement)) return;
+    const alias = `${site.siteName} / ${measurement}`;
+    this.wizardColumns.update((cols) => [
+      ...cols,
+      {
+        devEUI: site.devEUI,
+        measurement,
+        siteName: site.siteName,
+        municipality,
+        alias,
+        aggregation: 'LAST_VALUE',
+      },
+    ]);
+  }
+
+  wizardRemoveColumn(index: number): void {
+    this.wizardColumns.update((cols) => cols.filter((_, i) => i !== index));
+  }
+
+  isColumnAdded(devEUI: string, measurement: string): boolean {
+    return this.wizardColumns().some((c) => c.devEUI === devEUI && c.measurement === measurement);
+  }
+
+  wizardCreate(): void {
+    if (!this.wizardName.trim() || this.wizardColumns().length === 0) return;
+    this.wizardCreating.set(true);
+
+    // Step 1: Create the view
+    this.variableService
+      .createView({ name: this.wizardName.trim(), description: this.wizardDesc.trim() || undefined })
+      .subscribe({
+        next: (view) => {
+          // Step 2: Add all columns sequentially
+          const cols = this.wizardColumns();
+
+          const addColumnsSequentially = (idx: number): void => {
+            if (idx >= cols.length) {
+              // Step 3: Add formula if provided
+              if (this.wizardFormulaAlias.trim() && this.wizardFormulaExpr.trim()) {
+                this.variableService
+                  .addFormula(view.id, {
+                    alias: this.wizardFormulaAlias.trim(),
+                    expression: this.wizardFormulaExpr.trim(),
+                  })
+                  .subscribe({
+                    next: () => this.finishWizard(view),
+                    error: () => this.finishWizard(view), // still finish even if formula fails
+                  });
+              } else {
+                this.finishWizard(view);
+              }
+              return;
+            }
+            const col = cols[idx];
+            this.variableService
+              .addColumn(view.id, {
+                alias: col.alias,
+                dev_eui: col.devEUI,
+                measurement: col.measurement,
+                aggregation: col.aggregation as ViewColumn['aggregation'],
+              })
+              .subscribe({
+                next: () => addColumnsSequentially(idx + 1),
+                error: () => addColumnsSequentially(idx + 1),
+              });
+          };
+
+          addColumnsSequentially(0);
+        },
+        error: () => this.wizardCreating.set(false),
+      });
+  }
+
+  private finishWizard(view: VariableView): void {
+    this.wizardCreating.set(false);
+    this.wizardOpen.set(false);
+    // Reload views so the new one appears in "Mis Vistas"
+    this.loadViews();
   }
 
   @HostListener('document:mousedown', ['$event'])
