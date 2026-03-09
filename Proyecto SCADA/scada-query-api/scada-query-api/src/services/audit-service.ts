@@ -36,7 +36,15 @@ export type AuditAction =
   | 'EXPORT_TELEMETRY_CSV'
   | 'EXPORT_AUDIT_CSV'
   // Navigation
-  | 'NAVIGATE_TO_MODULE';
+  | 'NAVIGATE_TO_MODULE'
+  // Sinopticos
+  | 'SINOPTICO_PROJECT_CREATED'
+  | 'SINOPTICO_PROJECT_DELETED'
+  | 'SINOPTICO_DELETED'
+  // Alarms
+  | 'ALARM_CREATED'
+  | 'ALARM_DELETED'
+  | 'ALARM_ACKNOWLEDGED';
 
 export async function auditLog(
   userId: number | null,

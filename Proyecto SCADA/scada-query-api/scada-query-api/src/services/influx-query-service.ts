@@ -14,6 +14,9 @@ const bucket: string = process.env.INFLUX_BUCKET || 'telemetria_sitios';
 const influxDB: InfluxDB = new InfluxDB({ url, token });
 const queryApi: QueryApi = influxDB.getQueryApi(org);
 
+/** Exposed for other modules that need to run custom Flux queries */
+export { influxDB, org, queryApi };
+
 export async function getTelemetryData(
     devEUI: string,
     measurementField: string,

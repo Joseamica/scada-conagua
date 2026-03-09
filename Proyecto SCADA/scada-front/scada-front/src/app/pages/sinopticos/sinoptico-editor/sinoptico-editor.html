@@ -1,0 +1,558 @@
+@if (!loading()) {
+  <div class="editor-shell">
+    <!-- TOOLBAR -->
+    <header class="editor-toolbar">
+      <div class="toolbar-left">
+        <button class="toolbar-btn" (click)="goBack()" title="Volver">
+          <ng-icon name="heroArrowLeft" size="18" />
+        </button>
+        <span class="editor-title">{{ sinoptico()?.name }}</span>
+        @if (sinoptico()) {
+          <span class="version-badge">v{{ sinoptico()!.version }}</span>
+        }
+      </div>
+
+      <div class="toolbar-center">
+        <button
+          class="toolbar-btn"
+          [disabled]="!store.canUndo()"
+          (click)="store.undo()"
+          title="Deshacer (Ctrl+Z)"
+        >
+          <ng-icon name="heroArrowUturnLeft" size="16" />
+        </button>
+        <button
+          class="toolbar-btn"
+          [disabled]="!store.canRedo()"
+          (click)="store.redo()"
+          title="Rehacer (Ctrl+Y)"
+        >
+          <ng-icon name="heroArrowUturnRight" size="16" />
+        </button>
+
+        <div class="toolbar-divider"></div>
+
+        <button
+          class="toolbar-btn"
+          [class.active]="gridVisible()"
+          (click)="toggleGrid()"
+          title="Cuadricula"
+        >
+          <ng-icon name="heroSquares2x2" size="18" />
+        </button>
+
+        <div class="zoom-controls">
+          <button class="toolbar-btn" (click)="zoomOut()">-</button>
+          <span class="zoom-label" (click)="resetZoom()">
+            {{ (store.zoom() * 100) | number: '1.0-0' }}%
+          </span>
+          <button class="toolbar-btn" (click)="zoomIn()">+</button>
+        </div>
+      </div>
+
+      <div class="toolbar-right">
+        <span class="widget-count">{{ store.widgetCount() }} widgets</span>
+        @if (store.dirty()) {
+          <span class="status-text">Sin guardar</span>
+        }
+        <button class="toolbar-btn save-btn" (click)="save()" [disabled]="saving()">
+          <ng-icon name="heroCloudArrowUp" size="18" />
+          {{ saving() ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN AREA -->
+    <div class="editor-body">
+      <!-- SIDEBAR -->
+      <aside class="editor-sidebar">
+        @if (store.selectedWidget(); as w) {
+          <!-- CONFIG PANEL -->
+          <div class="sidebar-section">
+            <div class="config-header">
+              <h4>{{ getWidgetTypeLabel(w.type) }}</h4>
+              <button class="btn-back-palette" (click)="store.clearSelection()">Paleta</button>
+            </div>
+
+            @switch (w.type) {
+              <!-- ========== LABEL CONFIG ========== -->
+              @case ('label') {
+                <div class="config-form">
+                  <label>Variable</label>
+                  <tag-browser
+                    [currentDevEUI]="asLabel(w.config).devEUI"
+                    [currentMeasurement]="asLabel(w.config).measurement"
+                    placeholder="Seleccionar variable..."
+                    (tagSelect)="onLabelTagSelect(w.id, $event)"
+                  />
+
+                  @if (asLabel(w.config).source === 'view') {
+                    <div class="source-badge">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 7h16M4 12h16M4 17h8"/>
+                      </svg>
+                      <span>{{ asLabel(w.config).formulaAlias || 'Formula' }}</span>
+                      <button class="badge-clear" (click)="clearViewSource(w.id)" title="Cambiar a tag directo">&times;</button>
+                    </div>
+                  }
+
+                  <label>Titulo</label>
+                  <input
+                    type="text"
+                    [value]="asLabel(w.config).title"
+                    (input)="updateConfig(w.id, 'title', $event)"
+                  />
+                  <label>Unidad</label>
+                  <input
+                    type="text"
+                    [value]="asLabel(w.config).unit"
+                    (input)="updateConfig(w.id, 'unit', $event)"
+                  />
+                  <label>Tam. Fuente</label>
+                  <input
+                    type="number"
+                    [value]="asLabel(w.config).fontSize"
+                    (input)="updateConfig(w.id, 'fontSize', $event, true)"
+                  />
+                  <label>Decimales</label>
+                  <input
+                    type="number"
+                    [value]="asLabel(w.config).decimals"
+                    (input)="updateConfig(w.id, 'decimals', $event, true)"
+                  />
+
+                  <!-- ALARM RANGES -->
+                  <div class="config-subsection">
+                    <div class="subsection-header">
+                      <span class="subsection-title">Rangos de alarma</span>
+                      <button class="btn-icon-sm" (click)="addAlarmRange(w.id)" title="Agregar rango">
+                        <ng-icon name="heroPlus" size="12" />
+                      </button>
+                    </div>
+                    @for (r of asLabel(w.config).alarmRanges; track $index) {
+                      <div class="alarm-range-row">
+                        <input
+                          type="number"
+                          class="range-input"
+                          [value]="r.min"
+                          (input)="updateAlarmRange(w.id, $index, 'min', $event)"
+                          placeholder="Min"
+                        />
+                        <span class="range-sep">—</span>
+                        <input
+                          type="number"
+                          class="range-input"
+                          [value]="r.max"
+                          (input)="updateAlarmRange(w.id, $index, 'max', $event)"
+                          placeholder="Max"
+                        />
+                        <input
+                          type="color"
+                          class="range-color"
+                          [value]="r.color"
+                          (input)="updateAlarmRange(w.id, $index, 'color', $event)"
+                        />
+                        <label class="range-blink">
+                          <input
+                            type="checkbox"
+                            [checked]="r.blink"
+                            (change)="updateAlarmRange(w.id, $index, 'blink', $event)"
+                          />
+                          Parpadeo
+                        </label>
+                        <button class="btn-icon-sm btn-danger-sm" (click)="removeAlarmRange(w.id, $index)">
+                          <ng-icon name="heroTrash" size="11" />
+                        </button>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- ========== CHART CONFIG ========== -->
+              @case ('chart') {
+                <div class="config-form">
+                  <label>Rango de tiempo</label>
+                  <select
+                    [value]="asChart(w.config).timeRange"
+                    (change)="updateConfig(w.id, 'timeRange', $event)"
+                  >
+                    <option value="1h">1 hora</option>
+                    <option value="6h">6 horas</option>
+                    <option value="24h">24 horas</option>
+                    <option value="7d">7 dias</option>
+                    <option value="30d">30 dias</option>
+                  </select>
+                  <label class="checkbox-label">
+                    <input
+                      type="checkbox"
+                      [checked]="asChart(w.config).showLegend"
+                      (change)="updateConfig(w.id, 'showLegend', $event)"
+                    />
+                    Mostrar leyenda
+                  </label>
+                  <label class="checkbox-label">
+                    <input
+                      type="checkbox"
+                      [checked]="asChart(w.config).showGrid"
+                      (change)="updateConfig(w.id, 'showGrid', $event)"
+                    />
+                    Mostrar grid
+                  </label>
+
+                  <!-- SERIES LIST -->
+                  <div class="config-subsection">
+                    <div class="subsection-header">
+                      <span class="subsection-title">Series</span>
+                    </div>
+                    @for (s of asChart(w.config).series; track $index) {
+                      <div class="series-item">
+                        <div class="series-header">
+                          <input
+                            type="color"
+                            class="series-color"
+                            [value]="s.color"
+                            (input)="updateSeriesColor(w.id, $index, $event)"
+                          />
+                          @if (s.source === 'view') {
+                            <span class="series-formula-tag">f(x)</span>
+                          }
+                          <input
+                            type="text"
+                            class="series-label"
+                            [value]="s.label"
+                            (input)="updateSeriesLabel(w.id, $index, $event)"
+                            placeholder="Nombre serie"
+                          />
+                          <button class="btn-icon-sm btn-danger-sm" (click)="removeChartSeries(w.id, $index)">
+                            <ng-icon name="heroTrash" size="11" />
+                          </button>
+                        </div>
+                        <div class="series-detail">
+                          <span class="series-tag">{{ s.devEUI | slice: 0 : 8 }}... / {{ s.measurement }}</span>
+                          <select
+                            class="series-type-select"
+                            [value]="s.lineType"
+                            (change)="updateSeriesLineType(w.id, $index, $event)"
+                          >
+                            <option value="line">Linea</option>
+                            <option value="bar">Barras</option>
+                            <option value="area">Area</option>
+                          </select>
+                        </div>
+                      </div>
+                    }
+
+                    <div class="add-series-wrapper">
+                      <tag-browser
+                        placeholder="+ Agregar serie..."
+                        (tagSelect)="addChartSeries(w.id, $event)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- ========== TABLE CONFIG ========== -->
+              @case ('table') {
+                <div class="config-form">
+                  <label class="checkbox-label">
+                    <input
+                      type="checkbox"
+                      [checked]="asTable(w.config).showHeader"
+                      (change)="updateConfig(w.id, 'showHeader', $event)"
+                    />
+                    Mostrar encabezado
+                  </label>
+                  <label class="checkbox-label">
+                    <input
+                      type="checkbox"
+                      [checked]="asTable(w.config).striped"
+                      (change)="updateConfig(w.id, 'striped', $event)"
+                    />
+                    Filas alternadas
+                  </label>
+
+                  <!-- COLUMN LIST -->
+                  <div class="config-subsection">
+                    <div class="subsection-header">
+                      <span class="subsection-title">Columnas</span>
+                    </div>
+                    @for (col of asTable(w.config).columns; track $index) {
+                      <div class="column-item">
+                        <div class="column-header">
+                          @if (col.source === 'view') {
+                            <span class="series-formula-tag">f(x)</span>
+                          }
+                          <input
+                            type="text"
+                            class="column-label-input"
+                            [value]="col.label"
+                            (input)="updateColumnLabel(w.id, $index, $event)"
+                            placeholder="Nombre columna"
+                          />
+                          <button class="btn-icon-sm btn-danger-sm" (click)="removeTableColumn(w.id, $index)">
+                            <ng-icon name="heroTrash" size="11" />
+                          </button>
+                        </div>
+                        <div class="column-detail">
+                          <span class="column-tag">{{ col.devEUI | slice: 0 : 8 }}... / {{ col.measurement }}</span>
+                          <input
+                            type="text"
+                            class="column-unit-input"
+                            [value]="col.unit"
+                            (input)="updateColumnUnit(w.id, $index, $event)"
+                            placeholder="Unidad"
+                          />
+                        </div>
+                      </div>
+                    }
+
+                    <div class="add-column-wrapper">
+                      <tag-browser
+                        placeholder="+ Agregar columna..."
+                        (tagSelect)="addTableColumn(w.id, $event)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- ========== MAP CONFIG ========== -->
+              @case ('map') {
+                <div class="config-form">
+                  <label>Latitud</label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    [value]="asMap(w.config).center[0]"
+                    (input)="updateMapCenter(w.id, 0, $event)"
+                  />
+                  <label>Longitud</label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    [value]="asMap(w.config).center[1]"
+                    (input)="updateMapCenter(w.id, 1, $event)"
+                  />
+                  <label>Zoom</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="18"
+                    [value]="asMap(w.config).zoom"
+                    (input)="updateConfig(w.id, 'zoom', $event, true)"
+                  />
+                </div>
+              }
+
+              <!-- ========== HEADER CONFIG ========== -->
+              @case ('header') {
+                <div class="config-form">
+                  <label>Titulo</label>
+                  <input
+                    type="text"
+                    [value]="asHeader(w.config).title"
+                    (input)="updateConfig(w.id, 'title', $event)"
+                  />
+                  <label>Subtitulo</label>
+                  <input
+                    type="text"
+                    [value]="asHeader(w.config).subtitle"
+                    (input)="updateConfig(w.id, 'subtitle', $event)"
+                  />
+                  <label>Color fondo</label>
+                  <input
+                    type="color"
+                    [value]="asHeader(w.config).bgColor"
+                    (input)="updateConfig(w.id, 'bgColor', $event)"
+                  />
+                  <label>Color texto</label>
+                  <input
+                    type="color"
+                    [value]="asHeader(w.config).textColor"
+                    (input)="updateConfig(w.id, 'textColor', $event)"
+                  />
+                  <label>Tam. Fuente</label>
+                  <input
+                    type="number"
+                    [value]="asHeader(w.config).fontSize"
+                    (input)="updateConfig(w.id, 'fontSize', $event, true)"
+                  />
+                  <label>URL Logo</label>
+                  <input
+                    type="text"
+                    [value]="asHeader(w.config).logoUrl"
+                    (input)="updateConfig(w.id, 'logoUrl', $event)"
+                    placeholder="https://..."
+                  />
+                </div>
+              }
+
+              <!-- ========== IMAGE CONFIG ========== -->
+              @case ('image') {
+                <div class="config-form">
+                  <label>URL Imagen</label>
+                  <input
+                    type="text"
+                    [value]="asImage(w.config).src"
+                    (input)="updateConfig(w.id, 'src', $event)"
+                    placeholder="https://..."
+                  />
+                  <label>Alt text</label>
+                  <input
+                    type="text"
+                    [value]="asImage(w.config).alt"
+                    (input)="updateConfig(w.id, 'alt', $event)"
+                  />
+                  <label>Ajuste</label>
+                  <select
+                    [value]="asImage(w.config).objectFit"
+                    (change)="updateConfig(w.id, 'objectFit', $event)"
+                  >
+                    <option value="contain">Contener</option>
+                    <option value="cover">Cubrir</option>
+                    <option value="fill">Rellenar</option>
+                    <option value="none">Ninguno</option>
+                  </select>
+                  <label>Border radius</label>
+                  <input
+                    type="number"
+                    [value]="asImage(w.config).borderRadius"
+                    (input)="updateConfig(w.id, 'borderRadius', $event, true)"
+                  />
+                </div>
+              }
+            }
+
+            <div class="config-actions">
+              <button class="btn-config" (click)="store.bringToFront(w.id)">Al frente</button>
+              <button class="btn-config" (click)="store.sendToBack(w.id)">Al fondo</button>
+              <button class="btn-config" (click)="store.toggleLock(w.id)">
+                {{ w.locked ? 'Desbloquear' : 'Bloquear' }}
+              </button>
+              <button class="btn-config btn-danger" (click)="store.removeWidget(w.id)">
+                Eliminar
+              </button>
+            </div>
+          </div>
+        } @else {
+          <!-- PALETTE -->
+          <div class="sidebar-section">
+            <h4>Componentes</h4>
+            <p class="sidebar-hint">Arrastra al canvas o haz click para agregar</p>
+            <div class="component-palette">
+              @for (item of paletteItems; track item.type) {
+                <div
+                  class="palette-item"
+                  draggable="true"
+                  (dragstart)="onDragStart($event, item.type)"
+                  (click)="addWidgetAtCenter(item.type)"
+                >
+                  <ng-icon [name]="item.icon" size="20" />
+                  <span>{{ item.label }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </aside>
+
+      <!-- CANVAS VIEWPORT -->
+      <div class="canvas-viewport" (dragover)="onDragOver($event)" (drop)="onCanvasDrop($event)">
+        <div
+          class="canvas"
+          [style.width.px]="canvasWidth() * store.zoom()"
+          [style.height.px]="canvasHeight() * store.zoom()"
+          [class.grid-visible]="gridVisible()"
+          [style.--grid-size.px]="store.grid().size * store.zoom()"
+          (mousedown)="onCanvasClick($event)"
+        >
+          <div
+            class="canvas-inner"
+            #canvasInner
+            [style.width.px]="canvasWidth()"
+            [style.height.px]="canvasHeight()"
+            [style.transform]="'scale(' + store.zoom() + ')'"
+          >
+            @for (w of store.widgets(); track w.id) {
+              <widget-wrapper
+                [x]="w.x"
+                [y]="w.y"
+                [width]="w.width"
+                [height]="w.height"
+                [zIndex]="w.zIndex"
+                [selected]="store.selectedIds().has(w.id)"
+                [locked]="w.locked"
+                [zoom]="store.zoom()"
+                (onSelect)="onWidgetSelect(w.id, $event)"
+                (onMove)="onWidgetMove(w.id, $event)"
+                (onResize)="onWidgetResize(w.id, $event)"
+                (onDelete)="store.removeWidget(w.id)"
+                (onToggleLock)="store.toggleLock(w.id)"
+                (onBringFront)="store.bringToFront(w.id)"
+              >
+                @switch (w.type) {
+                  @case ('label') {
+                    <widget-label
+                      [config]="$any(w.config)"
+                      [liveValue]="getLiveValueForConfig(w.config)"
+                      [lastUpdatedAt]="getDeviceTimestamp(w.config)"
+                      [isStale]="isDeviceStale(w.config)"
+                    />
+                  }
+                  @case ('chart') {
+                    <widget-chart
+                      [config]="$any(w.config)"
+                      [chartData]="dataStore.chartData()"
+                    />
+                  }
+                  @case ('map') {
+                    <widget-map [config]="$any(w.config)" />
+                  }
+                  @case ('table') {
+                    <widget-table
+                      [config]="$any(w.config)"
+                      [liveValues]="dataStore.liveValues()"
+                    />
+                  }
+                  @case ('header') {
+                    <widget-header [config]="$any(w.config)" />
+                  }
+                  @case ('image') {
+                    <widget-image [config]="$any(w.config)" />
+                  }
+                }
+              </widget-wrapper>
+            }
+
+            @if (store.widgetCount() === 0) {
+              <div class="canvas-empty">
+                <svg
+                  width="56"
+                  height="56"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.2"
+                >
+                  <rect x="3" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" />
+                  <rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+                <p>Canvas vacio</p>
+                <p class="hint">Arrastra componentes desde la barra lateral</p>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+} @else {
+  <div class="editor-loading">
+    <div class="spinner"></div>
+    <p>Cargando sinoptico...</p>
+  </div>
+}

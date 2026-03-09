@@ -6,19 +6,32 @@ export const roleGuard: CanActivateFn = (route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  // Obtenemos el rol requerido desde la configuración de la ruta
   const expectedRole = route.data['expectedRole'] as number;
-  
-  // Obtenemos el usuario actual del Signal
-  const user = authService.currentUser();
 
-  // Jerárquico: role_id <= expectedRole (roles menores tienen más permisos)
-  // 1=Admin, 2=Supervisor, 3=Operador, 4=Ejecutivo
-  if (user && user.role_id <= expectedRole) {
+  // Try signal first, then fallback to JWT decode
+  let roleId = authService.currentUser()?.role_id;
+
+  if (roleId == null) {
+    const token = localStorage.getItem('scada_token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        roleId = payload.role_id;
+      } catch {
+        // invalid token
+      }
+    }
+  }
+
+  // Hierarchical: role_id <= expectedRole (lower = more permissions)
+  // 1=Admin, 2=Supervisor, 3=Operador, 4=Tecnico
+  if (roleId != null && roleId <= expectedRole) {
     return true;
   }
 
-  console.warn(`>>> [RoleGuard] Acceso denegado. Usuario tiene rol ${user?.role_id}, se requiere <= ${expectedRole}`);
+  console.warn(
+    `>>> [RoleGuard] Acceso denegado. Usuario tiene rol ${roleId}, se requiere <= ${expectedRole}`,
+  );
   router.navigate(['/dashboard']);
   return false;
 };

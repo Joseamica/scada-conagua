@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { pool } from '../services/db-service';
 
 const JWT_SECRET = process.env['JWT_SECRET'] as string;
 
@@ -53,6 +54,28 @@ export const isOperator = (req: Request, res: Response, next: NextFunction) => {
             next();
         } else {
             res.status(403).json({ error: 'Acceso denegado. Se requiere rol de Operador o superior.' });
+        }
+    });
+};
+
+// Permiso granular: "Editor de sinopticos" — NOT a role, checked via permissions table
+export const canEditSinopticos = (req: Request, res: Response, next: NextFunction) => {
+    isAuth(req, res, async () => {
+        // Admins always have edit access
+        if (req.user?.role_id === 1) return next();
+
+        try {
+            const result = await pool.query(
+                'SELECT can_edit_sinopticos FROM scada.permissions WHERE user_id = $1',
+                [req.user!.id]
+            );
+            if (result.rows[0]?.can_edit_sinopticos) {
+                next();
+            } else {
+                res.status(403).json({ error: 'No tiene permiso para editar sinopticos.' });
+            }
+        } catch {
+            res.status(500).json({ error: 'Error verificando permisos.' });
         }
     });
 };

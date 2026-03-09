@@ -16,6 +16,9 @@ import { isAuth } from './middlewares/auth-middleware';
 import { auditLog } from './services/audit-service';
 import { getPermissions } from './services/permission-service';
 import gisRoutes from './routes/gis-routes';
+import sinopticoRoutes from './routes/sinoptico-routes';
+import variableRoutes from './routes/variable-routes';
+import alarmRoutes from './routes/alarm-routes';
 
 // --- Render uploads config ---
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads', 'renders');
@@ -147,6 +150,15 @@ app.use('/api/v1/entities', entityRoutes);
 
 // Ruta para gestión de capas GIS (GeoServer)
 app.use('/api/v1/gis', gisRoutes);
+
+// Sinopticos: proyectos, canvas, compartir, actividad
+app.use('/api/v1/sinopticos', sinopticoRoutes);
+
+// Variables: tag browser, vistas, columnas, formulas, ejecucion
+app.use('/api/v1/variables', variableRoutes);
+
+// Alarmas: grupos, reglas, ACK, historial, destinatarios
+app.use('/api/v1/alarms', alarmRoutes);
 
 // Ruta de Consulta de Telemetría (GET)
 export const getSiteHistory = async (req: Request, res: Response) => {

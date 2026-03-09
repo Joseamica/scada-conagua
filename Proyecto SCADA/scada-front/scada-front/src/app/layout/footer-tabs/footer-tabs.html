@@ -13,4 +13,37 @@
 
   </a>
 
+  <!-- More button -->
+  <button
+    class="nav-tab more-tab"
+    [class.is-active]="isMoreActive() || showMore()"
+    (click)="toggleMore()"
+    aria-label="Mas opciones"
+    [attr.aria-expanded]="showMore()"
+  >
+    <span class="tab-indicator" aria-hidden="true"></span>
+    <ng-icon name="heroEllipsisHorizontal" class="tab-icon" size="20"></ng-icon>
+    <span class="tab-label">Mas</span>
+  </button>
+
 </nav>
+
+<!-- More menu overlay -->
+<div class="more-overlay" *ngIf="showMore()" (click)="closeMore()"></div>
+
+<!-- More menu popup -->
+<div class="more-menu" *ngIf="showMore()" role="menu" aria-label="Modulos adicionales">
+  <div class="more-grid">
+    <button
+      *ngFor="let item of moreItems()"
+      class="more-item"
+      (click)="navigateTo(item.route)"
+      role="menuitem"
+    >
+      <div class="more-item-icon">
+        <ng-icon [name]="item.icon" size="22"></ng-icon>
+      </div>
+      <span class="more-item-label">{{ item.label }}</span>
+    </button>
+  </div>
+</div>

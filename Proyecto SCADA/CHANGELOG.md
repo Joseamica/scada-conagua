@@ -4,6 +4,87 @@ Todos los cambios notables del proyecto se documentan aquí.
 
 ## [Unreleased]
 
+### scada-front (COMM LOSS / Device Staleness)
+- **feat:** `SinopticoDataStore` — new `deviceTimestamps` signal extracts `last_updated_at` per device from query response; `getDeviceTimestamp()` and `isStale()` methods (15-min threshold)
+- **feat:** `LabelWidget` — new `lastUpdatedAt` and `isStale` inputs; shows "SIN COM." overlay with amber color when device is stale; relative timestamp ("hace X min") below the value
+- **feat:** `TableWidget` — `isCellStale()` method highlights stale cells with amber italic styling
+- **feat:** `SinopticoEditor` — `getDeviceTimestamp()` / `isDeviceStale()` helpers wired to label widget inputs
+- **feat:** `SinopticoViewer` — same staleness helpers + `getLiveValueForConfig()` now handles view sources consistently with editor
+
+### scada-front (Sinopticos ↔ Variables Integration)
+- **feat:** `TagBrowser` "Mis Vistas" section — loads user's variable views below the tag tree, expandable to show columns (with aggregation badge) and formulas (with truncated expression), emits `TagSelection` with `source: 'view'` for formulas and `source: 'tag'` for view columns
+- **feat:** `TagSelection` extended with `source`, `viewId`, `formulaId`, `formulaAlias` optional fields
+- **feat:** `LabelConfig`, `ChartConfig`, `TableConfig` extended with variable view source fields
+- **feat:** Editor handles formula selections — `onLabelTagSelect`, `addChartSeries`, `addTableColumn` all support view sources
+- **feat:** `SinopticoDataStore` resolves formula live values (key `view:N:formula:M`) and historical series via `executeViewSeries`
+- **feat:** Table widget renders formula computed values alongside raw-tag values
+- **feat:** Chart widget renders formula time-series alongside raw-tag series
+- **feat:** Source badge on label config panel — shows formula alias with clear button when bound to a view formula
+- **feat:** `f(x)` badge on chart series and table columns when source is `'view'`
+- **feat:** `clearViewSource()` method — resets widget back to raw-tag mode
+- **feat:** `variable.service.ts` — added `getMyViews()`, `getViewDetail()`, `executeViewSeries()` methods
+
+### scada-query-api (Sinopticos ↔ Variables Integration)
+- **feat:** `POST /sinopticos/:id/query` — resolves variable view formulas server-side alongside raw-tag values
+- **feat:** `POST /variables/views/:id/execute-series` — returns historical time-series for a formula (queries InfluxDB per column, evaluates formula at each timestamp)
+- **feat:** `GET /variables/views?mine=true` — filter views by current user
+- **feat:** Exported `queryApi` from `influx-query-service.ts` for reuse
+
+### scada-front (Variables — Phase 4)
+- **feat:** `VariableViewEditor` — two-panel editor for variable views: columns definition (tag browser, alias, aggregation select) + formulas definition (alias, expression, validate/add) + execution results table
+- **feat:** Variable view execution — fetches latest values from site_status, evaluates formulas with `i_N` notation, displays computed results
+- **feat:** `VariableExplorer` — view cards now clickable, navigate to `/variables/view/:id`
+- **feat:** Route `/variables/view/:id` added (lazy-loaded)
+- **fix:** `roleGuard` JWT fallback — decodes token from localStorage when `currentUser()` signal is null (fixes navigation to role-guarded routes)
+- **fix:** `dashboard.css` padding-bottom typo (`690x` → `68px`)
+
+### scada-query-api (Variables — Phase 4)
+- **fix:** Formula execution `i_N` binding — maps column indices (`i_1`, `i_2`, ...) to column values before `evaluateFormulasBatch()`, strips index keys from output
+
+### scada-front (Sinopticos — Phase 3 Data Binding)
+- **feat:** `TagBrowser` component — tree picker for devEUI → measurement selection, grouped by municipality → site, with search/filter, dropdown UI, auto-loads from `GET /variables/tags`
+- **feat:** `SinopticoDataStore` — signal-based data fetching service for sinoptico widgets: batch live values via `POST /sinopticos/:id/query` (polling every 60s), chart time-series via `GET /telemetry/:devEUI/:measurement`, measurement-to-field mapping for site_status
+- **feat:** Label config panel — Tag Browser replaces manual devEUI/measurement inputs, alarm range editor (min/max/color/blink per range, add/remove)
+- **feat:** Chart config panel — series editor with Tag Browser to add series, color picker, line type selector (line/bar/area), label editor, remove button per series
+- **feat:** Table config panel — column editor with Tag Browser to add columns, label/unit inputs, remove button per column
+- **feat:** Widget data wiring — `LabelWidget` accepts `liveValue` input and reacts via effect(), `ChartWidget` accepts `chartData` input, `TableWidget` accepts `liveValues` input with field mapping
+- **feat:** Viewer live data — `SinopticoViewer` uses `SinopticoDataStore` for real-time polling, displays last update timestamp
+
+### scada-front (Sinopticos — Phase 2 Canvas Editor)
+- **feat:** `EditorStore` — signal-based state management with undo/redo (50-entry stack), selection, clipboard (copy/paste), dirty tracking, batch operations for drag performance
+- **feat:** `WidgetWrapper` — absolute-positioned widget container with 8 resize handles, mini toolbar (delete/lock/bring-to-front), zoom-aware pointer movement/resize
+- **feat:** 6 widget renderers: `LabelWidget` (numeric value + alarm color ranges), `ChartWidget` (ECharts time-series with theme support), `MapWidget` (Leaflet mini-map), `TableWidget` (data table with sticky headers), `HeaderWidget` (title bar with logo/colors), `ImageWidget` (static image with objectFit)
+- **feat:** `sinoptico-editor` — full-screen canvas editor with HTML5 drag-drop from palette to canvas, click-to-add fallback, config panels per widget type in sidebar, zoom controls, grid toggle
+- **feat:** Config panels for all widget types: label (title/unit/fontSize/decimals/devEUI/measurement), header (title/subtitle/bgColor/textColor/fontSize/logoUrl), image (src/alt/objectFit/borderRadius), chart (timeRange/showLegend/showGrid), table (showHeader/striped), map (lat/lng/zoom)
+- **feat:** Keyboard shortcuts: Ctrl+Z undo, Ctrl+Y redo, Ctrl+C copy, Ctrl+V paste, Ctrl+A select all, Delete remove, Ctrl+S save
+- **feat:** Canvas state persistence — save to PostgreSQL JSONB, reload preserves all widgets with positions/sizes/configs, version bumps on save
+- **fix:** `chart-widget` ThemeService API: `resolvedTheme()` → `resolved()`
+
+### scada-query-api (Sinopticos + Variables + Alarmas — Phase 1 Foundation)
+- **feat:** Migrations 013-023: sinoptico_projects, sinopticos, sinoptico_shares, variable_folders, variable_views, view_columns, view_formulas, view_shares, alarm_groups, alarms, alarm_state, alarm_history, alarm_recipients, alarm_recipient_collections, alarm_collection_members, alarm_group_recipients, sinoptico_activity_log, can_edit_sinopticos permission
+- **feat:** `sinoptico-routes.ts` — CRUD projects, sinopticos (canvas JSONB), sharing, activity log, batch telemetry query, duplicate
+- **feat:** `variable-routes.ts` — tag browser (devEUI→measurements scoped by municipality), variable views CRUD, columns, formulas with expr-eval validation, folder explorer, view execution with formula evaluation
+- **feat:** `alarm-routes.ts` — alarm groups (hierarchical), alarm definitions with threshold/hysteresis/severity, alarm state + ACK with comment, alarm history with pagination + CSV export, recipients CRUD, recipient collections
+- **feat:** `formula-engine.ts` — expr-eval wrapper with custom functions (IF, ISNULL, ABS, ROUND, MIN, MAX, SQRT, POW, LOG, LN), batch evaluation with topological sort, cycle detection
+- **feat:** `canEditSinopticos` middleware — granular permission check (not a role) for sinoptico/variable editing
+- **feat:** New audit actions: SINOPTICO_PROJECT_CREATED, SINOPTICO_PROJECT_DELETED, SINOPTICO_DELETED, ALARM_CREATED, ALARM_DELETED, ALARM_ACKNOWLEDGED
+
+### scada-front (Sinopticos + Variables + Alarmas — Phase 1 Foundation)
+- **feat:** `sinoptico.service.ts` — HTTP client for projects, sinopticos, canvas CRUD, sharing, activity, batch query
+- **feat:** `variable.service.ts` — HTTP client for tags, folders, views, columns, formulas, validation, execution
+- **feat:** `alarm.service.ts` — HTTP client for groups, alarms, active alarm polling (15s), ACK, history, recipients, collections; signal-based activeAlarms/activeCount/criticalCount
+- **feat:** `sinopticos-home` — project listing with create/delete, card grid, create dialog
+- **feat:** `project-detail` — sinoptico listing within project, create/delete/duplicate, thumbnail grid
+- **feat:** `sinoptico-editor` — full-screen canvas editor shell with toolbar (save, zoom, grid toggle), sidebar (component palette placeholder), empty canvas with grid overlay
+- **feat:** `sinoptico-viewer` — read-only sinoptico viewer shell
+- **feat:** `variable-explorer` — folder tree sidebar + variable views list with create/delete
+- **feat:** `alarm-config` — alarm group tree sidebar + alarm list with create/delete, severity badges, state indicators
+- **feat:** `alarm-history` — paginated alarm history table with date/severity filters + CSV export
+- **feat:** `recipients` — recipients CRUD + collections management with tabs
+- **feat:** Routes added: /sinopticos, /sinopticos/proyecto/:id, /sinopticos/editor/:id (lazy), /sinopticos/viewer/:id (lazy), /variables (lazy), /alarmas/configuracion (lazy), /alarmas/historial (lazy), /alarmas/destinatarios (lazy)
+- **feat:** Footer tab "Proyectos" renamed to "Sinopticos" pointing to /sinopticos
+- **chore:** Dependencies: @angular/cdk, expr-eval, @types/expr-eval
+
 ### scada-igestion-api
 - **feat:** Soporte para sensores de nivel (adc_3) y lluvia (adc_4) en pipeline de ingesta
 - **feat:** Campos opcionales `nivel_m` y `lluvia_mm` en `TelemetryProcessed`

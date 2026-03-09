@@ -25,6 +25,7 @@
   "private": true,
   "packageManager": "npm@10.8.2",
   "dependencies": {
+    "@angular/cdk": "^21.2.1",
     "@angular/common": "^21.0.0",
     "@angular/compiler": "^21.0.0",
     "@angular/core": "^21.0.0",
@@ -38,6 +39,7 @@
     "@ng-icons/core": "^33.0.0",
     "@ng-icons/heroicons": "^33.0.0",
     "echarts": "^6.0.0",
+    "expr-eval": "^2.0.2",
     "express": "^5.1.0",
     "heroicons": "^2.2.0",
     "leaflet": "^1.9.4",
@@ -51,6 +53,7 @@
     "@angular/build": "^21.0.1",
     "@angular/cli": "^21.0.1",
     "@angular/compiler-cli": "^21.0.0",
+    "@types/expr-eval": "^1.0.2",
     "@types/express": "^5.0.1",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^20.17.19",

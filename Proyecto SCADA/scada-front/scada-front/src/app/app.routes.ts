@@ -13,6 +13,8 @@ import { SitioForm } from './pages/sitios/sitio-form/sitio-form';
 import { TelemetriaDashboard } from './pages/telemetria/telemetria-dashboard/telemetria-dashboard';
 import { TelemetriaAvanzada } from './pages/telemetria/telemetria-avanzada/telemetria-avanzada';
 import { Overview } from './pages/gerencia/overview/overview';
+import { SinopticosHome } from './pages/sinopticos/sinopticos-home/sinopticos-home';
+import { ProjectDetail } from './pages/sinopticos/project-detail/project-detail';
 import { authGuard } from './core/guards/auth.guard';
 import { guestGuard } from './core/guards/guest.guard';
 import { roleGuard } from './core/guards/role.guard';
@@ -161,6 +163,75 @@ export const routes: Routes = [
     component: SitioForm,
     canActivate: [authGuard, totpSetupGuard],
     data: { title: 'Editar Sitio' },
+  },
+
+  // ===== SINOPTICOS =====
+  {
+    path: 'sinopticos',
+    component: SinopticosHome,
+    canActivate: [authGuard, totpSetupGuard],
+    data: { title: 'Sinopticos' },
+  },
+  {
+    path: 'sinopticos/proyecto/:id',
+    component: ProjectDetail,
+    canActivate: [authGuard, totpSetupGuard],
+    data: { title: 'Proyecto' },
+  },
+  {
+    path: 'sinopticos/editor/:id',
+    canActivate: [authGuard, totpSetupGuard],
+    loadComponent: () =>
+      import('./pages/sinopticos/sinoptico-editor/sinoptico-editor').then((m) => m.SinopticoEditor),
+    data: { title: 'Editor de Sinoptico' },
+  },
+  {
+    path: 'sinopticos/viewer/:id',
+    canActivate: [authGuard, totpSetupGuard],
+    loadComponent: () =>
+      import('./pages/sinopticos/sinoptico-viewer/sinoptico-viewer').then((m) => m.SinopticoViewer),
+    data: { title: 'Visor de Sinoptico' },
+  },
+
+  // ===== VARIABLES =====
+  {
+    path: 'variables',
+    canActivate: [authGuard, totpSetupGuard],
+    loadComponent: () =>
+      import('./pages/variables/variable-explorer/variable-explorer').then((m) => m.VariableExplorer),
+    data: { title: 'Explorador de Variables' },
+  },
+  {
+    path: 'variables/view/:id',
+    canActivate: [authGuard, totpSetupGuard],
+    loadComponent: () =>
+      import('./pages/variables/variable-view-editor/variable-view-editor').then(
+        (m) => m.VariableViewEditor,
+      ),
+    data: { title: 'Editor de Vista' },
+  },
+
+  // ===== ALARMAS CONFIG =====
+  {
+    path: 'alarmas/configuracion',
+    canActivate: [authGuard, totpSetupGuard],
+    loadComponent: () =>
+      import('./pages/alarmas/alarm-config/alarm-config').then((m) => m.AlarmConfig),
+    data: { title: 'Configuracion de Alarmas' },
+  },
+  {
+    path: 'alarmas/historial',
+    canActivate: [authGuard, totpSetupGuard],
+    loadComponent: () =>
+      import('./pages/alarmas/alarm-history/alarm-history').then((m) => m.AlarmHistory),
+    data: { title: 'Historial de Alarmas' },
+  },
+  {
+    path: 'alarmas/destinatarios',
+    canActivate: [authGuard, totpSetupGuard],
+    loadComponent: () =>
+      import('./pages/alarmas/recipients/recipients').then((m) => m.Recipients),
+    data: { title: 'Destinatarios de Alarmas' },
   },
 
   { path: '**', redirectTo: 'login' },

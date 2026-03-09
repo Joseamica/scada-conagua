@@ -1,0 +1,235 @@
+<app-header-bar />
+
+<div class="editor-page">
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Cargando vista...</p>
+    </div>
+  } @else {
+    <!-- Header -->
+    <div class="page-header">
+      <div class="header-left">
+        <button class="btn-back" (click)="goBack()">
+          <ng-icon name="heroArrowLeft" size="18" />
+          Vistas
+        </button>
+        <h1>{{ view()?.name }}</h1>
+      </div>
+      <div class="header-right">
+        <button
+          class="btn-execute"
+          (click)="executeView()"
+          [disabled]="executing() || columns().length === 0"
+        >
+          <ng-icon name="heroPlay" size="16" />
+          {{ executing() ? 'Ejecutando...' : 'Ejecutar' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="editor-layout">
+      <!-- Left: Columns + Formulas -->
+      <div class="definition-panel">
+        <!-- Columns Section -->
+        <section class="panel-section">
+          <div class="section-header">
+            <h3>
+              <ng-icon name="heroTableCells" size="16" />
+              Columnas ({{ columns().length }})
+            </h3>
+          </div>
+
+          <div class="items-list">
+            @for (col of columns(); track col.id) {
+              <div class="item-row">
+                <div class="item-main">
+                  <input
+                    class="alias-input"
+                    [value]="col.alias"
+                    (change)="updateColumnAlias(col, $event)"
+                    title="Alias"
+                  />
+                  <span class="item-tag">{{ col.dev_eui | slice:0:8 }}... / {{ col.measurement }}</span>
+                </div>
+                <div class="item-controls">
+                  <select
+                    class="agg-select"
+                    [value]="col.aggregation"
+                    (change)="updateColumnAggregation(col, $event)"
+                  >
+                    <option value="LAST_VALUE">Ultimo</option>
+                    <option value="AVG">Promedio</option>
+                    <option value="MIN">Minimo</option>
+                    <option value="MAX">Maximo</option>
+                    <option value="SUM">Suma</option>
+                    <option value="BAL">Balance</option>
+                  </select>
+                  <button class="btn-icon-sm btn-danger-sm" (click)="deleteColumn(col)" title="Eliminar">
+                    <ng-icon name="heroTrash" size="14" />
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+
+          @if (columns().length === 0) {
+            <div class="empty-hint">
+              <p>Agrega columnas usando el selector de variables</p>
+            </div>
+          }
+
+          <div class="add-item-row">
+            <tag-browser
+              placeholder="+ Agregar columna..."
+              (tagSelect)="onColumnTagSelected($event)"
+            />
+          </div>
+        </section>
+
+        <!-- Formulas Section -->
+        <section class="panel-section">
+          <div class="section-header">
+            <h3>
+              <ng-icon name="heroCalculator" size="16" />
+              Formulas ({{ formulas().length }})
+            </h3>
+          </div>
+
+          <div class="items-list">
+            @for (f of formulas(); track f.id) {
+              <div class="item-row formula-row">
+                <div class="item-main">
+                  <input
+                    class="alias-input"
+                    [value]="f.alias"
+                    (change)="updateFormulaAlias(f, $event)"
+                    title="Alias"
+                  />
+                  <code class="formula-expr">{{ f.expression }}</code>
+                </div>
+                <div class="item-controls">
+                  <button class="btn-icon-sm btn-danger-sm" (click)="deleteFormula(f)" title="Eliminar">
+                    <ng-icon name="heroTrash" size="14" />
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Add formula form -->
+          <div class="formula-form">
+            <div class="formula-inputs">
+              <input
+                class="formula-alias-input"
+                [(ngModel)]="newFormulaAlias"
+                placeholder="Alias (ej: gasto_total)"
+              />
+              <input
+                class="formula-expr-input"
+                [(ngModel)]="newFormulaExpr"
+                placeholder="Expresion (ej: i_1 + i_2 * 0.5)"
+              />
+            </div>
+            <div class="formula-actions">
+              <button
+                class="btn-validate"
+                (click)="validateFormula()"
+                [disabled]="!newFormulaExpr.trim()"
+              >
+                Validar
+              </button>
+              <button
+                class="btn-add-formula"
+                (click)="addFormula()"
+                [disabled]="!newFormulaAlias.trim() || !newFormulaExpr.trim() || !formulaValid()"
+              >
+                <ng-icon name="heroPlus" size="14" />
+                Agregar
+              </button>
+            </div>
+            @if (formulaError()) {
+              <div class="formula-error">{{ formulaError() }}</div>
+            }
+            @if (formulaValid()) {
+              <div class="formula-success">Formula valida. Variables: {{ formulaVars().join(', ') }}</div>
+            }
+            <div class="formula-help">
+              <span>Variables: <code>i_N</code> donde N = indice de columna (1, 2, 3...)</span>
+              <span>Funciones: IF, ABS, ROUND, MIN, MAX, SQRT, POW, LOG</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right: Results -->
+      <div class="results-panel">
+        <div class="section-header">
+          <h3>
+            <ng-icon name="heroTableCells" size="16" />
+            Resultados
+          </h3>
+          @if (lastExecuted()) {
+            <span class="last-exec">{{ lastExecuted() | date:'HH:mm:ss' }}</span>
+          }
+        </div>
+
+        @if (!executionResult() && !executing()) {
+          <div class="results-empty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+              <path d="M3 3v18h18" />
+              <path d="m7 14 4-4 4 4 5-5" />
+            </svg>
+            <p>Agrega columnas y ejecuta la vista</p>
+          </div>
+        }
+
+        @if (executing()) {
+          <div class="results-loading">
+            <div class="spinner"></div>
+            <p>Consultando datos...</p>
+          </div>
+        }
+
+        @if (executionResult() && !executing()) {
+          <div class="results-table-wrapper">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Variable</th>
+                  <th>Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (col of executionResult()!.columns; track col.id) {
+                  <tr>
+                    <td>
+                      <span class="var-alias">{{ col.alias }}</span>
+                      <span class="var-tag">{{ col.measurement }}</span>
+                    </td>
+                    <td class="var-value">
+                      {{ getResultValue(col.alias) }}
+                    </td>
+                  </tr>
+                }
+                @for (f of executionResult()!.formulas; track f.id) {
+                  <tr class="formula-result-row">
+                    <td>
+                      <span class="var-alias formula-alias">{{ f.alias }}</span>
+                      <code class="var-tag">{{ f.expression }}</code>
+                    </td>
+                    <td class="var-value formula-value">
+                      {{ getResultValue(f.alias) }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>
+
+<app-footer-tabs />

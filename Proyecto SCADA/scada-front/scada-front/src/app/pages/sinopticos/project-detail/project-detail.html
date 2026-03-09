@@ -1,0 +1,105 @@
+<app-header-bar />
+
+<div class="project-detail-page">
+  <div class="page-header">
+    <button class="btn-back" (click)="goBack()">
+      <ng-icon name="heroArrowLeft" size="18" />
+      Proyectos
+    </button>
+    <h1>{{ projectName() || 'Proyecto' }}</h1>
+    <button class="btn-primary" (click)="openCreateDialog()">
+      <ng-icon name="heroPlus" size="18" />
+      Nuevo Sinoptico
+    </button>
+  </div>
+
+  <div class="sinopticos-grid" *ngIf="!loading(); else loadingTpl">
+    <div
+      *ngFor="let s of sinopticos()"
+      class="sinoptico-card"
+      (click)="openViewer(s, $event)"
+    >
+      <div class="card-thumbnail" *ngIf="s.thumbnail; else noThumb">
+        <img [src]="s.thumbnail" [alt]="s.name" />
+      </div>
+      <ng-template #noThumb>
+        <div class="card-thumbnail placeholder" *ngIf="!s.widget_layout?.length; else miniCanvas">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+            <rect x="2" y="2" width="20" height="20" rx="2" stroke-dasharray="3 2" />
+            <line x1="12" y1="8" x2="12" y2="16" />
+            <line x1="8" y1="12" x2="16" y2="12" />
+          </svg>
+          <span>Canvas vacio</span>
+        </div>
+        <ng-template #miniCanvas>
+          <div class="card-thumbnail mini-canvas">
+            <div class="mini-canvas-inner">
+              <div
+                *ngFor="let w of s.widget_layout"
+                class="mini-widget"
+                [class]="'mini-widget mini-widget--' + w.type"
+                [style.left.%]="(w.x / s.canvas_width) * 100"
+                [style.top.%]="(w.y / s.canvas_height) * 100"
+                [style.width.%]="(w.width / s.canvas_width) * 100"
+                [style.height.%]="(w.height / s.canvas_height) * 100"
+              ></div>
+            </div>
+            <span class="mini-canvas-count">{{ s.widget_count }} widgets</span>
+          </div>
+        </ng-template>
+      </ng-template>
+
+      <div class="card-info">
+        <h3>{{ s.name }}</h3>
+        <p class="card-meta">
+          v{{ s.version }} | {{ s.owner_name }}
+        </p>
+      </div>
+
+      <div class="card-actions">
+        <button class="btn-icon" (click)="openEditor(s); $event.stopPropagation()" title="Editar">
+          <ng-icon name="heroPencilSquare" size="16" />
+        </button>
+        <button class="btn-icon" (click)="duplicate(s, $event)" title="Duplicar">
+          <ng-icon name="heroDocumentDuplicate" size="16" />
+        </button>
+        <button class="btn-icon btn-danger" (click)="deleteSinoptico(s, $event)" title="Eliminar">
+          <ng-icon name="heroTrash" size="16" />
+        </button>
+      </div>
+    </div>
+
+    <div class="empty-state" *ngIf="sinopticos().length === 0">
+      <p>No hay sinopticos en este proyecto</p>
+      <button class="btn-primary" (click)="openCreateDialog()">Crear sinoptico</button>
+    </div>
+  </div>
+
+  <ng-template #loadingTpl>
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Cargando sinopticos...</p>
+    </div>
+  </ng-template>
+</div>
+
+<!-- Create Dialog -->
+<div class="dialog-overlay" *ngIf="showCreateDialog()" (click)="showCreateDialog.set(false)">
+  <div class="dialog" (click)="$event.stopPropagation()">
+    <h2>Nuevo Sinoptico</h2>
+    <div class="form-group">
+      <label>Nombre *</label>
+      <input type="text" [(ngModel)]="newName" placeholder="Nombre del sinoptico" autofocus />
+    </div>
+    <div class="form-group">
+      <label>Descripcion</label>
+      <textarea [(ngModel)]="newDescription" rows="3" placeholder="Descripcion opcional"></textarea>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn-secondary" (click)="showCreateDialog.set(false)">Cancelar</button>
+      <button class="btn-primary" (click)="createSinoptico()" [disabled]="!newName.trim()">Crear</button>
+    </div>
+  </div>
+</div>
+
+<app-footer-tabs />
