@@ -117,20 +117,78 @@
             }
           </div>
 
-          <!-- Add formula form -->
+          <!-- Add formula form — ICH-style split layout -->
           <div class="formula-form">
-            <div class="formula-inputs">
+            <div class="formula-alias-row">
+              <label class="formula-label">Nombre de la formula</label>
               <input
                 class="formula-alias-input"
                 [(ngModel)]="newFormulaAlias"
                 placeholder="Alias (ej: gasto_total)"
               />
-              <input
-                class="formula-expr-input"
-                [(ngModel)]="newFormulaExpr"
-                placeholder="Expresion (ej: i_1 + i_2 * 0.5)"
-              />
             </div>
+
+            <div class="formula-split">
+              <!-- Left: Incognitas table -->
+              <div class="incognitas-panel">
+                <div class="incognitas-header">
+                  <span>Incognitas</span>
+                </div>
+                <div class="incognitas-table">
+                  <div class="incognitas-row incognitas-head">
+                    <span class="inc-name-col">Nombre de la incognita</span>
+                    <span class="inc-origin-col">Columna origen</span>
+                  </div>
+                  @for (col of columns(); track col.id; let i = $index) {
+                    <div
+                      class="incognitas-row"
+                      (click)="insertIncognita(i)"
+                      title="Click para insertar en formula"
+                    >
+                      <span class="inc-name-col">
+                        <input
+                          class="inc-name-input"
+                          [value]="getIncognitaName(i)"
+                          (change)="renameIncognita(i, $event)"
+                          (click)="$event.stopPropagation()"
+                        />
+                      </span>
+                      <span class="inc-origin-col inc-origin-text">{{ col.alias }}</span>
+                    </div>
+                  }
+                  @if (columns().length === 0) {
+                    <div class="incognitas-empty">Agrega columnas primero</div>
+                  }
+                </div>
+              </div>
+
+              <!-- Right: Formula editor -->
+              <div class="formula-editor-panel">
+                <div class="formula-editor-header">
+                  <span>Escribir formula</span>
+                  <div class="operators-bar">
+                    <span class="operators-label">OPERADORES</span>
+                    @for (op of operatorButtons; track op.label) {
+                      <button class="op-btn" (click)="insertOperator(op.value)" [title]="op.title">
+                        {{ op.label }}
+                      </button>
+                    }
+                  </div>
+                </div>
+                <textarea
+                  class="formula-textarea"
+                  [(ngModel)]="newFormulaExpr"
+                  placeholder="ej: if(i_Pozo_Flujo > 150; 0; i_Pozo_Flujo)"
+                  rows="5"
+                ></textarea>
+                <div class="formula-fn-bar">
+                  @for (fn of functionButtons; track fn) {
+                    <button class="fn-btn" (click)="insertOperator(fn + '(')">{{ fn }}</button>
+                  }
+                </div>
+              </div>
+            </div>
+
             <div class="formula-actions">
               <button
                 class="btn-validate"
@@ -154,10 +212,6 @@
             @if (formulaValid()) {
               <div class="formula-success">Formula valida. Variables: {{ formulaVars().join(', ') }}</div>
             }
-            <div class="formula-help">
-              <span>Variables: <code>i_N</code> donde N = indice de columna (1, 2, 3...)</span>
-              <span>Funciones: IF, ABS, ROUND, MIN, MAX, SQRT, POW, LOG</span>
-            </div>
           </div>
         </section>
       </div>

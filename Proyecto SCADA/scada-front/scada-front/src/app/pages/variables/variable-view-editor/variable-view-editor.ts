@@ -69,6 +69,22 @@ export class VariableViewEditor implements OnInit {
   formulaValid = signal(false);
   formulaError = signal<string | null>(null);
   formulaVars = signal<string[]>([]);
+  private incognitaNames = new Map<number, string>();
+
+  operatorButtons = [
+    { label: '+', value: ' + ', title: 'Suma' },
+    { label: '-', value: ' - ', title: 'Resta' },
+    { label: '*', value: ' * ', title: 'Multiplicacion' },
+    { label: '/', value: ' / ', title: 'Division' },
+    { label: '>', value: ' > ', title: 'Mayor que' },
+    { label: '<', value: ' < ', title: 'Menor que' },
+    { label: '=', value: ' == ', title: 'Igual a' },
+    { label: ';', value: '; ', title: 'Separador' },
+    { label: '(', value: '(', title: 'Abrir parentesis' },
+    { label: ')', value: ')', title: 'Cerrar parentesis' },
+  ];
+
+  functionButtons = ['IF', 'ABS', 'ROUND', 'MIN', 'MAX', 'SQRT', 'POW', 'ISNULL'];
 
   ngOnInit(): void {
     this.viewId = Number(this.route.snapshot.paramMap.get('id'));
@@ -159,10 +175,27 @@ export class VariableViewEditor implements OnInit {
 
   addFormula(): void {
     if (!this.newFormulaAlias.trim() || !this.newFormulaExpr.trim()) return;
+
+    // Translate custom incognita names → i_N for backend
+    let expr = this.newFormulaExpr.trim();
+    const cols = this.columns();
+    const replacements: [string, string][] = [];
+    for (let j = 0; j < cols.length; j++) {
+      const customName = this.getIncognitaName(j);
+      const canonical = `i_${j + 1}`;
+      if (customName !== canonical) {
+        replacements.push([customName, canonical]);
+      }
+    }
+    replacements.sort((a, b) => b[0].length - a[0].length);
+    for (const [from, to] of replacements) {
+      expr = expr.split(from).join(to);
+    }
+
     this.variableService
       .addFormula(this.viewId, {
         alias: this.newFormulaAlias.trim(),
-        expression: this.newFormulaExpr.trim(),
+        expression: expr,
       })
       .subscribe({
         next: (f) => {
@@ -204,6 +237,33 @@ export class VariableViewEditor implements OnInit {
       },
       error: () => this.executing.set(false),
     });
+  }
+
+  // ---- Incognitas + Operators ----
+
+  getIncognitaName(index: number): string {
+    const custom = this.incognitaNames.get(index);
+    if (custom) return custom;
+    const col = this.columns()[index];
+    if (!col) return `i_${index + 1}`;
+    const sitePart = col.alias.replace(/[^a-zA-Z0-9_]/g, '_').replace(/_+/g, '_');
+    return `i_${sitePart}`;
+  }
+
+  renameIncognita(index: number, event: Event): void {
+    const value = (event.target as HTMLInputElement).value.trim();
+    if (!value) return;
+    const name = value.startsWith('i_') ? value : `i_${value}`;
+    this.incognitaNames.set(index, name);
+  }
+
+  insertIncognita(index: number): void {
+    const name = this.getIncognitaName(index);
+    this.newFormulaExpr += name;
+  }
+
+  insertOperator(value: string): void {
+    this.newFormulaExpr += value;
   }
 
   getResultValue(alias: string): string {

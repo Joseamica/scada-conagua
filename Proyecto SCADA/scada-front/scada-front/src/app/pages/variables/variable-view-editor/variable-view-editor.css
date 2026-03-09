@@ -266,14 +266,22 @@
   border-top: 1px solid var(--border-default);
 }
 
-.formula-inputs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
+.formula-alias-row {
+  margin-bottom: 10px;
 }
 
-.formula-alias-input,
-.formula-expr-input {
+.formula-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.formula-alias-input {
+  width: 260px;
   padding: 8px 10px;
   border: 1.5px solid var(--border-default);
   border-radius: 8px;
@@ -285,20 +293,238 @@
   box-sizing: border-box;
 }
 
-.formula-alias-input {
-  width: 140px;
-  flex-shrink: 0;
-}
-
-.formula-expr-input {
-  flex: 1;
-  font-family: 'SF Mono', 'Consolas', monospace;
-}
-
-.formula-alias-input:focus,
-.formula-expr-input:focus {
+.formula-alias-input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(109, 0, 43, 0.1);
+}
+
+/* ICH-style split layout */
+.formula-split {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  min-height: 180px;
+}
+
+/* Left: Incognitas */
+.incognitas-panel {
+  border-right: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.incognitas-header {
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: var(--bg-card-hover);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.incognitas-table {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 200px;
+}
+
+.incognitas-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  font-size: 11px;
+  border-bottom: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.incognitas-row:last-child {
+  border-bottom: none;
+}
+
+.incognitas-row:not(.incognitas-head):hover {
+  background: var(--accent-light, rgba(59, 130, 246, 0.06));
+}
+
+.incognitas-head {
+  cursor: default;
+  background: var(--bg-card-hover);
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.inc-name-col,
+.inc-origin-col {
+  padding: 6px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inc-name-col {
+  border-right: 1px solid var(--border-default);
+}
+
+.inc-name-input {
+  width: 100%;
+  background: none;
+  border: none;
+  font-size: 11px;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  color: var(--accent);
+  font-weight: 600;
+  padding: 0;
+  outline: none;
+  cursor: text;
+}
+
+.inc-name-input:focus {
+  background: var(--bg-card);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--accent);
+  padding: 0 2px;
+}
+
+.inc-origin-text {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.incognitas-empty {
+  padding: 16px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Right: Formula editor */
+.formula-editor-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.formula-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: var(--bg-card-hover);
+  border-bottom: 1px solid var(--border-default);
+  gap: 8px;
+}
+
+.formula-editor-header > span {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.operators-bar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.operators-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  margin-right: 2px;
+}
+
+.op-btn {
+  min-width: 24px;
+  height: 22px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.1s;
+  padding: 0 4px;
+}
+
+.op-btn:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.formula-textarea {
+  flex: 1;
+  min-height: 80px;
+  padding: 10px;
+  font-size: 13px;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: none;
+  outline: none;
+  resize: none;
+  line-height: 1.5;
+}
+
+.formula-textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.formula-fn-bar {
+  display: flex;
+  gap: 3px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border-default);
+  background: var(--bg-card-hover);
+  flex-wrap: wrap;
+}
+
+.fn-btn {
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.fn-btn:hover {
+  background: var(--accent-light, rgba(59, 130, 246, 0.1));
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+@media (max-width: 600px) {
+  .formula-split {
+    grid-template-columns: 1fr;
+  }
+  .incognitas-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--border-default);
+    max-height: 120px;
+  }
 }
 
 .formula-actions {
@@ -370,21 +596,7 @@
   margin-bottom: 6px;
 }
 
-.formula-help {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.formula-help code {
-  background: rgba(109, 0, 43, 0.06);
-  padding: 1px 4px;
-  border-radius: 3px;
-  font-family: 'SF Mono', 'Consolas', monospace;
-  font-size: 10px;
-}
+/* formula-help removed — replaced by ICH-style incognitas + operators */
 
 /* ===== RESULTS ===== */
 .results-empty,

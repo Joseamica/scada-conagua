@@ -369,38 +369,77 @@ interface WizardColumn {
             </div>
           }
 
-          <!-- Step 2: Formula (optional) -->
+          <!-- Step 2: Formula (optional) — ICH-style split layout -->
           @if (wizardStep() === 2) {
-            <div class="wizard-body">
-              <p class="wizard-hint">
-                Opcionalmente agrega una formula que combine las columnas.
-                Usa <code>i_1</code>, <code>i_2</code>, etc. para referenciar columnas por su numero de orden.
-              </p>
-
-              @if (wizardColumns().length > 0) {
-                <div class="wizard-col-ref">
-                  @for (col of wizardColumns(); track col.devEUI + col.measurement; let i = $index) {
-                    <span class="ref-chip"><code>i_{{ i + 1 }}</code> = {{ col.alias }}</span>
-                  }
-                </div>
-              }
-
-              <label class="wizard-label">Alias de la formula</label>
+            <div class="wizard-body wizard-body-formula">
+              <label class="wizard-label">Nombre de la formula</label>
               <input
                 class="wizard-input"
                 type="text"
                 placeholder="ej: gasto_total"
                 [(ngModel)]="wizardFormulaAlias"
               />
-              <label class="wizard-label">Expresion</label>
-              <input
-                class="wizard-input wizard-input-mono"
-                type="text"
-                placeholder="ej: i_1 + i_2 * 0.5"
-                [(ngModel)]="wizardFormulaExpr"
-              />
-              <div class="wizard-formula-help">
-                Funciones: IF(cond, a, b), ABS, ROUND, MIN, MAX, SQRT, POW
+
+              <div class="formula-split">
+                <!-- Left: Incognitas table -->
+                <div class="incognitas-panel">
+                  <div class="incognitas-header">
+                    <span>Incognitas</span>
+                  </div>
+                  <div class="incognitas-table">
+                    <div class="incognitas-row incognitas-head">
+                      <span class="inc-name-col">Nombre</span>
+                      <span class="inc-origin-col">Columna origen</span>
+                    </div>
+                    @for (col of wizardColumns(); track col.devEUI + col.measurement; let i = $index) {
+                      <div
+                        class="incognitas-row"
+                        (click)="insertIncognita(i)"
+                        title="Click para insertar en formula"
+                      >
+                        <span class="inc-name-col">
+                          <input
+                            class="inc-name-input"
+                            [value]="getIncognitaName(i)"
+                            (change)="renameIncognita(i, $event)"
+                            (click)="$event.stopPropagation()"
+                            title="Editar nombre de incognita"
+                          />
+                        </span>
+                        <span class="inc-origin-col inc-origin-text">{{ col.alias }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Right: Formula editor -->
+                <div class="formula-panel">
+                  <div class="formula-panel-header">
+                    <span>Escribir formula</span>
+                    <div class="operators-bar">
+                      <span class="operators-label">OPERADORES</span>
+                      @for (op of operatorButtons; track op.label) {
+                        <button
+                          class="op-btn"
+                          (click)="insertOperator(op.value)"
+                          [title]="op.title"
+                        >{{ op.label }}</button>
+                      }
+                    </div>
+                  </div>
+                  <textarea
+                    class="formula-textarea"
+                    [(ngModel)]="wizardFormulaExpr"
+                    placeholder="ej: if(i_Flujo > 150; 0; i_Flujo)"
+                    rows="5"
+                    #formulaTextarea
+                  ></textarea>
+                  <div class="formula-fn-bar">
+                    @for (fn of functionButtons; track fn) {
+                      <button class="fn-btn" (click)="insertOperator(fn + '(')">{{ fn }}</button>
+                    }
+                  </div>
+                </div>
               </div>
 
               <div class="wizard-skip-hint">
@@ -776,7 +815,7 @@ interface WizardColumn {
 
       .wizard-dialog {
         width: 100%;
-        max-width: 520px;
+        max-width: 640px;
         max-height: 85vh;
         background: var(--bg-card);
         border: 1px solid var(--border-strong);
@@ -1069,40 +1108,236 @@ interface WizardColumn {
         color: #059669;
       }
 
-      /* Formula reference chips */
-      .wizard-col-ref {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-bottom: 12px;
+      /* === ICH-style Formula Split Layout === */
+      .wizard-body-formula {
+        padding: 12px 16px;
       }
 
-      .ref-chip {
+      .formula-split {
+        display: grid;
+        grid-template-columns: 1fr 1.5fr;
+        gap: 0;
+        border: 1px solid var(--border-default);
+        border-radius: 8px;
+        overflow: hidden;
+        margin-top: 10px;
+        min-height: 200px;
+      }
+
+      /* Left: Incognitas */
+      .incognitas-panel {
+        border-right: 1px solid var(--border-default);
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+
+      .incognitas-header {
+        padding: 8px 10px;
         font-size: 11px;
-        padding: 3px 8px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-muted);
         background: var(--bg-card-hover);
-        border-radius: 4px;
+        border-bottom: 1px solid var(--border-default);
+      }
+
+      .incognitas-table {
+        flex: 1;
+        overflow-y: auto;
+      }
+
+      .incognitas-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        font-size: 11px;
+        border-bottom: 1px solid var(--border-default);
+        cursor: pointer;
+        transition: background 0.1s;
+      }
+
+      .incognitas-row:last-child {
+        border-bottom: none;
+      }
+
+      .incognitas-row:not(.incognitas-head):hover {
+        background: var(--accent-light, rgba(59, 130, 246, 0.06));
+      }
+
+      .incognitas-head {
+        cursor: default;
+        background: var(--bg-card-hover);
+        font-weight: 600;
+        color: var(--text-muted);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+
+      .inc-name-col, .inc-origin-col {
+        padding: 6px 8px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .inc-name-col {
+        border-right: 1px solid var(--border-default);
+      }
+
+      .inc-name-input {
+        width: 100%;
+        background: none;
+        border: none;
+        font-size: 11px;
+        font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+        color: var(--accent);
+        font-weight: 600;
+        padding: 0;
+        outline: none;
+        cursor: text;
+      }
+
+      .inc-name-input:focus {
+        background: var(--bg-card);
+        border-radius: 3px;
+        box-shadow: 0 0 0 1px var(--accent);
+        padding: 0 2px;
+      }
+
+      .inc-origin-text {
+        font-size: 10px;
         color: var(--text-secondary);
       }
 
-      .ref-chip code {
-        font-weight: 700;
-        color: var(--accent);
-        font-size: 10px;
+      /* Right: Formula editor */
+      .formula-panel {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
       }
 
-      .wizard-formula-help {
-        font-size: 10px;
+      .formula-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 10px;
+        background: var(--bg-card-hover);
+        border-bottom: 1px solid var(--border-default);
+        gap: 8px;
+      }
+
+      .formula-panel-header > span {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
         color: var(--text-muted);
-        margin-top: 8px;
+        white-space: nowrap;
+      }
+
+      .operators-bar {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .operators-label {
+        font-size: 9px;
+        font-weight: 700;
+        color: var(--text-muted);
+        letter-spacing: 0.05em;
+        margin-right: 2px;
+      }
+
+      .op-btn {
+        min-width: 24px;
+        height: 22px;
+        font-size: 11px;
+        font-weight: 600;
         font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+        background: var(--bg-card);
+        border: 1px solid var(--border-default);
+        border-radius: 4px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.1s;
+        padding: 0 4px;
+      }
+
+      .op-btn:hover {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+
+      .formula-textarea {
+        flex: 1;
+        min-height: 100px;
+        padding: 10px;
+        font-size: 13px;
+        font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+        color: var(--text-primary);
+        background: var(--bg-card);
+        border: none;
+        outline: none;
+        resize: none;
+        line-height: 1.5;
+      }
+
+      .formula-textarea::placeholder {
+        color: var(--text-muted);
+        opacity: 0.5;
+      }
+
+      .formula-fn-bar {
+        display: flex;
+        gap: 3px;
+        padding: 6px 8px;
+        border-top: 1px solid var(--border-default);
+        background: var(--bg-card-hover);
+        flex-wrap: wrap;
+      }
+
+      .fn-btn {
+        padding: 2px 6px;
+        font-size: 10px;
+        font-weight: 600;
+        font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+        background: var(--bg-card);
+        border: 1px solid var(--border-default);
+        border-radius: 3px;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.1s;
+      }
+
+      .fn-btn:hover {
+        background: var(--accent-light, rgba(59, 130, 246, 0.1));
+        color: var(--accent);
+        border-color: var(--accent);
       }
 
       .wizard-skip-hint {
         font-size: 11px;
         color: var(--text-muted);
-        margin-top: 16px;
+        margin-top: 12px;
         font-style: italic;
+      }
+
+      @media (max-width: 480px) {
+        .formula-split {
+          grid-template-columns: 1fr;
+        }
+        .incognitas-panel {
+          border-right: none;
+          border-bottom: 1px solid var(--border-default);
+          max-height: 120px;
+        }
       }
 
       /* Footer */
@@ -1187,6 +1422,22 @@ export class TagBrowser implements OnInit {
   wizardSearchTerm = '';
   private wizardTree = signal<MunicipalityNode[]>([]);
   wizardStepLabels = ['Nombre', 'Columnas', 'Formula'];
+  private incognitaNames = signal<Map<number, string>>(new Map());
+
+  operatorButtons = [
+    { label: '+', value: ' + ', title: 'Suma' },
+    { label: '-', value: ' - ', title: 'Resta' },
+    { label: '*', value: ' * ', title: 'Multiplicacion' },
+    { label: '/', value: ' / ', title: 'Division' },
+    { label: '>', value: ' > ', title: 'Mayor que' },
+    { label: '<', value: ' < ', title: 'Menor que' },
+    { label: '=', value: ' == ', title: 'Igual a' },
+    { label: ';', value: '; ', title: 'Separador' },
+    { label: '(', value: '(', title: 'Abrir parentesis' },
+    { label: ')', value: ')', title: 'Cerrar parentesis' },
+  ];
+
+  functionButtons = ['IF', 'ABS', 'ROUND', 'MIN', 'MAX', 'SQRT', 'POW', 'ISNULL'];
 
   currentLabel = computed(() => {
     const dev = this.currentDevEUI();
@@ -1361,6 +1612,7 @@ export class TagBrowser implements OnInit {
     this.wizardFormulaAlias = '';
     this.wizardFormulaExpr = '';
     this.wizardSearchTerm = '';
+    this.incognitaNames.set(new Map());
     this.isOpen.set(false);
     // Clone the tag tree for the wizard's own expand state
     const cloned = this.tree().map((m) => ({
@@ -1426,6 +1678,36 @@ export class TagBrowser implements OnInit {
     // triggers change detection for wizardFilteredTree()
   }
 
+  getIncognitaName(index: number): string {
+    const custom = this.incognitaNames().get(index);
+    if (custom) return custom;
+    // Generate default name from site/measurement
+    const col = this.wizardColumns()[index];
+    if (!col) return `i_${index + 1}`;
+    const sitePart = col.siteName.replace(/[^a-zA-Z0-9_]/g, '_').replace(/_+/g, '_');
+    const measPart = col.measurement.replace(/[^a-zA-Z0-9_]/g, '_');
+    return `i_${sitePart}_${measPart}`;
+  }
+
+  renameIncognita(index: number, event: Event): void {
+    const value = (event.target as HTMLInputElement).value.trim();
+    if (!value) return;
+    // Ensure starts with i_ prefix
+    const name = value.startsWith('i_') ? value : `i_${value}`;
+    const map = new Map(this.incognitaNames());
+    map.set(index, name);
+    this.incognitaNames.set(map);
+  }
+
+  insertIncognita(index: number): void {
+    const name = this.getIncognitaName(index);
+    this.wizardFormulaExpr += name;
+  }
+
+  insertOperator(value: string): void {
+    this.wizardFormulaExpr += value;
+  }
+
   wizardAddColumn(site: SiteNode, measurement: string, municipality: string): void {
     if (this.isColumnAdded(site.devEUI, measurement)) return;
     const alias = `${site.siteName} / ${measurement}`;
@@ -1464,12 +1746,27 @@ export class TagBrowser implements OnInit {
 
           const addColumnsSequentially = (idx: number): void => {
             if (idx >= cols.length) {
-              // Step 3: Add formula if provided
+              // Step 3: Add formula if provided (translate custom incognita names → i_N)
               if (this.wizardFormulaAlias.trim() && this.wizardFormulaExpr.trim()) {
+                let expr = this.wizardFormulaExpr.trim();
+                // Replace custom names with i_N, longest names first to avoid partial matches
+                const replacements: [string, string][] = [];
+                for (let j = 0; j < cols.length; j++) {
+                  const customName = this.getIncognitaName(j);
+                  const canonical = `i_${j + 1}`;
+                  if (customName !== canonical) {
+                    replacements.push([customName, canonical]);
+                  }
+                }
+                replacements.sort((a, b) => b[0].length - a[0].length);
+                for (const [from, to] of replacements) {
+                  expr = expr.split(from).join(to);
+                }
+
                 this.variableService
                   .addFormula(view.id, {
                     alias: this.wizardFormulaAlias.trim(),
-                    expression: this.wizardFormulaExpr.trim(),
+                    expression: expr,
                   })
                   .subscribe({
                     next: () => this.finishWizard(view),
