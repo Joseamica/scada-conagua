@@ -1,4 +1,5 @@
-import { Component, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, effect, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import * as L from 'leaflet';
 import * as omnivore from 'leaflet-omnivore';
@@ -14,6 +15,7 @@ import { TelemetryService } from '../../core/services/telemetry';
 import { ThemeService } from '../../core/services/theme.service';
 import { getEChartsColors } from '../../core/utils/echarts-theme';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
+import { LoadingSpinnerComponent } from '../../shared/loading-spinner/loading-spinner';
 import { heroPresentationChartLine } from '@ng-icons/heroicons/outline';
 
 
@@ -87,7 +89,7 @@ const MUNICIPIOS_CON_POZO = new Set<number>(
   templateUrl: './modulo-gis.html',
   styleUrls: ['./modulo-gis.css'],
   standalone: true,
-  imports: [HeaderBarComponent, FooterTabsComponent,NgIconComponent],
+  imports: [HeaderBarComponent, FooterTabsComponent, NgIconComponent, LoadingSpinnerComponent],
   providers: [
     provideIcons({
       heroPresentationChartLine,
@@ -96,6 +98,7 @@ const MUNICIPIOS_CON_POZO = new Set<number>(
 })
 
 export class ModuloGis implements OnInit, OnDestroy {
+  mapLoading = signal(true);
   map!: L.Map;
   private popupChart: echarts.ECharts | null = null;
   private popupChartGeneration = 0;
@@ -129,11 +132,16 @@ export class ModuloGis implements OnInit, OnDestroy {
   private apiSitesByName = new Map<string, any>();
   private telemetryService = inject(TelemetryService);
   private themeService = inject(ThemeService);
+  private http = inject(HttpClient);
   private tileLayer?: L.TileLayer;
+  private geoserverWmsLayers = new Map<string, L.TileLayer.WMS>();
+  private baseLayers: Record<string, L.TileLayer> = {};
+  private activeBaseKey = '';
 
   private themeEffect = effect(() => {
     const theme = this.themeService.resolved();
-    if (this.tileLayer && this.map) {
+    // Only auto-switch if the user is on the default "Mapa" base layer
+    if (this.tileLayer && this.map && (this.activeBaseKey === 'mapa' || this.activeBaseKey === '')) {
       const url = theme === 'dark'
         ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
         : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
@@ -200,6 +208,26 @@ export class ModuloGis implements OnInit, OnDestroy {
         });
       },
       error: () => {}
+    });
+  }
+
+  private loadGeoServerLayers() {
+    this.http.get<{ wmsUrl: string; layers: { name: string }[] }>('/api/v1/gis/layers').subscribe({
+      next: ({ wmsUrl, layers }) => {
+        if (!layers?.length) return;
+        layers.forEach(layer => {
+          const wms = L.tileLayer.wms(wmsUrl, {
+            layers: `scada:${layer.name}`,
+            format: 'image/png',
+            transparent: true,
+            version: '1.1.1',
+          } as any);
+          this.geoserverWmsLayers.set(layer.name, wms);
+          const label = `<span class="layer-label"><span class="legend-dot" style="background:#10b981"></span> ${layer.name}</span>`;
+          this.layersControl.addOverlay(wms, label);
+        });
+      },
+      error: () => {} // GeoServer offline — silently skip
     });
   }
 
@@ -1091,10 +1119,34 @@ export class ModuloGis implements OnInit, OnDestroy {
     // 1) Mapa base
     this.map = L.map('map').setView([19.3, -99.6], 8);
 
-    const tileUrl = this.themeService.resolved() === 'dark'
+    // --- Base layers ---
+    const isDark = this.themeService.resolved() === 'dark';
+    const cartoUrl = isDark
       ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
       : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-    this.tileLayer = L.tileLayer(tileUrl, { subdomains: 'abcd', maxZoom: 19 }).addTo(this.map);
+
+    const cartoLayer = L.tileLayer(cartoUrl, { subdomains: 'abcd', maxZoom: 19 });
+    const satelliteLayer = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 19, attribution: 'Esri' }
+    );
+    const terrainLayer = L.tileLayer(
+      'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+      { maxZoom: 17, attribution: 'OpenTopoMap' }
+    );
+
+    this.tileLayer = cartoLayer;
+    this.activeBaseKey = 'mapa';
+    this.baseLayers = { mapa: cartoLayer, satelite: satelliteLayer, terreno: terrainLayer };
+    cartoLayer.addTo(this.map);
+
+    // Track which base layer the user selects
+    this.map.on('baselayerchange', (e: any) => {
+      if (e.layer === cartoLayer) this.activeBaseKey = 'mapa';
+      else if (e.layer === satelliteLayer) this.activeBaseKey = 'satelite';
+      else if (e.layer === terrainLayer) this.activeBaseKey = 'terreno';
+      this.tileLayer = e.layer;
+    });
 
     this.setupIconScalingByZoom();
 
@@ -1103,13 +1155,14 @@ export class ModuloGis implements OnInit, OnDestroy {
     this.pozosActivosLayer.addTo(this.map);
     this.pozosObraLayer.addTo(this.map);
     this.pozosInactivosLayer.addTo(this.map);
-    
-    // 3) Control de capas (UNO SOLO)
-    
 
-    
+    // 3) Control de capas
     this.layersControl = L.control.layers(
-  {},
+  {
+    'Mapa': cartoLayer,
+    'Satélite': satelliteLayer,
+    'Terreno': terrainLayer,
+  },
   {
     '<span class="layer-label"><span class="legend-dot blue"></span> Sitios activos</span>':
       this.pozosActivosLayer,
@@ -1149,6 +1202,7 @@ export class ModuloGis implements OnInit, OnDestroy {
     // 4) GeoJSON / overlays — conditional loading based on scope
     this.loadMunicipios();
     this.loadApiSitesCache(); // Always cache API sites for dynamic popups
+    this.loadGeoServerLayers(); // Load WMS layers from GeoServer
     if (!isMunicipal) {
       // State-level overlays: skip for Municipal users (saves ~4MB + 60s)
       this.buildGastoByMunicipio();
@@ -1211,6 +1265,7 @@ export class ModuloGis implements OnInit, OnDestroy {
     if (totalSources === 0) {
       // No KML sources — still load dynamic markers from API
       this.addDynamicSiteMarkers();
+      this.mapLoading.set(false);
     } else {
       filteredSources.forEach(src => {
         this.loadSitiosKml(src.path, (layerBounds) => {
@@ -1222,6 +1277,7 @@ export class ModuloGis implements OnInit, OnDestroy {
             }
             // Add markers for inventory sites not already placed by KML
             this.addDynamicSiteMarkers();
+            this.mapLoading.set(false);
           }
         });
       });

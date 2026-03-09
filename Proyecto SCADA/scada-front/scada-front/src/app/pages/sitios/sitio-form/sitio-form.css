@@ -221,6 +221,23 @@
   border-color: var(--warning, #f59e0b);
 }
 
+.auto-hint--error {
+  color: var(--danger, #ef4444);
+  background: rgba(239, 68, 68, 0.06);
+  border-color: var(--danger, #ef4444);
+  animation: hintShake 0.4s ease;
+}
+
+.auto-hint--error ng-icon {
+  color: var(--danger, #ef4444);
+}
+
+@keyframes hintShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
 .coord-row {
   display: flex !important;
   flex-direction: row !important;

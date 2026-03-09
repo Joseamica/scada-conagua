@@ -15,6 +15,7 @@ import entityRoutes from './routes/entity-routes';
 import { isAuth } from './middlewares/auth-middleware';
 import { auditLog } from './services/audit-service';
 import { getPermissions } from './services/permission-service';
+import gisRoutes from './routes/gis-routes';
 
 // --- Render uploads config ---
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads', 'renders');
@@ -143,6 +144,9 @@ app.use('/api/v1/audit', auditRoutes);
 
 // Ruta para la gestión de entidades organizacionales (árbol jerárquico)
 app.use('/api/v1/entities', entityRoutes);
+
+// Ruta para gestión de capas GIS (GeoServer)
+app.use('/api/v1/gis', gisRoutes);
 
 // Ruta de Consulta de Telemetría (GET)
 export const getSiteHistory = async (req: Request, res: Response) => {
@@ -400,6 +404,44 @@ app.put('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
         }
         console.error('❌ Error updating site:', e);
         res.status(500).json({ error: 'Error interno al actualizar el sitio.' });
+    }
+});
+
+// Eliminar un sitio del inventario (y su site_status)
+app.delete('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => {
+    const { devEUI } = req.params;
+    if (!RE_DEV_EUI.test(devEUI)) {
+        return res.status(400).json({ error: 'Invalid devEUI format.' });
+    }
+
+    try {
+        const existing = await pool.query(
+            'SELECT dev_eui, site_name FROM scada.inventory WHERE TRIM(dev_eui) = $1',
+            [devEUI.trim()]
+        );
+        if (existing.rows.length === 0) {
+            return res.status(404).json({ error: 'Sitio no encontrado.' });
+        }
+
+        const siteName = existing.rows[0].site_name;
+
+        // Delete site_status first (FK-safe order)
+        await pool.query('DELETE FROM scada.site_status WHERE TRIM(dev_eui) = $1', [devEUI.trim()]);
+        await pool.query('DELETE FROM scada.inventory WHERE TRIM(dev_eui) = $1', [devEUI.trim()]);
+
+        // Clean up render file if exists
+        const renderPath = path.join(UPLOADS_DIR, `${devEUI.trim()}.png`);
+        for (const ext of ['.png', '.jpg', '.jpeg', '.webp']) {
+            const p = path.join(UPLOADS_DIR, `${devEUI.trim()}${ext}`);
+            if (fs.existsSync(p)) fs.unlinkSync(p);
+        }
+
+        await auditLog(req.user!.id, 'SITE_DELETED', { dev_eui: devEUI, site_name: siteName }, req.ip!);
+
+        res.json({ message: `Sitio '${siteName}' eliminado correctamente.` });
+    } catch (e) {
+        console.error('❌ Error deleting site:', e);
+        res.status(500).json({ error: 'Error interno al eliminar el sitio.' });
     }
 });
 

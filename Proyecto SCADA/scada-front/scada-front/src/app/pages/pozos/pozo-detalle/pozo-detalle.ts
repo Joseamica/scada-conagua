@@ -28,6 +28,7 @@ import {
 } from '@ng-icons/heroicons/outline';
 import { bootstrapBatteryFull, bootstrapBatteryHalf, bootstrapBatteryLow } from '@ng-icons/bootstrap-icons';
 import { DateRangePickerComponent, DateRangeOutput } from '../../../shared/date-range-picker/date-range-picker';
+import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner';
 
 type AlertLevel = 'info' | 'warning' | 'critical';
 
@@ -98,7 +99,7 @@ const CHART_TYPE_OPTIONS: { key: ChartType; label: string; icon: string }[] = [
 @Component({
   selector: 'app-pozo-detalle',
   standalone: true,
-  imports: [CommonModule, HeaderBarComponent, FooterTabsComponent, NgIconComponent, DateRangePickerComponent],
+  imports: [CommonModule, HeaderBarComponent, FooterTabsComponent, NgIconComponent, DateRangePickerComponent, LoadingSpinnerComponent],
   providers: [
     provideIcons({
       heroChartBarSquare, heroBolt, heroBeaker, heroChartBar,
@@ -262,6 +263,7 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   // ESTADO GENERAL (HTML)
   // =========================
   pozoId = signal<string>('');
+  pageLoading = signal(true);
   pozoNombre = signal('Cargando...');
   alertLevel = signal<AlertLevel>('warning');
   alertText = signal('');
@@ -631,6 +633,7 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
         if (err.status === 404) {
           this.pozoNombre.set(this.pozoNombre() || devEUI);
         }
+        this.pageLoading.set(false);
       },
       next: (data: any) => {
         if (this.isCommandPending()) {
@@ -671,6 +674,8 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
           nivel: Number(data.last_nivel_value) || 0,
           lluvia: Number(data.last_lluvia_value) || 0,
         });
+
+        this.pageLoading.set(false);
       }
     });
   }

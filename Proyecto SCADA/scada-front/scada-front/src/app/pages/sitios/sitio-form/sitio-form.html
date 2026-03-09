@@ -171,6 +171,15 @@
               </div>
             }
 
+            @if (locationRequired()) {
+              <div class="field field--full">
+                <div class="auto-hint auto-hint--error" role="alert">
+                  <ng-icon name="heroMapPin" size="14"></ng-icon>
+                  Ingresa latitud y longitud, luego presiona <strong>Detectar</strong> para asignar estado y municipio.
+                </div>
+              </div>
+            }
+
             @if (locationVisible()) {
               <div class="field">
                 <label>

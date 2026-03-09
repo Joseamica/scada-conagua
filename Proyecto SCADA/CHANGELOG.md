@@ -23,6 +23,10 @@ Todos los cambios notables del proyecto se documentan aquí.
 - **feat:** Migración `011_add_render_url.sql` — columna `render_url` en inventario
 - **feat:** `GET /api/v1/sites` y `GET /api/v1/sites/:devEUI` ahora incluyen `render_url`
 - **feat:** Archivos estáticos servidos en `/api/v1/uploads/renders/`
+- **feat:** `geoserver-service.ts` — cliente REST para GeoServer (publish, list, delete, health)
+- **feat:** `gis-routes.ts` — endpoints CRUD para capas GIS (`/api/v1/gis/layers`, upload shapefile ZIP, multer 50MB)
+- **feat:** Acciones de auditoría `GIS_LAYER_PUBLISHED` y `GIS_LAYER_DELETED`
+- **feat:** `DELETE /api/v1/sites/:devEUI` — eliminar sitio del inventario y site_status con limpieza de render
 
 ### scada-front
 - **feat:** Campos nivel/lluvia en modelos `SiteLiveStatus` y servicio de telemetria
@@ -30,6 +34,8 @@ Todos los cambios notables del proyecto se documentan aquí.
 - **feat:** Variables `nivel_m` y `lluvia_mm` en CHART_VARIABLES de pozo-detalle
 - **fix:** `datos.nivel` ahora mapea `last_nivel_value` en vez de `battery_level`
 - **fix:** Dedup GIS: sitios creados via formulario ya no generan marcador duplicado si un KML marker existe dentro de 100m (proximity check)
+- **feat:** Selector de mapa base en GIS: Mapa (Carto light/dark), Satelite (Esri), Terreno (OpenTopoMap)
+- **fix:** Badge "Sin senal" renombrado a "Sin gasto" en telemetria-dashboard (el sitio tiene senal pero sin flujo)
 - **feat:** Subida de renders en `sitio-form` — archivo se sube al backend después de crear/editar sitio
 - **feat:** `TelemetryService.uploadRender()` — método para subir imagen de render vía FormData
 - **feat:** GIS popup ahora muestra render subido desde API, con fallback a assets estáticos
@@ -40,6 +46,11 @@ Todos los cambios notables del proyecto se documentan aquí.
 - **test:** 19 unit tests para auth.service, authInterceptor, authGuard y guestGuard
 - **chore:** Configuración de Vitest (`vitest.config.ts` + `test-setup.ts` con Angular compiler)
 - **fix:** Gráfica de pozo-detalle ahora muestra valores de 0 (presión/caudal) en vez de huecos — se eliminó filtro que convertía valores <= 0.01 a null
+- **feat:** Integración WMS en módulo GIS — capas publicadas en GeoServer aparecen como overlays en Leaflet
+- **feat:** Botón eliminar sitio en tabla de telemetría con confirmación
+- **feat:** Click en row de tabla telemetría navega a pozo-detalle (stopPropagation en action buttons)
+- **feat:** Tabla de telemetría se expande al alto de pantalla (`calc(100vh - 380px)`) — responsive
+- **feat:** `TelemetryService.deleteSite()` — método para eliminar sitio vía API
 
 ### scada-igestion-api
 - **fix:** `tsconfig.json` — agregado `include`/`exclude` para evitar error de `rootDir` con `vitest.config.ts`

@@ -118,7 +118,7 @@
                 [value]="estadoSel()"
                 (change)="estadoSel.set($any($event.target).value); municipioSel.set('')">
                 <option value="">Todos</option>
-                <option *ngFor="let e of estados" [value]="e">{{ e }}</option>
+                <option *ngFor="let e of estados()" [value]="e">{{ e }}</option>
               </select>
             </div>
 
@@ -198,7 +198,7 @@
             <!-- Sin estado: muestra lista de estados -->
             <ng-container *ngIf="!estadoSel()">
               <button class="tree-item"
-                *ngFor="let e of estados"
+                *ngFor="let e of estados()"
                 (click)="estadoSel.set(e); municipioSel.set('')">
                 <span>{{ e }}</span>
                 <ng-icon name="heroChevronRight" size="14" class="tree-arrow"></ng-icon>
@@ -237,7 +237,13 @@
         <!-- TABLA -->
         <div class="tables">
 
-          <div class="table-wrap">
+          <app-loading-spinner
+            *ngIf="loading()"
+            label="Cargando sitios..."
+            mode="fullpage">
+          </app-loading-spinner>
+
+          <div class="table-wrap" *ngIf="!loading()">
             <div class="table-title">
               <span>Listado de sitios</span>
               <span class="muted">({{ sitesFiltrados().length }} de {{ sites().length }})</span>
@@ -261,7 +267,9 @@
 
                 <tbody>
                   <tr *ngFor="let site of sitesFiltrados(); let i = index; let odd = odd"
-                    [class.row-alt]="odd">
+                    [class.row-alt]="odd"
+                    class="row-clickable"
+                    (click)="goToSiteDetail(site, $event)">
                     <td>
                       <span class="cell-name">
                         <span class="site-dot"
@@ -316,7 +324,7 @@
                       <div class="col-actions-cell">
                         <button
                           class="btn-action btn-action--chart"
-                          (click)="openAdvancedCharts(site)"
+                          (click)="openAdvancedCharts(site); $event.stopPropagation()"
                           title="Ver gráficas"
                           aria-label="Ver gráficas de {{ site.name }}">
                           <ng-icon name="heroChartBarSquare" size="16"></ng-icon>
@@ -324,10 +332,18 @@
 
                         <button
                           class="btn-action btn-action--edit"
-                          (click)="editarSitio(site)"
+                          (click)="editarSitio(site); $event.stopPropagation()"
                           title="Editar sitio"
                           aria-label="Editar {{ site.name }}">
                           <ng-icon name="heroPencilSquare" size="16"></ng-icon>
+                        </button>
+
+                        <button
+                          class="btn-action btn-action--delete"
+                          (click)="eliminarSitio(site); $event.stopPropagation()"
+                          title="Eliminar sitio"
+                          aria-label="Eliminar {{ site.name }}">
+                          <ng-icon name="heroTrash" size="16"></ng-icon>
                         </button>
                       </div>
                     </td>

@@ -8,12 +8,26 @@
    ========================= */
 .shell {
   font-family: 'Inter', system-ui, sans-serif;
-  min-height: 100vh;
+  height: calc(100vh - 56px - 60px);
   background: var(--bg-app);
-  padding-bottom: 74px;
+  padding-bottom: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.page { padding: 16px 16px 0; max-width: 1440px; margin: 0 auto; }
+.page {
+  padding: 16px 16px 0;
+  max-width: 1440px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
+}
 
 /* =========================
    KPI STRIP
@@ -85,6 +99,10 @@
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* =========================
@@ -313,6 +331,8 @@
   display: grid;
   grid-template-columns: 220px 1fr;
   gap: 0;
+  flex: 1;
+  min-height: 0;
 }
 
 /* =========================
@@ -347,7 +367,7 @@
   gap: 2px;
   flex: 1;
   overflow-y: auto;
-  max-height: 520px;
+  min-height: 0;
 }
 
 .tree-item {
@@ -446,10 +466,15 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
 }
 
 .table-wrap {
   overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .table-title {
@@ -472,7 +497,8 @@
 
 .table-scroll {
   overflow: auto;
-  max-height: 520px;
+  flex: 1;
+  min-height: 0;
 }
 
 .table {
@@ -511,6 +537,8 @@
 }
 
 .table tbody tr:hover td { background: var(--table-hover); }
+
+.row-clickable { cursor: pointer; }
 
 .row-alt td { background: var(--table-stripe); }
 .row-alt:hover td { background: var(--table-hover) !important; }
@@ -807,6 +835,18 @@
   background: var(--table-hover);
   border-color: var(--text-muted);
   color: var(--text-primary);
+}
+
+.btn-action--delete {
+  color: var(--danger, #ef4444);
+  background: var(--bg-card);
+  border-color: var(--border-strong);
+}
+
+.btn-action--delete:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: var(--danger, #ef4444);
+  color: #dc2626;
 }
 
 /* =========================

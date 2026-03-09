@@ -122,6 +122,11 @@ export class TelemetryService {
     );
   }
 
+  // Eliminar un sitio del inventario
+  deleteSite(devEUI: string): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(`${this.BASE_URL}/sites/${devEUI.trim()}`);
+  }
+
   // Método de control para usar la interfaz estricta
   sendControlCommand(payload: SCADAControlRequest): Observable<any> {
     // Se define endpoint src/app.ts: app.post('/api/v1/control')

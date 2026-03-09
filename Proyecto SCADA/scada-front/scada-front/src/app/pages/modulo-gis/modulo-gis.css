@@ -186,6 +186,19 @@
   min-height: 400px;
 }
 
+.gis-map-loading-overlay {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 4px 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+}
+
 /* =========================
    POPUP DEL MAPA
 ========================= */

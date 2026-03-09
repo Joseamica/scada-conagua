@@ -3,6 +3,12 @@
 <div class="shell">
   <main class="page">
 
+    <app-loading-spinner
+      *ngIf="pageLoading()"
+      label="Cargando sitio..."
+      mode="fullpage">
+    </app-loading-spinner>
+
     <!-- ===== PAGE HEADER ===== -->
     <div class="page-head">
       <div>

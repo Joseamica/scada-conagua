@@ -27,6 +27,10 @@ export type AuditAction =
   | 'SITE_CREATED'
   | 'SITE_UPDATED'
   | 'SITE_RENDER_UPLOADED'
+  | 'SITE_DELETED'
+  // GIS
+  | 'GIS_LAYER_PUBLISHED'
+  | 'GIS_LAYER_DELETED'
   // Data Export
   | 'EXPORT_CHART_PNG'
   | 'EXPORT_TELEMETRY_CSV'

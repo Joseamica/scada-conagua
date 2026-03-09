@@ -90,6 +90,7 @@ export class SitioForm implements OnInit {
   locationVisible = signal(false);
   detectionFailed = signal(false);
   missingCoords = signal(false);
+  locationRequired = signal(false);
   private geoFeatures: any[] = [];
   private baseEstadosData: Record<string, { estado: string; municipios: Record<string, string> }> = {};
 
@@ -261,8 +262,23 @@ export class SitioForm implements OnInit {
   }
 
   save() {
+    // Clear previous location error
+    this.locationRequired.set(false);
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+
+      // If estado/municipio are invalid AND location section is hidden,
+      // the user can't see those errors. Show a clear message at the coordinates.
+      const estadoInvalid = this.form.get('estado')?.hasError('required');
+      const municipioInvalid = this.form.get('municipio')?.hasError('required');
+      if ((estadoInvalid || municipioInvalid) && !this.locationVisible()) {
+        this.locationRequired.set(true);
+        // Wait for Angular to render the error, then scroll to it
+        setTimeout(() => {
+          document.querySelector('.auto-hint--error')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      }
       return;
     }
 
@@ -386,6 +402,7 @@ export class SitioForm implements OnInit {
   // --- Public: triggered by button ---
 
   detectarUbicacion() {
+    this.locationRequired.set(false);
     const lat = +(this.form.value.lat ?? 0);
     const lng = +(this.form.value.lng ?? 0);
     if (!lat || !lng) {

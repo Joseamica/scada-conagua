@@ -77,6 +77,12 @@
     </div>
 
     <div id="map" class="gis-map"></div>
+
+    @if (mapLoading()) {
+      <div class="gis-map-loading-overlay">
+        <app-loading-spinner label="Cargando sitios..." mode="inline"></app-loading-spinner>
+      </div>
+    }
   </div>
 
 </div>

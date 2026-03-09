@@ -23,11 +23,13 @@ import {
   heroChevronRight,
   heroArrowLeft,
   heroMapPin,
-  heroMagnifyingGlass
+  heroMagnifyingGlass,
+  heroTrash
 } from '@ng-icons/heroicons/outline';
 
 import { TelemetryService } from '../../../core/services/telemetry';
 import { AuthService } from '../../../core/services/auth.service';
+import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner';
 
 // JSON Estados / Municipios
 import estadosJson from '../../../../assets/data/estados.json';
@@ -40,7 +42,8 @@ import estadosJson from '../../../../assets/data/estados.json';
     CommonModule,
     HeaderBarComponent,
     FooterTabsComponent,
-    NgIconComponent
+    NgIconComponent,
+    LoadingSpinnerComponent
   ],
   providers: [
     provideIcons({
@@ -60,7 +63,8 @@ import estadosJson from '../../../../assets/data/estados.json';
       heroChevronRight,
       heroArrowLeft,
       heroMapPin,
-      heroMagnifyingGlass
+      heroMagnifyingGlass,
+      heroTrash
     })
   ],
   templateUrl: './telemetria-dashboard.html',
@@ -78,26 +82,27 @@ export class TelemetriaDashboard implements OnInit {
   busqueda = signal<string>('');
   filtersCollapsed = signal(false);
 
+  loading = signal(true);
   sitios: any[] = [];
 
   // =========================
   // CATÁLOGOS
   // =========================
 
-  estados: string[] = Object.values(estadosJson)
-    .map((e: any) => e.estado)
-    .filter(e => e !== 'SIN ESTADO');
+  // Derived from actual site data — only show states/municipios with wells
+  estados = computed(() => {
+    const unique = [...new Set(this.sites().map(s => s.estado))];
+    return unique.filter(e => e).sort();
+  });
 
   municipios = computed(() => {
     if (!this.estadoSel()) return [];
-
-    const estadoObj = Object.values(estadosJson)
-      .find((e: any) => e.estado === this.estadoSel());
-
-    if (!estadoObj) return [];
-
-    return Object.values(estadoObj.municipios)
-      .filter((m: any) => m !== 'SIN MUNICIPIO');
+    const unique = [...new Set(
+      this.sites()
+        .filter(s => s.estado === this.estadoSel())
+        .map(s => s.municipio)
+    )];
+    return unique.filter(m => m && m !== 'Sin zona').sort();
   });
 
   tiposSitio: string[] = [
@@ -188,7 +193,7 @@ export class TelemetriaDashboard implements OnInit {
           const siteType = s.site_type
             ? s.site_type.charAt(0).toUpperCase() + s.site_type.slice(1).toLowerCase()
             : 'Pozo';
-          const municipio = s.municipality?.toUpperCase().trim() || 'SIN MUNICIPIO';
+          const municipio = s.municipality?.trim() || 'Sin zona';
           const flow = s.last_flow_value != null ? Number(s.last_flow_value) : null;
           const hasTelemetry = s.last_updated_at != null;
           const hasFlow = flow != null && flow > 0.01;
@@ -206,9 +211,9 @@ export class TelemetriaDashboard implements OnInit {
             devEUI: s.dev_eui,
             name: s.site_name,
             type: siteType,
-            estado: 'ESTADO DE MEXICO',
+            estado: 'Estado de México',
             municipio,
-            zone: s.municipality || 'Sin zona',
+            zone: municipio,
             value: flow != null ? flow.toFixed(2) : 'N/A',
             unit: 'L/s',
             status,
@@ -228,6 +233,7 @@ export class TelemetriaDashboard implements OnInit {
               const normalizedUserMunicipio = this.normalize(userMunicipio);
               this.sites.set(mapped.filter(s => this.normalize(s.municipio) === normalizedUserMunicipio));
               this.lastUpdated.set(this.formatNow());
+              this.loading.set(false);
               return;
             }
           }
@@ -235,9 +241,11 @@ export class TelemetriaDashboard implements OnInit {
 
         this.sites.set(mapped);
         this.lastUpdated.set(this.formatNow());
+        this.loading.set(false);
       },
       error: (err) => {
         console.error('TelemetriaDashboard: Error al cargar sitios', err);
+        this.loading.set(false);
       },
     });
   }
@@ -308,5 +316,29 @@ export class TelemetriaDashboard implements OnInit {
     if (site.devEUI) {
       this.router.navigate(['/sitios/editar', site.devEUI]);
     }
+  }
+
+  goToSiteDetail(site: any, event: MouseEvent) {
+    // Don't navigate if user clicked an action button
+    const target = event.target as HTMLElement;
+    if (target.closest('.col-actions-cell')) return;
+    if (site.devEUI) {
+      this.router.navigate(['/pozos', site.devEUI]);
+    }
+  }
+
+  eliminarSitio(site: any) {
+    if (!site.devEUI) return;
+    if (!confirm(`¿Eliminar el sitio "${site.name}"? Esta acción no se puede deshacer.`)) return;
+
+    this.telemetryService.deleteSite(site.devEUI).subscribe({
+      next: () => {
+        this.sites.update(sites => sites.filter(s => s.devEUI !== site.devEUI));
+      },
+      error: (err) => {
+        console.error('Error al eliminar sitio:', err);
+        alert(err.error?.error || 'Error al eliminar el sitio.');
+      },
+    });
   }
 }
