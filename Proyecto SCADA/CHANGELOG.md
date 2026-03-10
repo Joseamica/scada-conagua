@@ -4,6 +4,59 @@ Todos los cambios notables del proyecto se documentan aquí.
 
 ## [Unreleased]
 
+### scada-front (Clock Widget)
+- **feat:** Clock widget for sinoptico editor — displays current date/time with configurable 12h/24h format, optional date and seconds
+- **feat:** Clock config panel — format selector, font size, text/background color, show date/seconds toggles
+- **feat:** Clock widget available in both editor canvas and viewer
+
+### scada-front (Variable Widget)
+- **feat:** Variable Widget — displays live value from a Variable View column or formula on the sinoptico canvas
+- **feat:** Config panel: select variable view, then pick a specific column or formula as data source
+- **feat:** Presentation options: title, unit, decimals, font size, text/background color
+- **feat:** Self-polling: widget fetches fresh values every 30s via `executeView` API
+- **feat:** Available in both editor canvas and viewer
+
+### scada-front (Sinoptico Trash / Recovery)
+- **feat:** Trash button in project detail header — toggles collapsible papelera section
+- **feat:** Trash section shows soft-deleted sinopticos with name, version, and deletion date
+- **feat:** Restore button per trash item — recovers sinoptico and refreshes the list
+- **fix:** Delete confirmation now says "Mover a la papelera" instead of "Eliminar"
+
+### scada-front (Bug Fixes)
+- **fix:** `getLiveValueForConfig` — guard against undefined `devEUI` for widget types without device binding (variable, clock, link). Prevents `TypeError: Cannot read properties of undefined (reading 'startsWith')` in `SinopticoDataStore.getValue()`
+- **fix:** `getDeviceTimestamp` / `isDeviceStale` — same guard for non-device widgets
+- **fix:** `onVariableViewChange` — ensure `columns` and `formulas` arrays exist even if API omits them
+- **fix:** Template guard: `detail.formulas?.length` instead of `detail.formulas.length` to prevent crash on undefined
+
+### scada-query-api (Sinoptico Soft-delete)
+- **feat:** Soft-delete sinopticos — `DELETE` now sets `deleted_at` timestamp instead of hard delete
+- **feat:** `GET /projects/:id/trash` — lists soft-deleted sinopticos for recovery
+- **feat:** `POST /sinopticos/:id/restore` — restores a soft-deleted sinoptico, logs `SINOPTICO_RESTORED` audit event
+- **feat:** Migration 025 — adds `deleted_at TIMESTAMPTZ` column + partial index to `scada.sinopticos`
+
+### scada-front (Sinoptico Sharing UI)
+- **feat:** Share button in editor toolbar opens sharing dialog modal
+- **feat:** Search users by name/email with autocomplete dropdown, assign read or edit permissions
+- **feat:** View current shares list with permission badges and remove access button
+- **feat:** Follows same pattern as variable view sharing (identical UX)
+
+### scada-query-api (Sinoptico Sharing)
+- **feat:** `GET /sinopticos/:id/share-candidates?q=` — search users for sharing autocomplete
+- **fix:** share-candidates SQL — changed `is_deleted = false` → `is_active = true` (column didn't exist)
+- **fix:** variable share-candidates SQL — same `is_deleted` → `is_active` fix in variable-routes
+
+### scada-front (Variable View Editor — Series Chart + Incognitas)
+- **feat:** Series chart — per-formula chart button opens ECharts time-series line chart with area gradient
+- **feat:** Series range selector — 1h/6h/24h/7d/30d buttons in chart panel header
+- **feat:** Execution range dropdown — 1h/6h/24h/7d/30d selector before Execute button for aggregation window
+- **feat:** Incognita persistence — renaming an incognita (`i_1` → custom name) now saves to backend and restores on reload
+
+### scada-query-api (Variable Views — Aggregation + Incognitas)
+- **feat:** Real InfluxDB aggregation — AVG/MIN/MAX/SUM/BAL now query InfluxDB with proper Flux functions (`mean`/`min`/`max`/`sum`/`spread`) instead of always using `site_status` LAST_VALUE
+- **feat:** Execute-series endpoint respects aggregation type per column
+- **feat:** `incognita_name` column — POST/PUT `/views/:id/columns` accept and persist custom variable names
+- **feat:** Migration 024 — adds `incognita_name VARCHAR(100)` to `scada.view_columns`
+
 ## [v0.10.0] — 2026-03-10
 
 ### scada-front (GIS — Dynamic Estatus)

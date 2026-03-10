@@ -14,6 +14,7 @@ import {
   heroLightBulb,
   heroShare,
   heroXMark,
+  heroChartBar,
 } from '@ng-icons/heroicons/outline';
 import {
   VariableService,
@@ -23,6 +24,7 @@ import {
   ViewExecutionResult,
   ViewShare,
   ShareCandidate,
+  FormulaSeriesResult,
 } from '../../../core/services/variable.service';
 import {
   TagBrowser,
@@ -54,6 +56,7 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
       heroLightBulb,
       heroShare,
       heroXMark,
+      heroChartBar,
     }),
   ],
   templateUrl: './variable-view-editor.html',
@@ -109,6 +112,18 @@ export class VariableViewEditor implements OnInit {
   selectedCandidateId = 0;
   sharePermission = 'read';
 
+  // Series chart
+  showSeriesChart = signal(false);
+  seriesFormulaId = signal<number | null>(null);
+  seriesRange = signal('24h');
+  seriesLoading = signal(false);
+  seriesData = signal<[number, number][]>([]);
+  seriesAlias = signal('');
+  private chartInstance: any = null;
+
+  // Execution range (for aggregation)
+  execRange = '24h';
+
   ngOnInit(): void {
     this.viewId = Number(this.route.snapshot.paramMap.get('id'));
     this.loadView();
@@ -121,6 +136,12 @@ export class VariableViewEditor implements OnInit {
         this.view.set(data);
         this.columns.set(data.columns || []);
         this.formulas.set(data.formulas || []);
+        // Restore persisted incognita names
+        (data.columns || []).forEach((col, idx) => {
+          if (col.incognita_name) {
+            this.incognitaNames.set(idx, col.incognita_name);
+          }
+        });
         this.loading.set(false);
       },
       error: () => {
@@ -284,7 +305,7 @@ export class VariableViewEditor implements OnInit {
 
   executeView(): void {
     this.executing.set(true);
-    this.variableService.executeView(this.viewId).subscribe({
+    this.variableService.executeView(this.viewId, this.execRange).subscribe({
       next: (result) => {
         this.executionResult.set(result);
         this.lastExecuted.set(result.timestamp);
@@ -310,6 +331,11 @@ export class VariableViewEditor implements OnInit {
     if (!value) return;
     const name = value.startsWith('i_') ? value : `i_${value}`;
     this.incognitaNames.set(index, name);
+    // Persist to backend
+    const col = this.columns()[index];
+    if (col) {
+      this.variableService.updateColumn(this.viewId, col.id, { incognita_name: name } as any).subscribe();
+    }
   }
 
   insertIncognita(index: number): void {
@@ -728,6 +754,90 @@ export class VariableViewEditor implements OnInit {
     if (/\//.test(expr)) return `Division: ${readable}`;
     if (/\*/.test(expr)) return `Multiplicacion: ${readable}`;
     return readable;
+  }
+
+  // ---- Series Chart ----
+
+  openSeriesChart(formula: ViewFormula): void {
+    this.seriesFormulaId.set(formula.id);
+    this.seriesAlias.set(formula.alias);
+    this.showSeriesChart.set(true);
+    this.loadSeries();
+  }
+
+  changeSeriesRange(range: string): void {
+    this.seriesRange.set(range);
+    this.loadSeries();
+  }
+
+  private loadSeries(): void {
+    const fid = this.seriesFormulaId();
+    if (!fid) return;
+    this.seriesLoading.set(true);
+    this.variableService.executeViewSeries(this.viewId, fid, this.seriesRange()).subscribe({
+      next: (result) => {
+        this.seriesData.set(result.data || []);
+        this.seriesLoading.set(false);
+        this.renderChart();
+      },
+      error: () => {
+        this.seriesLoading.set(false);
+        this.seriesData.set([]);
+      },
+    });
+  }
+
+  private renderChart(): void {
+    const container = document.getElementById('series-chart-container');
+    if (!container) return;
+
+    // Lazy-load ECharts
+    import('echarts').then((echarts) => {
+      if (this.chartInstance) {
+        this.chartInstance.dispose();
+      }
+      this.chartInstance = echarts.init(container);
+      const data = this.seriesData();
+      this.chartInstance.setOption({
+        tooltip: {
+          trigger: 'axis',
+          formatter: (params: any) => {
+            const p = params[0];
+            const date = new Date(p.value[0]);
+            const timeStr = date.toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
+            return `${timeStr}<br/><strong>${p.seriesName}:</strong> ${p.value[1]?.toFixed(2) ?? '--'}`;
+          },
+        },
+        grid: { left: 50, right: 20, top: 20, bottom: 30 },
+        xAxis: {
+          type: 'time',
+          axisLabel: { fontSize: 10, color: '#94a3b8' },
+          splitLine: { show: false },
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: { fontSize: 10, color: '#94a3b8' },
+          splitLine: { lineStyle: { color: '#f1f5f9' } },
+        },
+        series: [{
+          name: this.seriesAlias(),
+          type: 'line',
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { width: 2, color: '#6d002b' },
+          areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(109,0,43,0.15)' }, { offset: 1, color: 'rgba(109,0,43,0)' }] } },
+          data: data.map(([ts, val]) => [ts, val]),
+        }],
+      });
+    });
+  }
+
+  closeSeriesChart(): void {
+    this.showSeriesChart.set(false);
+    if (this.chartInstance) {
+      this.chartInstance.dispose();
+      this.chartInstance = null;
+    }
   }
 
   // ---- Sharing ----

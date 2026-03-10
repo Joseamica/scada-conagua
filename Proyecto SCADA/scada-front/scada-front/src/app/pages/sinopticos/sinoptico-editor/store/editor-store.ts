@@ -123,6 +123,8 @@ export class EditorStore {
       text: { width: 200, height: 60 },
       shape: { width: 150, height: 100 },
       link: { width: 160, height: 50 },
+      clock: { width: 200, height: 100 },
+      variable: { width: 240, height: 120 },
     };
     const size = defaults[type];
     const widget: CanvasWidget = {

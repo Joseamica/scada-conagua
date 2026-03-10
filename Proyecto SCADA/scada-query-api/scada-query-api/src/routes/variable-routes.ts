@@ -221,15 +221,15 @@ router.delete('/views/:id', canEditSinopticos, async (req: Request, res: Respons
 // ═══════════════════════════════════════════
 
 router.post('/views/:id/columns', canEditSinopticos, async (req: Request, res: Response) => {
-    const { alias, dev_eui, measurement, aggregation, sort_order } = req.body;
+    const { alias, dev_eui, measurement, aggregation, sort_order, incognita_name } = req.body;
     if (!alias?.trim() || !dev_eui || !measurement) {
         return res.status(400).json({ error: 'alias, dev_eui y measurement son obligatorios.' });
     }
     try {
         const result = await pool.query(
-            `INSERT INTO scada.view_columns (view_id, alias, dev_eui, measurement, aggregation, sort_order)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-            [req.params.id, alias.trim(), dev_eui, measurement, aggregation || 'AVG', sort_order || 0]
+            `INSERT INTO scada.view_columns (view_id, alias, dev_eui, measurement, aggregation, sort_order, incognita_name)
+             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+            [req.params.id, alias.trim(), dev_eui, measurement, aggregation || 'AVG', sort_order || 0, incognita_name || null]
         );
         await pool.query('UPDATE scada.variable_views SET updated_at = NOW() WHERE id = $1', [req.params.id]);
         await auditLog(req.user!.id, 'VARIABLE_COLUMN_ADDED', { view_id: req.params.id, column_id: result.rows[0].id, alias, dev_eui, measurement }, req.ip!);
@@ -240,15 +240,15 @@ router.post('/views/:id/columns', canEditSinopticos, async (req: Request, res: R
 });
 
 router.put('/views/:viewId/columns/:colId', canEditSinopticos, async (req: Request, res: Response) => {
-    const { alias, dev_eui, measurement, aggregation, sort_order } = req.body;
+    const { alias, dev_eui, measurement, aggregation, sort_order, incognita_name } = req.body;
     try {
         const result = await pool.query(
             `UPDATE scada.view_columns
              SET alias = COALESCE($1, alias), dev_eui = COALESCE($2, dev_eui),
                  measurement = COALESCE($3, measurement), aggregation = COALESCE($4, aggregation),
-                 sort_order = COALESCE($5, sort_order)
-             WHERE id = $6 AND view_id = $7 RETURNING *`,
-            [alias?.trim(), dev_eui, measurement, aggregation, sort_order, req.params.colId, req.params.viewId]
+                 sort_order = COALESCE($5, sort_order), incognita_name = COALESCE($6, incognita_name)
+             WHERE id = $7 AND view_id = $8 RETURNING *`,
+            [alias?.trim(), dev_eui, measurement, aggregation, sort_order, incognita_name, req.params.colId, req.params.viewId]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Columna no encontrada.' });
         await auditLog(req.user!.id, 'VARIABLE_COLUMN_UPDATED', { view_id: req.params.viewId, column_id: req.params.colId }, req.ip!);
@@ -364,41 +364,96 @@ router.post('/views/:id/execute', isAuth, async (req: Request, res: Response) =>
             [req.params.id]
         );
 
-        // For Phase 1: fetch latest values from site_status (fast path)
-        // Phase 4 will add full InfluxDB batch query with pivot
+        // Fetch values — LAST_VALUE uses fast site_status cache, other aggregations query InfluxDB
         const columnValues: Record<string, number | null> = {};
+        const execRange = range || '24h';
 
         for (const col of columns.rows) {
-            const statusResult = await pool.query(
-                `SELECT last_flow_value, last_pressure_value, last_total_flow,
-                        battery_level, rssi, snr, last_nivel_value, last_lluvia_value
-                 FROM scada.site_status
-                 WHERE TRIM(dev_eui) = $1`,
-                [col.dev_eui.trim()]
-            );
-            if (statusResult.rows.length > 0) {
-                const row = statusResult.rows[0];
-                const measurementMap: Record<string, string> = {
-                    // ChirpStack
-                    caudal_lts: 'last_flow_value',
-                    presion_kg: 'last_pressure_value',
-                    battery: 'battery_level',
-                    rssi: 'rssi',
-                    snr: 'snr',
-                    nivel_m: 'last_nivel_value',
-                    lluvia_mm: 'last_lluvia_value',
-                    // Ignition / ICH
-                    value_presion: 'last_pressure_value',
-                    value_caudal: 'last_flow_value',
-                    value_caudal_totalizado: 'last_total_flow',
-                    value_senal: 'rssi',
-                    value_nivel: 'last_nivel_value',
-                    value_lluvia: 'last_lluvia_value',
-                };
-                const pgField = measurementMap[col.measurement] || col.measurement;
-                columnValues[col.alias] = row[pgField] !== null ? Number(row[pgField]) : null;
+            if (col.aggregation === 'LAST_VALUE' || !col.aggregation) {
+                // Fast path: cached site_status
+                const statusResult = await pool.query(
+                    `SELECT last_flow_value, last_pressure_value, last_total_flow,
+                            battery_level, rssi, snr, last_nivel_value, last_lluvia_value
+                     FROM scada.site_status
+                     WHERE TRIM(dev_eui) = $1`,
+                    [col.dev_eui.trim()]
+                );
+                if (statusResult.rows.length > 0) {
+                    const row = statusResult.rows[0];
+                    const measurementMap: Record<string, string> = {
+                        caudal_lts: 'last_flow_value',
+                        presion_kg: 'last_pressure_value',
+                        battery: 'battery_level',
+                        rssi: 'rssi',
+                        snr: 'snr',
+                        nivel_m: 'last_nivel_value',
+                        lluvia_mm: 'last_lluvia_value',
+                        value_presion: 'last_pressure_value',
+                        value_caudal: 'last_flow_value',
+                        value_caudal_totalizado: 'last_total_flow',
+                        value_senal: 'rssi',
+                        value_nivel: 'last_nivel_value',
+                        value_lluvia: 'last_lluvia_value',
+                    };
+                    const pgField = measurementMap[col.measurement] || col.measurement;
+                    columnValues[col.alias] = row[pgField] !== null ? Number(row[pgField]) : null;
+                } else {
+                    columnValues[col.alias] = null;
+                }
             } else {
-                columnValues[col.alias] = null;
+                // InfluxDB aggregation (AVG, MIN, MAX, SUM, BAL)
+                try {
+                    const isIgnition = col.dev_eui.toLowerCase().startsWith('dev');
+                    const activeBucket = isIgnition
+                        ? process.env.INFLUX_BUCKET_IGNITION || 'telemetria_ignition'
+                        : process.env.INFLUX_BUCKET || 'telemetria_sitios';
+                    const activeMeasurement = isIgnition ? 'mediciones_ignition' : 'mediciones_pozos';
+
+                    let influxField = col.measurement;
+                    if (isIgnition) {
+                        const igMapping: Record<string, string> = {
+                            presion_kg: 'value_presion', caudal_lts: 'value_caudal',
+                            last_total_flow: 'value_caudal_totalizado', rssi: 'value_senal',
+                            nivel_m: 'value_nivel', lluvia_mm: 'value_lluvia',
+                        };
+                        influxField = igMapping[col.measurement] || col.measurement;
+                    }
+
+                    let tagFilter: string;
+                    if (isIgnition) {
+                        const pgRes = await pool.query(
+                            'SELECT site_name FROM scada.inventory WHERE TRIM(dev_eui) = $1 LIMIT 1',
+                            [col.dev_eui.trim()]
+                        );
+                        const siteName = pgRes.rows[0]?.site_name || '';
+                        const safe = siteName.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\n\r]/g, '');
+                        tagFilter = `r["pozo"] == "${safe}"`;
+                    } else {
+                        tagFilter = `r["devEui"] == "${col.dev_eui.trim()}"`;
+                    }
+
+                    const aggFnMap: Record<string, string> = {
+                        AVG: 'mean', MIN: 'min', MAX: 'max', SUM: 'sum', BAL: 'spread',
+                    };
+                    const fluxFn = aggFnMap[col.aggregation] || 'mean';
+                    const influxRange = toInfluxRange(execRange);
+
+                    const fluxQuery = `
+                        from(bucket: "${activeBucket}")
+                            |> range(start: ${influxRange})
+                            |> filter(fn: (r) => r["_measurement"] == "${activeMeasurement}")
+                            |> filter(fn: (r) => ${tagFilter})
+                            |> filter(fn: (r) => r["_field"] == "${influxField}")
+                            |> group()
+                            |> ${fluxFn}()
+                    `;
+
+                    const rows = await queryInfluxSeries(fluxQuery);
+                    columnValues[col.alias] = rows.length > 0 ? rows[0].value : null;
+                } catch (aggErr) {
+                    console.error(`Aggregation error for ${col.alias}:`, aggErr);
+                    columnValues[col.alias] = null;
+                }
             }
         }
 
@@ -701,7 +756,7 @@ router.get('/views/:id/share-candidates', isAuth, async (req: Request, res: Resp
         const q = ((req.query.q as string) || '').toLowerCase();
         const result = await pool.query(
             `SELECT id, full_name, email FROM scada.users
-             WHERE is_deleted = false AND id != $1
+             WHERE is_active = true AND id != $1
              AND (LOWER(full_name) LIKE $2 OR LOWER(email) LIKE $2)
              ORDER BY full_name LIMIT 20`,
             [req.user!.id, `%${q}%`]

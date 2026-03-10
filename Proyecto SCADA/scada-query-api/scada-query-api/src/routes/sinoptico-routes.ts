@@ -172,7 +172,7 @@ router.get('/projects/:id/sinopticos', isAuth, async (req: Request, res: Respons
                     )) FROM jsonb_array_elements(s.canvas->'widgets') w) AS widget_layout
              FROM scada.sinopticos s
              JOIN scada.users u ON u.id = s.owner_id
-             WHERE s.project_id = $1
+             WHERE s.project_id = $1 AND s.deleted_at IS NULL
              ORDER BY s.updated_at DESC`,
             [req.params.id]
         );
@@ -228,7 +228,7 @@ router.get('/sinopticos/:id', isAuth, async (req: Request, res: Response) => {
              FROM scada.sinopticos s
              JOIN scada.users u ON u.id = s.owner_id
              JOIN scada.sinoptico_projects p ON p.id = s.project_id
-             WHERE s.id = $1`,
+             WHERE s.id = $1 AND s.deleted_at IS NULL`,
             [req.params.id]
         );
         if (result.rows.length === 0) {
@@ -278,11 +278,11 @@ router.put('/sinopticos/:id', canEditSinopticos, async (req: Request, res: Respo
     }
 });
 
-// DELETE /sinopticos/:id
+// DELETE /sinopticos/:id (soft delete)
 router.delete('/sinopticos/:id', canEditSinopticos, async (req: Request, res: Response) => {
     try {
         const result = await pool.query(
-            'DELETE FROM scada.sinopticos WHERE id = $1 RETURNING id, name',
+            'UPDATE scada.sinopticos SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING id, name',
             [req.params.id]
         );
         if (result.rows.length === 0) {
@@ -314,6 +314,46 @@ router.post('/sinopticos/:id/duplicate', canEditSinopticos, async (req: Request,
     } catch (e: any) {
         console.error('Error duplicating sinoptico:', e.message);
         res.status(500).json({ error: 'Error al duplicar sinoptico.' });
+    }
+});
+
+// ═══════════════════════════════════════════
+// TRASH (soft-deleted sinopticos)
+// ═══════════════════════════════════════════
+
+// GET /projects/:projectId/trash — list deleted sinopticos in project
+router.get('/projects/:projectId/trash', isAuth, async (req: Request, res: Response) => {
+    try {
+        const { projectId } = req.params;
+        const result = await pool.query(
+            `SELECT id, name, description, version, deleted_at FROM scada.sinopticos
+             WHERE project_id = $1 AND deleted_at IS NOT NULL
+             ORDER BY deleted_at DESC`,
+            [projectId]
+        );
+        res.json(result.rows);
+    } catch (e: any) {
+        console.error('Error listing trash:', e.message);
+        res.status(500).json({ error: 'Error al listar papelera.' });
+    }
+});
+
+// POST /sinopticos/:id/restore — restore a soft-deleted sinoptico
+router.post('/sinopticos/:id/restore', canEditSinopticos, async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(
+            `UPDATE scada.sinopticos SET deleted_at = NULL WHERE id = $1 AND deleted_at IS NOT NULL RETURNING id, name`,
+            [id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Sinoptico not found in trash' });
+        }
+        await auditLog(req.user!.id, 'SINOPTICO_RESTORED', { sinoptico_id: id, name: result.rows[0].name }, req.ip!);
+        res.json({ message: 'Restored', ...result.rows[0] });
+    } catch (e: any) {
+        console.error('Error restoring sinoptico:', e.message);
+        res.status(500).json({ error: 'Error al restaurar sinoptico.' });
     }
 });
 
@@ -368,6 +408,24 @@ router.delete('/sinopticos/:id/shares/:shareId', canEditSinopticos, async (req: 
         res.json({ message: 'Permiso eliminado.' });
     } catch (e: any) {
         res.status(500).json({ error: 'Error al eliminar permiso.' });
+    }
+});
+
+// GET /sinopticos/:id/share-candidates — search users to share with
+router.get('/sinopticos/:id/share-candidates', isAuth, async (req: Request, res: Response) => {
+    try {
+        const q = ((req.query.q as string) || '').toLowerCase();
+        const result = await pool.query(
+            `SELECT id, full_name, email FROM scada.users
+             WHERE is_active = true AND id != $1
+             AND (LOWER(full_name) LIKE $2 OR LOWER(email) LIKE $2)
+             ORDER BY full_name LIMIT 20`,
+            [req.user!.id, `%${q}%`]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error searching share candidates:', err);
+        res.status(500).json({ error: 'Error searching users' });
     }
 });
 

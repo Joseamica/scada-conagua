@@ -10,6 +10,7 @@ import {
   heroArrowLeft,
   heroPencilSquare,
   heroEye,
+  heroArrowPath,
 } from '@ng-icons/heroicons/outline';
 import { SinopticoService, Sinoptico } from '../../../core/services/sinoptico.service';
 import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
@@ -20,7 +21,7 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
   standalone: true,
   imports: [CommonModule, FormsModule, NgIconComponent, FooterTabsComponent, HeaderBarComponent],
   providers: [
-    provideIcons({ heroPlus, heroTrash, heroDocumentDuplicate, heroArrowLeft, heroPencilSquare, heroEye }),
+    provideIcons({ heroPlus, heroTrash, heroDocumentDuplicate, heroArrowLeft, heroPencilSquare, heroEye, heroArrowPath }),
   ],
   templateUrl: './project-detail.html',
   styleUrl: './project-detail.css',
@@ -35,6 +36,8 @@ export class ProjectDetail implements OnInit {
   sinopticos = signal<Sinoptico[]>([]);
   loading = signal(true);
   showCreateDialog = signal(false);
+  showTrash = signal(false);
+  trashItems = signal<{ id: number; name: string; description: string | null; version: number; deleted_at: string }[]>([]);
   newName = '';
   newDescription = '';
 
@@ -102,9 +105,36 @@ export class ProjectDetail implements OnInit {
 
   deleteSinoptico(sinoptico: Sinoptico, event: Event): void {
     event.stopPropagation();
-    if (!confirm(`Eliminar sinoptico "${sinoptico.name}"?`)) return;
+    if (!confirm(`Mover "${sinoptico.name}" a la papelera?`)) return;
     this.sinopticoService.deleteSinoptico(sinoptico.id).subscribe({
-      next: () => this.sinopticos.update((list) => list.filter((s) => s.id !== sinoptico.id)),
+      next: () => {
+        this.sinopticos.update((list) => list.filter((s) => s.id !== sinoptico.id));
+        // Refresh trash if visible
+        if (this.showTrash()) this.loadTrash();
+      },
+    });
+  }
+
+  toggleTrash(): void {
+    this.showTrash.update((v) => !v);
+    if (this.showTrash() && this.trashItems().length === 0) {
+      this.loadTrash();
+    }
+  }
+
+  loadTrash(): void {
+    this.sinopticoService.getTrash(this.projectId).subscribe({
+      next: (data) => this.trashItems.set(data),
+    });
+  }
+
+  restoreSinoptico(item: { id: number; name: string }, event: Event): void {
+    event.stopPropagation();
+    this.sinopticoService.restoreSinoptico(item.id).subscribe({
+      next: () => {
+        this.trashItems.update((list) => list.filter((t) => t.id !== item.id));
+        this.loadSinopticos();
+      },
     });
   }
 

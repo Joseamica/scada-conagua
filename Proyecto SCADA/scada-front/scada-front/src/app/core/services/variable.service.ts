@@ -42,6 +42,7 @@ export interface ViewColumn {
   measurement: string;
   aggregation: 'AVG' | 'MIN' | 'MAX' | 'SUM' | 'LAST_VALUE' | 'BAL';
   sort_order: number;
+  incognita_name?: string | null;
 }
 
 export interface ViewFormula {

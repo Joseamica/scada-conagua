@@ -21,6 +21,13 @@
           <ng-icon name="heroShare" size="16" />
           Compartir
         </button>
+        <select class="range-select" [(ngModel)]="execRange">
+          <option value="1h">1 hora</option>
+          <option value="6h">6 horas</option>
+          <option value="24h">24 horas</option>
+          <option value="7d">7 dias</option>
+          <option value="30d">30 dias</option>
+        </select>
         <button
           class="btn-execute"
           (click)="executeView()"
@@ -114,6 +121,9 @@
                   <code class="formula-expr">{{ f.expression }}</code>
                 </div>
                 <div class="item-controls">
+                  <button class="btn-icon-sm btn-chart-sm" (click)="openSeriesChart(f)" title="Ver grafico historico">
+                    <ng-icon name="heroChartBar" size="14" />
+                  </button>
                   <button class="btn-icon-sm btn-danger-sm" (click)="deleteFormula(f)" title="Eliminar">
                     <ng-icon name="heroTrash" size="14" />
                   </button>
@@ -374,6 +384,42 @@
           </div>
         }
       </div>
+
+      <!-- Series Chart Panel -->
+      @if (showSeriesChart()) {
+        <div class="series-chart-section">
+          <div class="series-header">
+            <div class="series-title-row">
+              <ng-icon name="heroChartBar" size="16" />
+              <span>{{ seriesAlias() }}</span>
+            </div>
+            <div class="series-controls">
+              @for (r of ['1h','6h','24h','7d','30d']; track r) {
+                <button
+                  class="range-btn"
+                  [class.active]="seriesRange() === r"
+                  (click)="changeSeriesRange(r)"
+                >{{ r }}</button>
+              }
+              <button class="btn-icon-sm" (click)="closeSeriesChart()" title="Cerrar">
+                <ng-icon name="heroXMark" size="14" />
+              </button>
+            </div>
+          </div>
+          @if (seriesLoading()) {
+            <div class="series-loading">
+              <div class="spinner"></div>
+              <p>Consultando serie historica...</p>
+            </div>
+          } @else if (seriesData().length === 0) {
+            <div class="series-empty">
+              <p>Sin datos para este rango</p>
+            </div>
+          } @else {
+            <div id="series-chart-container" class="series-chart-container"></div>
+          }
+        </div>
+      }
     </div>
   }
 </div>

@@ -83,6 +83,15 @@
                 <widget-link [config]="$any(w.config)"
                   (navigate)="onLinkNavigate($event)" />
               }
+              @case ('clock') {
+                <widget-clock [config]="$any(w.config)" />
+              }
+              @case ('variable') {
+                <widget-variable
+                  [config]="$any(w.config)"
+                  [liveValue]="getLiveValueForConfig(w.config)"
+                />
+              }
             }
           </div>
         }

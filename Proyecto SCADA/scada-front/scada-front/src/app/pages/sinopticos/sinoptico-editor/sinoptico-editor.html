@@ -226,6 +226,10 @@
           <ng-icon name="heroClock" size="16" />
           Historial
         </button>
+        <button class="toolbar-btn toolbar-btn-label" (click)="openShareDialog()" title="Compartir sinoptico">
+          <ng-icon name="heroShare" size="16" />
+          Compartir
+        </button>
         @if (saving()) {
           <span class="status-saving">Guardando...</span>
         } @else if (store.dirty()) {
@@ -768,6 +772,111 @@
                     (input)="updateConfig(w.id, 'fontSize', $event, true)" />
                 </div>
               }
+
+              <!-- ========== CLOCK CONFIG ========== -->
+              @case ('clock') {
+                <div class="config-form">
+                  <label>Formato</label>
+                  <select [value]="asClock(w.config).format"
+                    (change)="updateConfig(w.id, 'format', $event)">
+                    <option value="24h">24 horas</option>
+                    <option value="12h">12 horas</option>
+                  </select>
+                  <label>Tam. Fuente</label>
+                  <input type="number" [value]="asClock(w.config).fontSize"
+                    (input)="updateConfig(w.id, 'fontSize', $event, true)" />
+                  <label>Color texto</label>
+                  <input type="color" [value]="asClock(w.config).color"
+                    (input)="updateConfig(w.id, 'color', $event)" />
+                  <label>Color fondo</label>
+                  <input type="color" [value]="asClock(w.config).bgColor"
+                    (input)="updateConfig(w.id, 'bgColor', $event)" />
+                  <div class="checkbox-row">
+                    <label><input type="checkbox" [checked]="asClock(w.config).showDate"
+                      (change)="updateConfig(w.id, 'showDate', $event)"> Mostrar fecha</label>
+                  </div>
+                  <div class="checkbox-row">
+                    <label><input type="checkbox" [checked]="asClock(w.config).showSeconds"
+                      (change)="updateConfig(w.id, 'showSeconds', $event)"> Mostrar segundos</label>
+                  </div>
+                </div>
+              }
+
+              <!-- ========== VARIABLE CONFIG ========== -->
+              @case ('variable') {
+                <div class="config-form">
+                  <div class="config-field-group">
+                    <span class="field-group-label">Fuente de datos</span>
+                    <label>Vista de variables</label>
+                    <select [value]="asVariable(w.config).viewId ?? ''"
+                      (change)="onVariableViewChange(w.id, $event)">
+                      <option value="">-- Seleccionar vista --</option>
+                      @for (v of availableViews(); track v.id) {
+                        <option [value]="v.id">{{ v.name }}</option>
+                      }
+                    </select>
+
+                    @if (asVariable(w.config).viewId) {
+                      <label>Columna / Formula</label>
+                      @if (!variableViewDetail() || variableViewDetail()!.id !== asVariable(w.config).viewId) {
+                        <button class="btn-config" (click)="loadVariableDetail(asVariable(w.config).viewId!)">
+                          Cargar columnas...
+                        </button>
+                      } @else {
+                        <select
+                          [value]="asVariable(w.config).formulaId ? 'formula:' + asVariable(w.config).formulaId : asVariable(w.config).columnId ? 'col:' + asVariable(w.config).columnId : ''"
+                          (change)="onVariableSourceChange(w.id, $event)">
+                          <option value="">-- Seleccionar --</option>
+                          @if (variableViewDetail(); as detail) {
+                            <optgroup label="Columnas">
+                              @for (col of detail.columns; track col.id) {
+                                <option [value]="'col:' + col.id">{{ col.alias || col.measurement }}</option>
+                              }
+                            </optgroup>
+                            @if (detail.formulas?.length) {
+                              <optgroup label="Formulas">
+                                @for (f of detail.formulas; track f.id) {
+                                  <option [value]="'formula:' + f.id">{{ f.alias }}</option>
+                                }
+                              </optgroup>
+                            }
+                          }
+                        </select>
+                      }
+
+                      @if (asVariable(w.config).sourceLabel) {
+                        <span class="source-badge">{{ asVariable(w.config).sourceLabel }}</span>
+                      }
+                    }
+                  </div>
+
+                  <div class="config-field-group">
+                    <span class="field-group-label">Presentacion</span>
+                    <label>Titulo</label>
+                    <input type="text" [value]="asVariable(w.config).title"
+                      (input)="updateConfig(w.id, 'title', $event)" />
+                    <label>Unidad</label>
+                    <input type="text" [value]="asVariable(w.config).unit"
+                      (input)="updateConfig(w.id, 'unit', $event)" placeholder="ej: m3/h, PSI" />
+                    <label>Decimales</label>
+                    <input type="number" min="0" max="6" [value]="asVariable(w.config).decimals"
+                      (input)="updateConfig(w.id, 'decimals', $event, true)" />
+                    <label>Tam. Fuente</label>
+                    <input type="number" [value]="asVariable(w.config).fontSize"
+                      (input)="updateConfig(w.id, 'fontSize', $event, true)" />
+                  </div>
+
+                  <div class="config-field-group">
+                    <span class="field-group-label">Colores</span>
+                    <label>Color texto</label>
+                    <input type="color" [value]="asVariable(w.config).color"
+                      (input)="updateConfig(w.id, 'color', $event)" />
+                    <label>Color fondo</label>
+                    <input type="color" [value]="asVariable(w.config).bgColor"
+                      (input)="updateConfig(w.id, 'bgColor', $event)" />
+                  </div>
+                </div>
+              }
             }
 
             <!-- Opacity control (Feature 6) — all widget types -->
@@ -900,6 +1009,15 @@
                   @case ('link') {
                     <widget-link [config]="$any(w.config)" />
                   }
+                  @case ('clock') {
+                    <widget-clock [config]="$any(w.config)" />
+                  }
+                  @case ('variable') {
+                    <widget-variable
+                      [config]="$any(w.config)"
+                      [liveValue]="getLiveValueForConfig(w.config)"
+                    />
+                  }
                 }
               </widget-wrapper>
             }
@@ -980,6 +1098,72 @@
       [open]="showActivityPanel()"
       (closePanel)="showActivityPanel.set(false)"
     />
+
+    <!-- Share Dialog -->
+    @if (showShareDialog()) {
+      <div class="dialog-overlay" (click)="showShareDialog.set(false)">
+        <div class="share-dialog" (click)="$event.stopPropagation()">
+          <div class="share-header">
+            <h2>Compartir Sinoptico</h2>
+            <button class="btn-close" (click)="showShareDialog.set(false)">
+              <ng-icon name="heroXMark" size="18" />
+            </button>
+          </div>
+
+          <div class="share-body">
+            <!-- Search + Add -->
+            <div class="share-search-row">
+              <div class="search-wrapper">
+                <input
+                  type="text"
+                  [(ngModel)]="shareSearchQuery"
+                  (input)="searchShareCandidates()"
+                  placeholder="Buscar usuario por nombre o email..."
+                  class="share-search-input"
+                />
+                @if (shareCandidates().length > 0) {
+                  <div class="candidates-dropdown">
+                    @for (c of shareCandidates(); track c.id) {
+                      <div class="candidate-item" (click)="selectShareCandidate(c)">
+                        <span class="candidate-name">{{ c.full_name }}</span>
+                        <span class="candidate-email">{{ c.email }}</span>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+              <select [(ngModel)]="sharePermission" class="share-perm-select">
+                <option value="read">Lectura</option>
+                <option value="edit">Edicion</option>
+              </select>
+              <button class="btn-share-add" (click)="addShare()" [disabled]="!selectedCandidateId">
+                Agregar
+              </button>
+            </div>
+
+            <!-- Current shares -->
+            <div class="shares-list">
+              @for (s of shares(); track s.id) {
+                <div class="share-item">
+                  <div class="share-info">
+                    <span class="share-name">{{ s.full_name }}</span>
+                    <span class="share-email">{{ s.email }}</span>
+                  </div>
+                  <span class="share-perm-badge" [class.edit]="s.permission === 'edit'">
+                    {{ s.permission === 'edit' ? 'Edicion' : 'Lectura' }}
+                  </span>
+                  <button class="btn-share-remove" (click)="removeShare(s)" title="Quitar acceso">
+                    <ng-icon name="heroTrash" size="14" />
+                  </button>
+                </div>
+              } @empty {
+                <p class="shares-empty">Nadie tiene acceso a este sinoptico.</p>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    }
   </div>
 } @else {
   <div class="editor-loading">

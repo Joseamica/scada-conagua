@@ -25,6 +25,8 @@ import { ImageWidget } from '../shared/widget-renderers/image-widget';
 import { TextWidget } from '../shared/widget-renderers/text-widget';
 import { ShapeWidget } from '../shared/widget-renderers/shape-widget';
 import { LinkWidget } from '../shared/widget-renderers/link-widget';
+import { ClockWidget } from '../shared/widget-renderers/clock-widget';
+import { VariableWidget } from '../shared/widget-renderers/variable-widget';
 import { ActivityPanel } from '../shared/activity-panel/activity-panel';
 
 @Component({
@@ -42,6 +44,8 @@ import { ActivityPanel } from '../shared/activity-panel/activity-panel';
     TextWidget,
     ShapeWidget,
     LinkWidget,
+    ClockWidget,
+    VariableWidget,
     ActivityPanel,
   ],
   providers: [SinopticoDataStore, provideIcons({ heroArrowLeft, heroPencilSquare, heroClock })],
@@ -108,16 +112,21 @@ export class SinopticoViewer implements OnInit, OnDestroy {
     if (config.source === 'view' && config.viewId && config.formulaId) {
       return this.dataStore.getValue(`view:${config.viewId}:formula:${config.formulaId}`, '');
     }
+    if (config.viewId && config.formulaId && !config.devEUI) {
+      return this.dataStore.getValue(`view:${config.viewId}:formula:${config.formulaId}`, '');
+    }
+    // No devEUI → can't query by device
+    if (!config.devEUI) return null;
     return this.dataStore.getValue(config.devEUI, config.measurement);
   }
 
   getDeviceTimestamp(config: any): string | null {
-    if (config.source === 'view') return null;
+    if (config.source === 'view' || !config.devEUI) return null;
     return this.dataStore.getDeviceTimestamp(config.devEUI, config.measurement);
   }
 
   isDeviceStale(config: any): boolean {
-    if (config.source === 'view') return false;
+    if (config.source === 'view' || !config.devEUI) return false;
     return this.dataStore.isStale(config.devEUI, config.measurement);
   }
 

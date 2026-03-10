@@ -7,10 +7,16 @@
       Proyectos
     </button>
     <h1>{{ projectName() || 'Proyecto' }}</h1>
-    <button class="btn-primary" (click)="openCreateDialog()">
-      <ng-icon name="heroPlus" size="18" />
-      Nuevo Sinoptico
-    </button>
+    <div class="header-actions">
+      <button class="btn-secondary btn-sm" [class.active]="showTrash()" (click)="toggleTrash()">
+        <ng-icon name="heroTrash" size="16" />
+        Papelera
+      </button>
+      <button class="btn-primary" (click)="openCreateDialog()">
+        <ng-icon name="heroPlus" size="18" />
+        Nuevo Sinoptico
+      </button>
+    </div>
   </div>
 
   <div class="sinopticos-grid" *ngIf="!loading(); else loadingTpl">
@@ -73,6 +79,29 @@
       <p>No hay sinopticos en este proyecto</p>
       <button class="btn-primary" (click)="openCreateDialog()">Crear sinoptico</button>
     </div>
+  </div>
+
+  <!-- TRASH SECTION -->
+  <div class="trash-section" *ngIf="showTrash()">
+    <h3 class="trash-title">
+      <ng-icon name="heroTrash" size="16" />
+      Papelera
+    </h3>
+    <div class="trash-list" *ngIf="trashItems().length > 0; else emptyTrash">
+      <div class="trash-item" *ngFor="let t of trashItems()">
+        <div class="trash-info">
+          <span class="trash-name">{{ t.name }}</span>
+          <span class="trash-meta">v{{ t.version }} | Eliminado {{ t.deleted_at | date: 'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+        <button class="btn-restore" (click)="restoreSinoptico(t, $event)">
+          <ng-icon name="heroArrowPath" size="14" />
+          Restaurar
+        </button>
+      </div>
+    </div>
+    <ng-template #emptyTrash>
+      <p class="trash-empty">La papelera esta vacia</p>
+    </ng-template>
   </div>
 
   <ng-template #loadingTpl>

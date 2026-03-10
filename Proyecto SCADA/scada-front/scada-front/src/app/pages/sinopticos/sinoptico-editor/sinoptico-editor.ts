@@ -11,6 +11,7 @@ import {
   ElementRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
 import {
@@ -32,10 +33,14 @@ import {
   heroDocumentText,
   heroStop,
   heroArrowTopRightOnSquare,
+  heroShare,
+  heroXMark,
+  heroCalculator,
 } from '@ng-icons/heroicons/outline';
 import {
   SinopticoService,
   Sinoptico,
+  SinopticoShare,
   CanvasWidget,
   LabelConfig,
   ChartConfig,
@@ -46,6 +51,8 @@ import {
   TextConfig,
   ShapeConfig,
   LinkConfig,
+  ClockConfig,
+  VariableConfig,
 } from '../../../core/services/sinoptico.service';
 import { EditorStore } from './store/editor-store';
 import { SinopticoDataStore } from './store/sinoptico-data-store';
@@ -59,7 +66,10 @@ import { ImageWidget } from '../shared/widget-renderers/image-widget';
 import { TextWidget } from '../shared/widget-renderers/text-widget';
 import { ShapeWidget } from '../shared/widget-renderers/shape-widget';
 import { LinkWidget } from '../shared/widget-renderers/link-widget';
+import { ClockWidget } from '../shared/widget-renderers/clock-widget';
+import { VariableWidget } from '../shared/widget-renderers/variable-widget';
 import { TagBrowser, TagSelection } from '../shared/tag-browser/tag-browser';
+import { VariableService, VariableView, VariableViewDetail } from '../../../core/services/variable.service';
 import { ActivityPanel } from '../shared/activity-panel/activity-panel';
 
 interface PaletteItem {
@@ -78,6 +88,7 @@ const SERIES_COLORS = [
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     NgIconComponent,
     WidgetWrapper,
     LabelWidget,
@@ -89,6 +100,8 @@ const SERIES_COLORS = [
     TextWidget,
     ShapeWidget,
     LinkWidget,
+    ClockWidget,
+    VariableWidget,
     TagBrowser,
     ActivityPanel,
   ],
@@ -114,6 +127,9 @@ const SERIES_COLORS = [
       heroDocumentText,
       heroStop,
       heroArrowTopRightOnSquare,
+      heroShare,
+      heroXMark,
+      heroCalculator,
     }),
   ],
   templateUrl: './sinoptico-editor.html',
@@ -123,6 +139,7 @@ export class SinopticoEditor implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private sinopticoService = inject(SinopticoService);
+  private variableService = inject(VariableService);
   store = inject(EditorStore);
   dataStore = inject(SinopticoDataStore);
 
@@ -158,6 +175,18 @@ export class SinopticoEditor implements OnInit, OnDestroy {
   // Link widget: available sinopticos
   availableSinopticos = signal<{ id: number; name: string }[]>([]);
 
+  // Variable widget: available views & detail cache
+  availableViews = signal<VariableView[]>([]);
+  variableViewDetail = signal<VariableViewDetail | null>(null);
+
+  // Sharing dialog
+  showShareDialog = signal(false);
+  shares = signal<SinopticoShare[]>([]);
+  shareCandidates = signal<{ id: number; full_name: string; email: string }[]>([]);
+  shareSearchQuery = '';
+  selectedCandidateId = 0;
+  sharePermission: 'read' | 'edit' = 'read';
+
   paletteItems: PaletteItem[] = [
     { type: 'label', label: 'Etiqueta', icon: 'heroTag' },
     { type: 'chart', label: 'Grafico', icon: 'heroChartBarSquare' },
@@ -168,6 +197,8 @@ export class SinopticoEditor implements OnInit, OnDestroy {
     { type: 'text', label: 'Texto', icon: 'heroDocumentText' },
     { type: 'shape', label: 'Forma', icon: 'heroStop' },
     { type: 'link', label: 'Enlace', icon: 'heroArrowTopRightOnSquare' },
+    { type: 'clock', label: 'Reloj', icon: 'heroClock' },
+    { type: 'variable', label: 'Variable', icon: 'heroCalculator' },
   ];
 
   // Auto-save
@@ -203,6 +234,8 @@ export class SinopticoEditor implements OnInit, OnDestroy {
         this.loading.set(false);
         // Start data polling
         this.dataStore.startPolling(data.id, this.store.widgets());
+        // Load available views for variable widget
+        this.variableService.getViews().subscribe((views) => this.availableViews.set(views));
         // Load available sinopticos for link widget
         if (data.project_id) {
           this.sinopticoService.getProjectSinopticos(data.project_id).subscribe((list) => {
@@ -558,6 +591,8 @@ export class SinopticoEditor implements OnInit, OnDestroy {
       text: 'Texto',
       shape: 'Forma',
       link: 'Enlace',
+      clock: 'Reloj',
+      variable: 'Variable',
     };
     return labels[type] || type;
   }
@@ -788,18 +823,24 @@ export class SinopticoEditor implements OnInit, OnDestroy {
     if (config.source === 'view' && config.viewId && config.formulaId) {
       return this.dataStore.getValue(`view:${config.viewId}:formula:${config.formulaId}`, '');
     }
+    // Variable widget: viewId + formulaId without source field
+    if (config.viewId && config.formulaId && !config.devEUI) {
+      return this.dataStore.getValue(`view:${config.viewId}:formula:${config.formulaId}`, '');
+    }
+    // No devEUI → can't query by device (variable widgets, clock, etc.)
+    if (!config.devEUI) return null;
     return this.dataStore.getValue(config.devEUI, config.measurement);
   }
 
   // ===== DEVICE TIMESTAMP / STALENESS HELPERS =====
 
   getDeviceTimestamp(config: any): string | null {
-    if (config.source === 'view') return null;
+    if (config.source === 'view' || !config.devEUI) return null;
     return this.dataStore.getDeviceTimestamp(config.devEUI, config.measurement);
   }
 
   isDeviceStale(config: any): boolean {
-    if (config.source === 'view') return false;
+    if (config.source === 'view' || !config.devEUI) return false;
     return this.dataStore.isStale(config.devEUI, config.measurement);
   }
 
@@ -829,6 +870,12 @@ export class SinopticoEditor implements OnInit, OnDestroy {
     return config;
   }
   asLink(config: any): LinkConfig {
+    return config;
+  }
+  asClock(config: any): ClockConfig {
+    return config;
+  }
+  asVariable(config: any): VariableConfig {
     return config;
   }
 
@@ -913,6 +960,64 @@ export class SinopticoEditor implements OnInit, OnDestroy {
     this.store.updateWidgetConfig(widgetId, { targetSinopticoId: id, targetName: name });
   }
 
+  // ===== VARIABLE WIDGET (source selection) =====
+
+  onVariableViewChange(widgetId: string, event: Event): void {
+    const viewId = Number((event.target as HTMLSelectElement).value) || null;
+    const viewName = this.availableViews().find((v) => v.id === viewId)?.name || '';
+    this.store.updateWidgetConfig(widgetId, {
+      viewId,
+      viewName,
+      columnId: null,
+      formulaId: null,
+      sourceLabel: viewName,
+    });
+    this.variableViewDetail.set(null);
+    if (viewId) {
+      this.variableService.getView(viewId).subscribe((detail) => {
+        // Ensure arrays exist even if API omits them
+        detail.columns = detail.columns || [];
+        detail.formulas = detail.formulas || [];
+        this.variableViewDetail.set(detail);
+      });
+    }
+  }
+
+  onVariableSourceChange(widgetId: string, event: Event): void {
+    const val = (event.target as HTMLSelectElement).value;
+    // val format: "col:ID" or "formula:ID"
+    const [type, idStr] = val.split(':');
+    const id = Number(idStr);
+    const detail = this.variableViewDetail();
+    if (!detail) return;
+
+    if (type === 'col') {
+      const col = (detail.columns || []).find((c) => c.id === id);
+      this.store.updateWidgetConfig(widgetId, {
+        columnId: id,
+        formulaId: null,
+        sourceLabel: col?.alias || col?.measurement || '',
+      });
+    } else if (type === 'formula') {
+      const formula = (detail.formulas || []).find((f) => f.id === id);
+      this.store.updateWidgetConfig(widgetId, {
+        columnId: null,
+        formulaId: id,
+        sourceLabel: formula?.alias || '',
+      });
+    }
+    this.refreshData();
+  }
+
+  loadVariableDetail(viewId: number): void {
+    if (this.variableViewDetail()?.id === viewId) return;
+    this.variableService.getView(viewId).subscribe((detail) => {
+      detail.columns = detail.columns || [];
+      detail.formulas = detail.formulas || [];
+      this.variableViewDetail.set(detail);
+    });
+  }
+
   // ===== KEYBOARD SHORTCUTS =====
 
   @HostListener('document:keydown', ['$event'])
@@ -953,6 +1058,62 @@ export class SinopticoEditor implements OnInit, OnDestroy {
       event.preventDefault();
       this.save();
     }
+  }
+
+  // ===== SHARING =====
+
+  openShareDialog(): void {
+    this.showShareDialog.set(true);
+    this.loadShares();
+  }
+
+  private loadShares(): void {
+    const s = this.sinoptico();
+    if (!s) return;
+    this.sinopticoService.getShares(s.id).subscribe({
+      next: (data) => this.shares.set(data),
+    });
+  }
+
+  searchShareCandidates(): void {
+    const q = this.shareSearchQuery.trim();
+    if (q.length < 2) {
+      this.shareCandidates.set([]);
+      return;
+    }
+    const s = this.sinoptico();
+    if (!s) return;
+    this.sinopticoService.searchShareCandidates(s.id, q).subscribe({
+      next: (data) => this.shareCandidates.set(data),
+    });
+  }
+
+  selectShareCandidate(c: { id: number; full_name: string; email: string }): void {
+    this.selectedCandidateId = c.id;
+    this.shareSearchQuery = c.full_name;
+    this.shareCandidates.set([]);
+  }
+
+  addShare(): void {
+    if (!this.selectedCandidateId) return;
+    const s = this.sinoptico();
+    if (!s) return;
+    this.sinopticoService.addShare(s.id, this.selectedCandidateId, this.sharePermission).subscribe({
+      next: () => {
+        this.loadShares();
+        this.selectedCandidateId = 0;
+        this.shareSearchQuery = '';
+        this.shareCandidates.set([]);
+      },
+    });
+  }
+
+  removeShare(share: SinopticoShare): void {
+    const s = this.sinoptico();
+    if (!s) return;
+    this.sinopticoService.removeShare(s.id, share.id).subscribe({
+      next: () => this.shares.update((list) => list.filter((x) => x.id !== share.id)),
+    });
   }
 
   // ===== EXPORT PNG =====

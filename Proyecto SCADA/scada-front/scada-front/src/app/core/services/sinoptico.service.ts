@@ -46,7 +46,7 @@ export interface CanvasState {
 
 export interface CanvasWidget {
   id: string;
-  type: 'table' | 'chart' | 'map' | 'label' | 'header' | 'image' | 'text' | 'shape' | 'link';
+  type: 'table' | 'chart' | 'map' | 'label' | 'header' | 'image' | 'text' | 'shape' | 'link' | 'clock' | 'variable';
   x: number;
   y: number;
   width: number;
@@ -160,6 +160,29 @@ export interface LinkConfig {
   fontSize: number;
 }
 
+export interface VariableConfig {
+  viewId: number | null;
+  viewName: string;
+  columnId: number | null;
+  formulaId: number | null;
+  sourceLabel: string; // display name: "presion_doble" or "Pozo 008 / caudal"
+  title: string;
+  unit: string;
+  decimals: number;
+  fontSize: number;
+  color: string;
+  bgColor: string;
+}
+
+export interface ClockConfig {
+  format: '12h' | '24h';
+  showDate: boolean;
+  showSeconds: boolean;
+  fontSize: number;
+  color: string;
+  bgColor: string;
+}
+
 export type WidgetConfig =
   | LabelConfig
   | ChartConfig
@@ -169,7 +192,9 @@ export type WidgetConfig =
   | ImageConfig
   | TextConfig
   | ShapeConfig
-  | LinkConfig;
+  | LinkConfig
+  | ClockConfig
+  | VariableConfig;
 
 export function defaultWidgetConfig(type: CanvasWidget['type']): WidgetConfig {
   switch (type) {
@@ -206,6 +231,10 @@ export function defaultWidgetConfig(type: CanvasWidget['type']): WidgetConfig {
       return { shapeType: 'rectangle', fillColor: '#e2e8f0', borderColor: '#94a3b8', borderWidth: 2, borderRadius: 0 };
     case 'link':
       return { targetSinopticoId: null, targetName: '', label: 'Ir a...', bgColor: '#6d002b', textColor: '#ffffff', fontSize: 14 };
+    case 'clock':
+      return { format: '24h', showDate: true, showSeconds: true, fontSize: 32, color: '#0f172a', bgColor: 'transparent' };
+    case 'variable':
+      return { viewId: null, viewName: '', columnId: null, formulaId: null, sourceLabel: '', title: 'Variable', unit: '', decimals: 2, fontSize: 32, color: '#0f172a', bgColor: 'transparent' };
   }
 }
 
@@ -275,6 +304,15 @@ export class SinopticoService {
     return this.http.post<Sinoptico>(`${this.base}/sinopticos/${id}/duplicate`, {});
   }
 
+  // Trash
+  getTrash(projectId: number): Observable<{ id: number; name: string; description: string | null; version: number; deleted_at: string }[]> {
+    return this.http.get<any[]>(`${this.base}/projects/${projectId}/trash`);
+  }
+
+  restoreSinoptico(id: number): Observable<{ message: string; id: number; name: string }> {
+    return this.http.post<{ message: string; id: number; name: string }>(`${this.base}/sinopticos/${id}/restore`, {});
+  }
+
   // Sharing
   getShares(sinopticoId: number): Observable<SinopticoShare[]> {
     return this.http.get<SinopticoShare[]>(`${this.base}/sinopticos/${sinopticoId}/shares`);
@@ -286,6 +324,12 @@ export class SinopticoService {
 
   removeShare(sinopticoId: number, shareId: number): Observable<any> {
     return this.http.delete(`${this.base}/sinopticos/${sinopticoId}/shares/${shareId}`);
+  }
+
+  searchShareCandidates(sinopticoId: number, q: string): Observable<{ id: number; full_name: string; email: string }[]> {
+    return this.http.get<{ id: number; full_name: string; email: string }[]>(
+      `${this.base}/sinopticos/${sinopticoId}/share-candidates`, { params: { q } },
+    );
   }
 
   // Activity
