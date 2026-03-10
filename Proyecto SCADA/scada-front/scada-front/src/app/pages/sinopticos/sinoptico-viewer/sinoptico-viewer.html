@@ -92,6 +92,9 @@
                   [liveValue]="getLiveValueForConfig(w.config)"
                 />
               }
+              @case ('alarm') {
+                <widget-alarm [config]="$any(w.config)" />
+              }
             }
           </div>
         }

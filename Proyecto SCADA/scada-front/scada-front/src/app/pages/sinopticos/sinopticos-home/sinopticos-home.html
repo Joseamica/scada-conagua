@@ -41,6 +41,40 @@
     </div>
   </div>
 
+  <!-- Shared with me -->
+  <div class="shared-section" *ngIf="sharedWithMe().length > 0">
+    <h2 class="section-title">
+      <ng-icon name="heroShare" size="20" />
+      Compartidos conmigo
+    </h2>
+    <div class="shared-grid">
+      <div
+        *ngFor="let s of sharedWithMe()"
+        class="shared-card"
+        (click)="openSharedViewer(s)"
+      >
+        <div class="shared-card-body">
+          <h3>{{ s.name }}</h3>
+          <p class="shared-meta">{{ s.project_name }} | {{ s.owner_name }}</p>
+        </div>
+        <div class="shared-card-right">
+          <span class="perm-badge" [class.edit]="s.permission === 'edit'">
+            {{ s.permission === 'edit' ? 'Edicion' : 'Lectura' }}
+          </span>
+          <div class="shared-card-actions">
+            <button class="btn-icon-sm" (click)="openSharedViewer(s); $event.stopPropagation()" title="Ver">
+              <ng-icon name="heroEye" size="15" />
+            </button>
+            <button class="btn-icon-sm" *ngIf="s.permission === 'edit'"
+              (click)="openSharedEditor(s); $event.stopPropagation()" title="Editar">
+              <ng-icon name="heroPencilSquare" size="15" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <ng-template #loadingTpl>
     <div class="loading-state">
       <div class="spinner"></div>

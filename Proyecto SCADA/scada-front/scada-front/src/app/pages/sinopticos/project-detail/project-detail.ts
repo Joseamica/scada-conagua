@@ -11,8 +11,16 @@ import {
   heroPencilSquare,
   heroEye,
   heroArrowPath,
+  heroShare,
+  heroXMark,
+  heroMagnifyingGlass,
+  heroUserPlus,
 } from '@ng-icons/heroicons/outline';
-import { SinopticoService, Sinoptico } from '../../../core/services/sinoptico.service';
+import {
+  SinopticoService,
+  Sinoptico,
+  SinopticoShare,
+} from '../../../core/services/sinoptico.service';
 import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 
@@ -21,7 +29,7 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
   standalone: true,
   imports: [CommonModule, FormsModule, NgIconComponent, FooterTabsComponent, HeaderBarComponent],
   providers: [
-    provideIcons({ heroPlus, heroTrash, heroDocumentDuplicate, heroArrowLeft, heroPencilSquare, heroEye, heroArrowPath }),
+    provideIcons({ heroPlus, heroTrash, heroDocumentDuplicate, heroArrowLeft, heroPencilSquare, heroEye, heroArrowPath, heroShare, heroXMark, heroMagnifyingGlass, heroUserPlus }),
   ],
   templateUrl: './project-detail.html',
   styleUrl: './project-detail.css',
@@ -40,6 +48,15 @@ export class ProjectDetail implements OnInit {
   trashItems = signal<{ id: number; name: string; description: string | null; version: number; deleted_at: string }[]>([]);
   newName = '';
   newDescription = '';
+
+  // Share dialog
+  showShareDialog = signal(false);
+  shareSinopticoId = signal(0);
+  shareSinopticoName = signal('');
+  shares = signal<SinopticoShare[]>([]);
+  shareCandidates = signal<{ id: number; full_name: string; email: string }[]>([]);
+  shareSearch = signal('');
+  sharePermission = signal<'read' | 'edit'>('read');
 
   ngOnInit(): void {
     this.projectId = Number(this.route.snapshot.paramMap.get('id'));
@@ -135,6 +152,51 @@ export class ProjectDetail implements OnInit {
         this.trashItems.update((list) => list.filter((t) => t.id !== item.id));
         this.loadSinopticos();
       },
+    });
+  }
+
+  openShareDialog(sinoptico: Sinoptico, event: Event): void {
+    event.stopPropagation();
+    this.shareSinopticoId.set(sinoptico.id);
+    this.shareSinopticoName.set(sinoptico.name);
+    this.shareSearch.set('');
+    this.shareCandidates.set([]);
+    this.showShareDialog.set(true);
+    this.loadShares(sinoptico.id);
+  }
+
+  loadShares(sinopticoId: number): void {
+    this.sinopticoService.getShares(sinopticoId).subscribe({
+      next: (data) => this.shares.set(data),
+    });
+  }
+
+  searchShareCandidates(): void {
+    const q = this.shareSearch();
+    if (q.length < 2) {
+      this.shareCandidates.set([]);
+      return;
+    }
+    this.sinopticoService.searchShareCandidates(this.shareSinopticoId(), q).subscribe({
+      next: (data) => this.shareCandidates.set(data),
+    });
+  }
+
+  addShare(userId: number): void {
+    this.sinopticoService
+      .addShare(this.shareSinopticoId(), userId, this.sharePermission())
+      .subscribe({
+        next: () => {
+          this.loadShares(this.shareSinopticoId());
+          this.shareCandidates.set([]);
+          this.shareSearch.set('');
+        },
+      });
+  }
+
+  removeShare(shareId: number): void {
+    this.sinopticoService.removeShare(this.shareSinopticoId(), shareId).subscribe({
+      next: () => this.loadShares(this.shareSinopticoId()),
     });
   }
 

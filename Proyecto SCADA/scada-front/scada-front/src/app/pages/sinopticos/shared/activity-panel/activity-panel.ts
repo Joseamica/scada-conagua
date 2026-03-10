@@ -209,11 +209,15 @@ export class ActivityPanel implements OnChanges {
 
   translateAction(action: string): string {
     const map: Record<string, string> = {
-      canvas_updated: 'Actualizo el canvas',
       created: 'Creo el sinoptico',
+      saved: 'Guardo el sinoptico',
+      canvas_updated: 'Actualizo el canvas',
       duplicated: 'Duplico el sinoptico',
       shared: 'Compartio el sinoptico',
+      unshared: 'Quito acceso compartido',
       permissions_updated: 'Actualizo permisos',
+      restored: 'Restauro el sinoptico',
+      deleted: 'Elimino el sinoptico',
     };
     return map[action] || action;
   }

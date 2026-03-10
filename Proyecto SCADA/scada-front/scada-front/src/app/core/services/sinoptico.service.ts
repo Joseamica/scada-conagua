@@ -46,7 +46,7 @@ export interface CanvasState {
 
 export interface CanvasWidget {
   id: string;
-  type: 'table' | 'chart' | 'map' | 'label' | 'header' | 'image' | 'text' | 'shape' | 'link' | 'clock' | 'variable';
+  type: 'table' | 'chart' | 'map' | 'label' | 'header' | 'image' | 'text' | 'shape' | 'link' | 'clock' | 'variable' | 'alarm';
   x: number;
   y: number;
   width: number;
@@ -174,6 +174,15 @@ export interface VariableConfig {
   bgColor: string;
 }
 
+export interface AlarmConfig {
+  title: string;
+  maxItems: number;
+  fontSize: number;
+  showSiteName: boolean;
+  showTimestamp: boolean;
+  compact: boolean;
+}
+
 export interface ClockConfig {
   format: '12h' | '24h';
   showDate: boolean;
@@ -194,7 +203,8 @@ export type WidgetConfig =
   | ShapeConfig
   | LinkConfig
   | ClockConfig
-  | VariableConfig;
+  | VariableConfig
+  | AlarmConfig;
 
 export function defaultWidgetConfig(type: CanvasWidget['type']): WidgetConfig {
   switch (type) {
@@ -235,6 +245,8 @@ export function defaultWidgetConfig(type: CanvasWidget['type']): WidgetConfig {
       return { format: '24h', showDate: true, showSeconds: true, fontSize: 32, color: '#0f172a', bgColor: 'transparent' };
     case 'variable':
       return { viewId: null, viewName: '', columnId: null, formulaId: null, sourceLabel: '', title: 'Variable', unit: '', decimals: 2, fontSize: 32, color: '#0f172a', bgColor: 'transparent' };
+    case 'alarm':
+      return { title: 'Alarmas Activas', maxItems: 10, fontSize: 12, showSiteName: true, showTimestamp: true, compact: false };
   }
 }
 
@@ -311,6 +323,11 @@ export class SinopticoService {
 
   restoreSinoptico(id: number): Observable<{ message: string; id: number; name: string }> {
     return this.http.post<{ message: string; id: number; name: string }>(`${this.base}/sinopticos/${id}/restore`, {});
+  }
+
+  // Shared with me
+  getSharedWithMe(): Observable<(Sinoptico & { permission: string; project_name: string })[]> {
+    return this.http.get<any[]>(`${this.base}/sinopticos-shared`);
   }
 
   // Sharing

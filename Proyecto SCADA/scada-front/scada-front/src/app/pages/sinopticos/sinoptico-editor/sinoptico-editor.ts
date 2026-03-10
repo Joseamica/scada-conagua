@@ -36,6 +36,7 @@ import {
   heroShare,
   heroXMark,
   heroCalculator,
+  heroBellAlert,
 } from '@ng-icons/heroicons/outline';
 import {
   SinopticoService,
@@ -53,6 +54,7 @@ import {
   LinkConfig,
   ClockConfig,
   VariableConfig,
+  AlarmConfig,
 } from '../../../core/services/sinoptico.service';
 import { EditorStore } from './store/editor-store';
 import { SinopticoDataStore } from './store/sinoptico-data-store';
@@ -68,6 +70,7 @@ import { ShapeWidget } from '../shared/widget-renderers/shape-widget';
 import { LinkWidget } from '../shared/widget-renderers/link-widget';
 import { ClockWidget } from '../shared/widget-renderers/clock-widget';
 import { VariableWidget } from '../shared/widget-renderers/variable-widget';
+import { AlarmWidget } from '../shared/widget-renderers/alarm-widget';
 import { TagBrowser, TagSelection } from '../shared/tag-browser/tag-browser';
 import { VariableService, VariableView, VariableViewDetail } from '../../../core/services/variable.service';
 import { ActivityPanel } from '../shared/activity-panel/activity-panel';
@@ -102,6 +105,7 @@ const SERIES_COLORS = [
     LinkWidget,
     ClockWidget,
     VariableWidget,
+    AlarmWidget,
     TagBrowser,
     ActivityPanel,
   ],
@@ -130,6 +134,7 @@ const SERIES_COLORS = [
       heroShare,
       heroXMark,
       heroCalculator,
+      heroBellAlert,
     }),
   ],
   templateUrl: './sinoptico-editor.html',
@@ -199,6 +204,7 @@ export class SinopticoEditor implements OnInit, OnDestroy {
     { type: 'link', label: 'Enlace', icon: 'heroArrowTopRightOnSquare' },
     { type: 'clock', label: 'Reloj', icon: 'heroClock' },
     { type: 'variable', label: 'Variable', icon: 'heroCalculator' },
+    { type: 'alarm', label: 'Alarmas', icon: 'heroBellAlert' },
   ];
 
   // Auto-save
@@ -593,6 +599,7 @@ export class SinopticoEditor implements OnInit, OnDestroy {
       link: 'Enlace',
       clock: 'Reloj',
       variable: 'Variable',
+      alarm: 'Alarmas',
     };
     return labels[type] || type;
   }
@@ -876,6 +883,9 @@ export class SinopticoEditor implements OnInit, OnDestroy {
     return config;
   }
   asVariable(config: any): VariableConfig {
+    return config;
+  }
+  asAlarm(config: any): AlarmConfig {
     return config;
   }
 

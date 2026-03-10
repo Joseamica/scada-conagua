@@ -66,6 +66,9 @@
         <button class="btn-icon" (click)="openEditor(s); $event.stopPropagation()" title="Editar">
           <ng-icon name="heroPencilSquare" size="16" />
         </button>
+        <button class="btn-icon" (click)="openShareDialog(s, $event)" title="Compartir">
+          <ng-icon name="heroShare" size="16" />
+        </button>
         <button class="btn-icon" (click)="duplicate(s, $event)" title="Duplicar">
           <ng-icon name="heroDocumentDuplicate" size="16" />
         </button>
@@ -127,6 +130,70 @@
     <div class="dialog-actions">
       <button class="btn-secondary" (click)="showCreateDialog.set(false)">Cancelar</button>
       <button class="btn-primary" (click)="createSinoptico()" [disabled]="!newName.trim()">Crear</button>
+    </div>
+  </div>
+</div>
+
+<!-- Share Dialog -->
+<div class="dialog-overlay" *ngIf="showShareDialog()" (click)="showShareDialog.set(false)">
+  <div class="dialog share-dialog" (click)="$event.stopPropagation()">
+    <div class="share-header">
+      <h2>Compartir "{{ shareSinopticoName() }}"</h2>
+      <button class="btn-close" (click)="showShareDialog.set(false)">
+        <ng-icon name="heroXMark" size="18" />
+      </button>
+    </div>
+
+    <!-- Search + Add -->
+    <div class="share-search-row">
+      <div class="share-search-input">
+        <ng-icon name="heroMagnifyingGlass" size="15" />
+        <input
+          type="text"
+          placeholder="Buscar usuario por nombre o email..."
+          [value]="shareSearch()"
+          (input)="shareSearch.set($any($event.target).value); searchShareCandidates()"
+        />
+      </div>
+      <select class="share-perm-select" [value]="sharePermission()" (change)="sharePermission.set($any($event.target).value)">
+        <option value="read">Lectura</option>
+        <option value="edit">Edicion</option>
+      </select>
+    </div>
+
+    <!-- Candidates -->
+    <div class="share-candidates" *ngIf="shareCandidates().length > 0">
+      <div class="share-candidate" *ngFor="let c of shareCandidates()" (click)="addShare(c.id)">
+        <div class="candidate-info">
+          <span class="candidate-name">{{ c.full_name }}</span>
+          <span class="candidate-email">{{ c.email }}</span>
+        </div>
+        <ng-icon name="heroUserPlus" size="16" />
+      </div>
+    </div>
+
+    <!-- Current shares -->
+    <div class="share-list">
+      <div class="share-item" *ngFor="let s of shares()">
+        <div class="share-user-info">
+          <div class="share-avatar">{{ s.full_name.charAt(0).toUpperCase() }}</div>
+          <div class="share-user-detail">
+            <span class="share-user-name">{{ s.full_name }}</span>
+            <span class="share-user-email">{{ s.email }}</span>
+          </div>
+        </div>
+        <div class="share-actions">
+          <span class="share-perm-badge" [class.edit]="s.permission === 'edit'">
+            {{ s.permission === 'edit' ? 'Edicion' : 'Lectura' }}
+          </span>
+          <button class="btn-remove-share" (click)="removeShare(s.id)" title="Quitar acceso">
+            <ng-icon name="heroXMark" size="14" />
+          </button>
+        </div>
+      </div>
+      <p class="share-empty" *ngIf="shares().length === 0">
+        Este sinoptico no se ha compartido con nadie
+      </p>
     </div>
   </div>
 </div>

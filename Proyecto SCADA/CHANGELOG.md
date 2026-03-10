@@ -2,7 +2,28 @@
 
 Todos los cambios notables del proyecto se documentan aquí.
 
-## [Unreleased]
+## [v0.11.0] - 2026-03-10
+
+### scada-front (Sinoptico Sharing from Project Detail)
+- **feat:** Share button on sinoptico cards in project detail view — opens share dialog directly from card actions
+- **feat:** Share dialog: search users by name/email, select read/edit permission, add/remove shares with avatar list
+- **feat:** "Compartidos conmigo" section on sinopticos home page — shows all sinopticos shared with the current user, with permission badge and quick view/edit buttons
+
+### scada-query-api (Sinoptico Access Control)
+- **fix:** `GET /projects/:id/sinopticos` — non-owner users now only see sinopticos they own or that are shared with them (admins and project owners see all)
+- **fix:** `GET /sinopticos/:id` — access check: requires ownership, admin role, public project, or a share record. Returns 403 if unauthorized
+- **fix:** `PUT /sinopticos/:id` — enforces owner or 'edit' share permission (admins bypass). Previously any user with `can_edit_sinopticos` permission could edit any sinoptico
+- **feat:** `GET /sinopticos-shared` — new endpoint returning all sinopticos shared with the current user, including permission level and project name
+
+### scada-front (Alarm Widget for Sinopticos)
+- **feat:** Alarm Widget — displays live active alarms on the sinoptico canvas with 15-second polling
+- **feat:** Severity color-coding: aviso (yellow), alerta (orange), critico (red) with pulsing indicator for unacknowledged critical alarms
+- **feat:** Configurable: title, max visible items, font size, show/hide site name and timestamp, compact mode
+- **feat:** Sorted display: critical alarms appear first, then alerta, then aviso
+- **feat:** Available in both editor canvas and viewer
+
+### scada-front (Activity Panel Fix)
+- **fix:** Activity panel `translateAction` map now includes `saved`, `restored`, `unshared`, `deleted` actions — previously `saved` displayed as raw text instead of translated
 
 ### scada-front (Clock Widget)
 - **feat:** Clock widget for sinoptico editor — displays current date/time with configurable 12h/24h format, optional date and seconds

@@ -667,3 +667,253 @@
   text-align: center;
   padding: 16px 0;
 }
+
+/* =========================
+   SHARE DIALOG
+   ========================= */
+.share-dialog {
+  max-width: 480px;
+}
+
+.share-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.share-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-close:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.share-search-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.share-search-input {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-card);
+  transition: border-color 0.15s;
+}
+
+.share-search-input:focus-within {
+  border-color: var(--accent);
+}
+
+.share-search-input ng-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.share-search-input input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 13px;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--text-primary);
+}
+
+.share-search-input input::placeholder {
+  color: var(--text-muted);
+}
+
+.share-perm-select {
+  padding: 6px 10px;
+  border: 1.5px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Inter', system-ui, sans-serif;
+  cursor: pointer;
+  outline: none;
+}
+
+.share-perm-select:focus {
+  border-color: var(--accent);
+}
+
+.share-candidates {
+  margin-bottom: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.share-candidate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.share-candidate:hover {
+  background: var(--bg-card-hover);
+}
+
+.share-candidate + .share-candidate {
+  border-top: 1px solid var(--border-default);
+}
+
+.share-candidate ng-icon {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.candidate-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.candidate-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.candidate-email {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.share-list {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.share-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.share-item:last-child {
+  border-bottom: none;
+}
+
+.share-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.share-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.share-user-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.share-user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.share-user-email {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.share-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.share-perm-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--bg-card-hover);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.share-perm-badge.edit {
+  background: rgba(109, 0, 43, 0.1);
+  color: var(--accent);
+}
+
+.btn-remove-share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-remove-share:hover {
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
+}
+
+.share-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 20px 0;
+  margin: 0;
+}

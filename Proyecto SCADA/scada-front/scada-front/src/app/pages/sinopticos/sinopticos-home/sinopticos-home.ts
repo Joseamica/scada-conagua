@@ -10,8 +10,10 @@ import {
   heroPencilSquare,
   heroGlobeAlt,
   heroLockClosed,
+  heroShare,
+  heroEye,
 } from '@ng-icons/heroicons/outline';
-import { SinopticoService, SinopticoProject } from '../../../core/services/sinoptico.service';
+import { SinopticoService, SinopticoProject, Sinoptico } from '../../../core/services/sinoptico.service';
 import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 
@@ -20,7 +22,7 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
   standalone: true,
   imports: [CommonModule, FormsModule, NgIconComponent, FooterTabsComponent, HeaderBarComponent],
   providers: [
-    provideIcons({ heroPlus, heroFolder, heroTrash, heroPencilSquare, heroGlobeAlt, heroLockClosed }),
+    provideIcons({ heroPlus, heroFolder, heroTrash, heroPencilSquare, heroGlobeAlt, heroLockClosed, heroShare, heroEye }),
   ],
   templateUrl: './sinopticos-home.html',
   styleUrl: './sinopticos-home.css',
@@ -30,6 +32,7 @@ export class SinopticosHome implements OnInit {
   private router = inject(Router);
 
   projects = signal<SinopticoProject[]>([]);
+  sharedWithMe = signal<(Sinoptico & { permission: string; project_name: string })[]>([]);
   loading = signal(true);
   showCreateDialog = signal(false);
   newProjectName = '';
@@ -38,6 +41,7 @@ export class SinopticosHome implements OnInit {
 
   ngOnInit(): void {
     this.loadProjects();
+    this.loadSharedWithMe();
   }
 
   loadProjects(): void {
@@ -85,5 +89,19 @@ export class SinopticosHome implements OnInit {
 
   openProject(project: SinopticoProject): void {
     this.router.navigate(['/sinopticos/proyecto', project.id]);
+  }
+
+  loadSharedWithMe(): void {
+    this.sinopticoService.getSharedWithMe().subscribe({
+      next: (data) => this.sharedWithMe.set(data),
+    });
+  }
+
+  openSharedViewer(sinoptico: any): void {
+    this.router.navigate(['/sinopticos/viewer', sinoptico.id]);
+  }
+
+  openSharedEditor(sinoptico: any): void {
+    this.router.navigate(['/sinopticos/editor', sinoptico.id]);
   }
 }

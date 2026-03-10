@@ -158,9 +158,30 @@ router.delete('/projects/:id', canEditSinopticos, async (req: Request, res: Resp
 // SINOPTICOS (canvas pages)
 // ═══════════════════════════════════════════
 
-// GET /projects/:id/sinopticos — list sinopticos in project
+// GET /projects/:id/sinopticos — list sinopticos in project (only owned, shared, or if admin/public)
 router.get('/projects/:id/sinopticos', isAuth, async (req: Request, res: Response) => {
     try {
+        const user = req.user!;
+        const isAdmin = user.role_id === 1;
+
+        // Check if project is public
+        const projResult = await pool.query(
+            'SELECT is_public, owner_id FROM scada.sinoptico_projects WHERE id = $1',
+            [req.params.id]
+        );
+        const project = projResult.rows[0];
+        const isOwnerOrPublic = project && (project.owner_id === user.id || project.is_public);
+
+        // Admins and project owners see all sinopticos; others only see owned + shared
+        const accessFilter = (isAdmin || isOwnerOrPublic)
+            ? ''
+            : `AND (s.owner_id = $2 OR EXISTS (
+                   SELECT 1 FROM scada.sinoptico_shares sh
+                   WHERE sh.sinoptico_id = s.id AND sh.user_id = $2))`;
+
+        const params: any[] = [req.params.id];
+        if (!isAdmin && !isOwnerOrPublic) params.push(user.id);
+
         const result = await pool.query(
             `SELECT s.id, s.name, s.description, s.canvas_width, s.canvas_height,
                     s.thumbnail, s.version, s.owner_id, s.created_at, s.updated_at,
@@ -173,8 +194,9 @@ router.get('/projects/:id/sinopticos', isAuth, async (req: Request, res: Respons
              FROM scada.sinopticos s
              JOIN scada.users u ON u.id = s.owner_id
              WHERE s.project_id = $1 AND s.deleted_at IS NULL
+             ${accessFilter}
              ORDER BY s.updated_at DESC`,
-            [req.params.id]
+            params
         );
         res.json(result.rows);
     } catch (e: any) {
@@ -219,12 +241,43 @@ router.post('/projects/:id/sinopticos', canEditSinopticos, async (req: Request, 
     }
 });
 
-// GET /sinopticos/:id — load canvas (full JSONB)
+// GET /sinopticos/shared-with-me — list sinopticos shared with the current user
+// IMPORTANT: must be BEFORE /sinopticos/:id to avoid Express treating "sinopticos-shared" as :id
+router.get('/sinopticos-shared', isAuth, async (req: Request, res: Response) => {
+    try {
+        const user = req.user!;
+        const result = await pool.query(
+            `SELECT s.id, s.name, s.description, s.canvas_width, s.canvas_height,
+                    s.thumbnail, s.version, s.owner_id, s.created_at, s.updated_at,
+                    u.full_name AS owner_name, sh.permission,
+                    p.name AS project_name, p.id AS project_id,
+                    COALESCE(jsonb_array_length(s.canvas->'widgets'), 0) AS widget_count,
+                    (SELECT jsonb_agg(jsonb_build_object(
+                        'type', w->>'type', 'x', w->>'x', 'y', w->>'y',
+                        'width', w->>'width', 'height', w->>'height'
+                    )) FROM jsonb_array_elements(s.canvas->'widgets') w) AS widget_layout
+             FROM scada.sinoptico_shares sh
+             JOIN scada.sinopticos s ON s.id = sh.sinoptico_id
+             JOIN scada.users u ON u.id = s.owner_id
+             JOIN scada.sinoptico_projects p ON p.id = s.project_id
+             WHERE sh.user_id = $1 AND s.deleted_at IS NULL
+             ORDER BY s.updated_at DESC`,
+            [user.id]
+        );
+        res.json(result.rows);
+    } catch (e: any) {
+        console.error('Error listing shared sinopticos:', e.message);
+        res.status(500).json({ error: 'Error al listar sinopticos compartidos.' });
+    }
+});
+
+// GET /sinopticos/:id — load canvas (full JSONB) — checks access
 router.get('/sinopticos/:id', isAuth, async (req: Request, res: Response) => {
     try {
+        const user = req.user!;
         const result = await pool.query(
             `SELECT s.*, u.full_name AS owner_name,
-                    p.name AS project_name, p.id AS project_id
+                    p.name AS project_name, p.id AS project_id, p.is_public AS project_public
              FROM scada.sinopticos s
              JOIN scada.users u ON u.id = s.owner_id
              JOIN scada.sinoptico_projects p ON p.id = s.project_id
@@ -234,18 +287,68 @@ router.get('/sinopticos/:id', isAuth, async (req: Request, res: Response) => {
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Sinoptico no encontrado.' });
         }
-        res.json(result.rows[0]);
+
+        const sinoptico = result.rows[0];
+        const isAdmin = user.role_id === 1;
+        const isOwner = sinoptico.owner_id === user.id;
+        const isPublic = sinoptico.project_public;
+
+        if (!isAdmin && !isOwner && !isPublic) {
+            // Check if user has a share for this sinoptico
+            const shareCheck = await pool.query(
+                'SELECT id FROM scada.sinoptico_shares WHERE sinoptico_id = $1 AND user_id = $2',
+                [req.params.id, user.id]
+            );
+            if (shareCheck.rows.length === 0) {
+                return res.status(403).json({ error: 'Sin permisos para ver este sinoptico.' });
+            }
+        }
+
+        res.json(sinoptico);
     } catch (e: any) {
         console.error('Error loading sinoptico:', e.message);
         res.status(500).json({ error: 'Error al cargar sinoptico.' });
     }
 });
 
-// PUT /sinopticos/:id — save canvas
-router.put('/sinopticos/:id', canEditSinopticos, async (req: Request, res: Response) => {
+// PUT /sinopticos/:id — save canvas (owner, admin, canEditSinopticos perm, or 'edit' share required)
+router.put('/sinopticos/:id', isAuth, async (req: Request, res: Response) => {
     const { name, description, canvas, canvas_width, canvas_height, thumbnail } = req.body;
 
     try {
+        const user = req.user!;
+        const isAdmin = user.role_id === 1;
+
+        if (!isAdmin) {
+            const ownerCheck = await pool.query(
+                'SELECT owner_id FROM scada.sinopticos WHERE id = $1 AND deleted_at IS NULL',
+                [req.params.id]
+            );
+            if (ownerCheck.rows.length === 0) {
+                return res.status(404).json({ error: 'Sinoptico no encontrado.' });
+            }
+            const isOwner = ownerCheck.rows[0].owner_id === user.id;
+
+            if (!isOwner) {
+                // Check granular permission OR edit share
+                const permCheck = await pool.query(
+                    'SELECT can_edit_sinopticos FROM scada.permissions WHERE user_id = $1',
+                    [user.id]
+                );
+                const hasGranularPerm = permCheck.rows[0]?.can_edit_sinopticos === true;
+
+                if (!hasGranularPerm) {
+                    const shareCheck = await pool.query(
+                        "SELECT id FROM scada.sinoptico_shares WHERE sinoptico_id = $1 AND user_id = $2 AND permission = 'edit'",
+                        [req.params.id, user.id]
+                    );
+                    if (shareCheck.rows.length === 0) {
+                        return res.status(403).json({ error: 'Sin permisos de edicion para este sinoptico.' });
+                    }
+                }
+            }
+        }
+
         const result = await pool.query(
             `UPDATE scada.sinopticos
              SET name = COALESCE($1, name),

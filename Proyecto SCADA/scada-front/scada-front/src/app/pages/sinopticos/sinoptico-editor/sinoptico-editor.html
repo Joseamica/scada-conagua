@@ -877,6 +877,33 @@
                   </div>
                 </div>
               }
+
+              <!-- ========== ALARM CONFIG ========== -->
+              @case ('alarm') {
+                <div class="config-form">
+                  <label>Titulo</label>
+                  <input type="text" [value]="asAlarm(w.config).title"
+                    (input)="updateConfig(w.id, 'title', $event)" />
+                  <label>Max. alarmas visibles</label>
+                  <input type="number" min="1" max="50" [value]="asAlarm(w.config).maxItems"
+                    (input)="updateConfig(w.id, 'maxItems', $event, true)" />
+                  <label>Tam. Fuente</label>
+                  <input type="number" [value]="asAlarm(w.config).fontSize"
+                    (input)="updateConfig(w.id, 'fontSize', $event, true)" />
+                  <div class="checkbox-row">
+                    <label><input type="checkbox" [checked]="asAlarm(w.config).showSiteName"
+                      (change)="updateConfig(w.id, 'showSiteName', $event)"> Mostrar sitio</label>
+                  </div>
+                  <div class="checkbox-row">
+                    <label><input type="checkbox" [checked]="asAlarm(w.config).showTimestamp"
+                      (change)="updateConfig(w.id, 'showTimestamp', $event)"> Mostrar hora</label>
+                  </div>
+                  <div class="checkbox-row">
+                    <label><input type="checkbox" [checked]="asAlarm(w.config).compact"
+                      (change)="updateConfig(w.id, 'compact', $event)"> Modo compacto</label>
+                  </div>
+                </div>
+              }
             }
 
             <!-- Opacity control (Feature 6) — all widget types -->
@@ -1017,6 +1044,9 @@
                       [config]="$any(w.config)"
                       [liveValue]="getLiveValueForConfig(w.config)"
                     />
+                  }
+                  @case ('alarm') {
+                    <widget-alarm [config]="$any(w.config)" />
                   }
                 }
               </widget-wrapper>

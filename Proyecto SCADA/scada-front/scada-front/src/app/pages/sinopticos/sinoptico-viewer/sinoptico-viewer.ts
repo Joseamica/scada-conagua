@@ -27,6 +27,7 @@ import { ShapeWidget } from '../shared/widget-renderers/shape-widget';
 import { LinkWidget } from '../shared/widget-renderers/link-widget';
 import { ClockWidget } from '../shared/widget-renderers/clock-widget';
 import { VariableWidget } from '../shared/widget-renderers/variable-widget';
+import { AlarmWidget } from '../shared/widget-renderers/alarm-widget';
 import { ActivityPanel } from '../shared/activity-panel/activity-panel';
 
 @Component({
@@ -46,6 +47,7 @@ import { ActivityPanel } from '../shared/activity-panel/activity-panel';
     LinkWidget,
     ClockWidget,
     VariableWidget,
+    AlarmWidget,
     ActivityPanel,
   ],
   providers: [SinopticoDataStore, provideIcons({ heroArrowLeft, heroPencilSquare, heroClock })],
