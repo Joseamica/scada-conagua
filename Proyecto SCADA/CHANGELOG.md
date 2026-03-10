@@ -4,6 +4,67 @@ Todos los cambios notables del proyecto se documentan aquí.
 
 ## [Unreleased]
 
+## [v0.10.0] — 2026-03-10
+
+### scada-front (GIS — Dynamic Estatus)
+- **feat:** `resolveEstatus()` method — prefers API `site_status` data over hardcoded POZOS_DATA for icon color assignment; enables automatic blue/yellow/gray icons based on live DB state
+- **fix:** `loadSitiosKml()` layer assignment now uses `resolveEstatus()` instead of reading directly from POZOS_DATA
+- **fix:** Updated POZOS_DATA for ICH Ixtapaluca pozos (16, 21, 30, 35, 36, 42, 50) to 'Activo' — confirmed reporting telemetry
+
+### scada-front (Audit Bitacora — Spanish Labels)
+- **feat:** All `ACTION_META` entries now have Spanish labels (sinopticos, variables, alarms, GIS categories)
+- **feat:** Badge colors for new categories: sinoptico (pink), variable (yellow), alarm (red), gis (green)
+
+### scada-igestion-api (Auto-promote Estatus)
+- **feat:** `promoteObraSiteIfNeeded()` — automatically promotes site from 'obra' to 'activo' in `scada.inventory` when valid telemetry arrives (one-way, never demotes)
+- **feat:** Integrated into both ChirpStack (`updateSiteStatus`) and Ignition (`updateIgnitionSiteStatus`) paths
+
+### scada-query-api (Tag Browser + Variable Execute Fixes)
+- **fix:** Tag browser — normalized municipality casing with `UPPER(TRIM())`, filtered out Jiquilpan and ENSENADA test data, added `LENGTH >= 8` check for valid devEUIs
+- **fix:** Variable execute — added Ignition measurement mappings (`value_presion`, `value_caudal`, etc.) so ICH site values no longer return null
+- **fix:** Variable execute — corrected column name `last_totalized_value` → `last_total_flow` (matches actual `site_status` schema)
+
+### scada-front (Sinopticos Editor — 11 Features)
+- **feat:** Text Widget — static text block with configurable font size, weight, style, alignment, color, background, padding
+- **feat:** Shape Widget — 10 shape types (rectangle, ellipse, line, triangle, diamond, arrow-right, arrow-down, pentagon, hexagon, star) with fill color, border color/width/radius; SVG-based rendering for polygons
+- **fix:** Remove redundant per-shape opacity (use global widget opacity instead)
+- **fix:** Config panel labels — sentence case instead of ALL CAPS, better field grouping with section headers
+- **fix:** "Paleta" back button — now has arrow icon and is more discoverable
+- **fix:** Shape config panel — grouped fields (Relleno/Borde sections), conditional fields (border radius only for rectangles), optgroup dropdown with categories
+- **fix:** Text config panel — 2-column layout for typography fields, grouped into Tipografia/Apariencia sections
+- **feat:** Auto-save — automatically saves every 30 seconds after the last change; shows "Guardado HH:mm" indicator in toolbar; manual save resets timer
+- **feat:** Link Widget — inter-sinoptico navigation, select target from same project, clickable in viewer
+- **feat:** Duplicate Widget — Ctrl+D shortcut + mini-toolbar button to clone selected widgets with +20px offset
+- **feat:** Right-click Context Menu — duplicate, copy, z-order, lock/unlock, delete; canvas paste/select-all
+- **feat:** Coordinates/Position Display — X, Y, W, H numeric inputs in config panel sidebar for precise positioning
+- **feat:** Widget Opacity — global opacity slider (0-100%) on all widget types, applied via widget-wrapper
+- **feat:** Match Size — match width, height, or both across 2+ selected widgets (align popover)
+- **feat:** Canvas Config — size presets (1920x1080, 1280x720, 2560x1440), custom W/H, background color picker
+- **feat:** Grid Config — dropdown with snap toggle, grid size input, size presets (5/10/20/50px)
+- **feat:** Snap Guides — alignment lines appear when dragging widgets near edges/centers of other widgets
+
+### scada-front (Sinopticos — Module Completion)
+- **feat:** Widget alignment — 6 methods (left, center-H, right, top, center-V, bottom) with toolbar popover, inline SVG icons
+- **feat:** Widget distribution — 2 methods (horizontal, vertical) for 3+ selected widgets
+- **feat:** Widget grouping — `groupSelected()` / `ungroupSelected()` methods, Ctrl+G shortcut, group-aware drag (all grouped widgets move together), dashed border visual indicator
+- **feat:** Group-aware selection — clicking any widget in a group selects all group siblings
+- **feat:** Activity panel — slide-out right panel showing change history, integrated in both editor and viewer
+- **feat:** Folder filtering in Variable Explorer — click folder to filter views, "Todas las vistas" option, active folder highlighting
+- **feat:** Share dialog for Variable Views — search users, add/remove shares with read/edit permissions
+- **feat:** Canvas export PNG — `html2canvas` dynamic import, downloads PNG at 2x scale
+- **feat:** Export PNG and Activity buttons in editor toolbar-right
+
+### scada-query-api (Variable View Sharing)
+- **feat:** `GET /variables/views/:id/shares` — list shares for a view
+- **feat:** `POST /variables/views/:id/shares` — add or update a share (upsert)
+- **feat:** `DELETE /variables/views/:viewId/shares/:shareId` — remove a share
+- **feat:** `GET /variables/views/:id/share-candidates?q=` — search users to share with
+
+### scada-query-api (Audit Logging — Bitacora)
+- **feat:** 16 new `AuditAction` types for sinopticos + variables operations
+- **feat:** Sinoptico routes now log: project update, sinoptico create, save, duplicate, share, unshare (previously only project create/delete and sinoptico delete were logged)
+- **feat:** Variable routes now log ALL write operations: folder create/delete, view create/update/delete, column add/update/delete, formula create/update/delete, view share/unshare (previously had zero audit logging)
+
 ### scada-front (COMM LOSS / Device Staleness)
 - **feat:** `SinopticoDataStore` — new `deviceTimestamps` signal extracts `last_updated_at` per device from query response; `getDeviceTimestamp()` and `isStale()` methods (15-min threshold)
 - **feat:** `LabelWidget` — new `lastUpdatedAt` and `isStale` inputs; shows "SIN COM." overlay with amber color when device is stale; relative timestamp ("hace X min") below the value

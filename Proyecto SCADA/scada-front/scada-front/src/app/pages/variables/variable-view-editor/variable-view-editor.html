@@ -17,6 +17,10 @@
         <h1>{{ view()?.name }}</h1>
       </div>
       <div class="header-right">
+        <button class="btn-share" (click)="openShareDialog()">
+          <ng-icon name="heroShare" size="16" />
+          Compartir
+        </button>
         <button
           class="btn-execute"
           (click)="executeView()"
@@ -82,6 +86,7 @@
           <div class="add-item-row">
             <tag-browser
               placeholder="+ Agregar columna..."
+              [showCreateView]="false"
               (tagSelect)="onColumnTagSelected($event)"
             />
           </div>
@@ -119,14 +124,48 @@
 
           <!-- Add formula form — ICH-style split layout -->
           <div class="formula-form">
-            <div class="formula-alias-row">
-              <label class="formula-label">Nombre de la formula</label>
-              <input
-                class="formula-alias-input"
-                [(ngModel)]="newFormulaAlias"
-                placeholder="Alias (ej: gasto_total)"
-              />
+            <div class="formula-top-row">
+              <div class="formula-alias-left">
+                <label class="formula-label">Nombre de la formula</label>
+                <input
+                  class="formula-alias-input"
+                  [(ngModel)]="newFormulaAlias"
+                  placeholder="Alias (ej: gasto_total)"
+                />
+              </div>
+              <div class="formula-top-actions">
+                <button
+                  class="btn-formula-helper"
+                  [class.active]="showFormulaHelper()"
+                  (click)="showFormulaHelper.set(!showFormulaHelper())"
+                  title="Asistente de formulas"
+                >
+                  <ng-icon name="heroLightBulb" size="16" />
+                  {{ showFormulaHelper() ? 'Cerrar ayuda' : 'Necesito ayuda' }}
+                </button>
+              </div>
             </div>
+
+            @if (showFormulaHelper()) {
+              <div class="formula-helper-panel">
+                <p class="helper-title">Selecciona una plantilla para comenzar:</p>
+                <div class="helper-grid">
+                  @for (tpl of getFormulaTemplates(); track tpl.name) {
+                    <button class="helper-card" (click)="applyTemplate(tpl)">
+                      <span class="helper-icon">{{ tpl.icon }}</span>
+                      <span class="helper-card-body">
+                        <strong>{{ tpl.name }}</strong>
+                        <span class="helper-desc">{{ tpl.desc }}</span>
+                        <code class="helper-formula">{{ tpl.formula }}</code>
+                      </span>
+                    </button>
+                  }
+                </div>
+                <p class="helper-tip">
+                  Haz click en una plantilla para insertarla. Despues puedes modificarla.
+                </p>
+              </div>
+            }
 
             <div class="formula-split">
               <!-- Left: Incognitas table -->
@@ -186,6 +225,12 @@
                     <button class="fn-btn" (click)="insertOperator(fn + '(')">{{ fn }}</button>
                   }
                 </div>
+                @if (getFormulaPreview()) {
+                  <div class="formula-preview">
+                    <span class="preview-label">Vista previa:</span>
+                    {{ getFormulaPreview() }}
+                  </div>
+                }
               </div>
             </div>
 
@@ -205,9 +250,56 @@
                 <ng-icon name="heroPlus" size="14" />
                 Agregar
               </button>
+              <button
+                class="btn-revert"
+                (click)="resetFormulaForm()"
+                [disabled]="!newFormulaAlias.trim() && !newFormulaExpr.trim()"
+                title="Limpiar formulario"
+              >
+                <ng-icon name="heroArrowUturnLeft" size="14" />
+                Revertir
+              </button>
             </div>
             @if (formulaError()) {
-              <div class="formula-error">{{ formulaError() }}</div>
+              <div class="formula-error">
+                <div class="error-message">
+                  <svg class="error-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r="0.5" fill="currentColor"/>
+                  </svg>
+                  {{ formulaError() }}
+                </div>
+                @if (formulaErrorExpr()) {
+                  <code class="error-expr" [innerHTML]="formulaErrorExpr()"></code>
+                }
+                @if (formulaSuggestedFix()) {
+                  <div class="suggested-fix">
+                    <div class="fix-header">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2a7 7 0 0 1 7 7c0 2.4-1.2 4.5-3 5.7V17a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-2.3C6.2 13.5 5 11.4 5 9a7 7 0 0 1 7-7z"/>
+                        <path d="M9 21h6"/><path d="M10 17v1"/><path d="M14 17v1"/>
+                      </svg>
+                      Correccion sugerida:
+                    </div>
+                    <div class="fix-body">
+                      <code class="fix-formula">{{ formulaSuggestedFix() }}</code>
+                      <div class="fix-actions">
+                        <button class="btn-fix-copy" (click)="copyFix()" title="Copiar formula corregida">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                          </svg>
+                          Copiar
+                        </button>
+                        <button class="btn-fix-apply" (click)="applyFix()" title="Usar esta formula">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                          Usar esta
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
             }
             @if (formulaValid()) {
               <div class="formula-success">Formula valida. Variables: {{ formulaVars().join(', ') }}</div>
@@ -285,5 +377,71 @@
     </div>
   }
 </div>
+
+<!-- Share Dialog -->
+@if (showShareDialog()) {
+  <div class="dialog-overlay" (click)="showShareDialog.set(false)">
+    <div class="share-dialog" (click)="$event.stopPropagation()">
+      <div class="share-header">
+        <h2>Compartir Vista</h2>
+        <button class="btn-close" (click)="showShareDialog.set(false)">
+          <ng-icon name="heroXMark" size="18" />
+        </button>
+      </div>
+
+      <div class="share-body">
+        <!-- Search + Add -->
+        <div class="share-search-row">
+          <div class="search-wrapper">
+            <input
+              type="text"
+              [(ngModel)]="shareSearchQuery"
+              (input)="searchCandidates()"
+              placeholder="Buscar usuario por nombre o email..."
+              class="share-search-input"
+            />
+            @if (candidates().length > 0) {
+              <div class="candidates-dropdown">
+                @for (c of candidates(); track c.id) {
+                  <div class="candidate-item" (click)="selectCandidate(c)">
+                    <span class="candidate-name">{{ c.full_name }}</span>
+                    <span class="candidate-email">{{ c.email }}</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+          <select [(ngModel)]="sharePermission" class="share-perm-select">
+            <option value="read">Lectura</option>
+            <option value="edit">Edicion</option>
+          </select>
+          <button class="btn-share-add" (click)="addShare()" [disabled]="!selectedCandidateId">
+            Agregar
+          </button>
+        </div>
+
+        <!-- Current shares -->
+        <div class="shares-list">
+          @for (s of shares(); track s.id) {
+            <div class="share-item">
+              <div class="share-info">
+                <span class="share-name">{{ s.full_name }}</span>
+                <span class="share-email">{{ s.email }}</span>
+              </div>
+              <span class="share-perm-badge" [class.edit]="s.permission === 'edit'">
+                {{ s.permission === 'edit' ? 'Edicion' : 'Lectura' }}
+              </span>
+              <button class="btn-share-remove" (click)="removeShare(s)" title="Quitar acceso">
+                <ng-icon name="heroTrash" size="14" />
+              </button>
+            </div>
+          } @empty {
+            <p class="shares-empty">Nadie tiene acceso a esta vista.</p>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}
 
 <app-footer-tabs />

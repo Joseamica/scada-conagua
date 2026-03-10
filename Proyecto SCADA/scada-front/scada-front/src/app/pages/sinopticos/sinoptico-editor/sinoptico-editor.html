@@ -32,32 +32,214 @@
 
         <div class="toolbar-divider"></div>
 
-        <button
-          class="toolbar-btn"
-          [class.active]="gridVisible()"
-          (click)="toggleGrid()"
-          title="Cuadricula"
-        >
-          <ng-icon name="heroSquares2x2" size="18" />
-        </button>
+        <div class="align-dropdown-wrapper">
+          <div class="btn-group">
+            <button
+              class="toolbar-btn btn-group-item"
+              [class.active]="gridVisible()"
+              (click)="toggleGrid()"
+              title="Cuadricula"
+            >
+              <ng-icon name="heroSquares2x2" size="18" />
+            </button>
+            <button
+              class="toolbar-btn btn-group-item btn-group-chevron"
+              [class.active]="showGridSettings() || showCanvasSettings()"
+              (click)="toggleSettingsPopover()"
+              title="Configuracion"
+            >
+              <svg width="8" height="5" viewBox="0 0 8 5" fill="currentColor"><path d="M4 4.5L.5.5h7z"/></svg>
+            </button>
+          </div>
+          @if (showGridSettings() || showCanvasSettings()) {
+            <div class="canvas-settings-popover">
+              <!-- Tab bar -->
+              <div class="settings-tabs">
+                <button class="settings-tab" [class.active]="showGridSettings()"
+                  (click)="showGridSettings.set(true); showCanvasSettings.set(false)">Grid</button>
+                <button class="settings-tab" [class.active]="showCanvasSettings()"
+                  (click)="showCanvasSettings.set(true); showGridSettings.set(false)">Canvas</button>
+              </div>
+
+              @if (showGridSettings()) {
+                <label class="checkbox-label">
+                  <input type="checkbox" [checked]="store.grid().snap" (change)="toggleGridSnap()" />
+                  Snap to grid
+                </label>
+                <label style="font-size:11px; color:var(--text-muted); margin-top:6px; display:block;">Tamano (px)</label>
+                <input type="number" min="1" max="100" [value]="store.grid().size"
+                  (input)="updateGridSize($event)" class="popover-input" />
+                <div class="canvas-presets">
+                  <button (click)="store.setGrid({snap: store.grid().snap, size: 5})">5px</button>
+                  <button (click)="store.setGrid({snap: store.grid().snap, size: 10})">10px</button>
+                  <button (click)="store.setGrid({snap: store.grid().snap, size: 20})">20px</button>
+                  <button (click)="store.setGrid({snap: store.grid().snap, size: 50})">50px</button>
+                </div>
+              }
+
+              @if (showCanvasSettings()) {
+                <span class="align-label">Tamano</span>
+                <div class="canvas-size-row">
+                  <label>Ancho</label>
+                  <input type="number" min="100" step="10" [value]="canvasWidth()"
+                    (input)="updateCanvasSize('canvas_width', $event)" />
+                  <label>Alto</label>
+                  <input type="number" min="100" step="10" [value]="canvasHeight()"
+                    (input)="updateCanvasSize('canvas_height', $event)" />
+                </div>
+                <span class="align-label" style="margin-top:8px">Fondo</span>
+                <input type="color" [value]="sinoptico()?.canvas_bg || '#ffffff'"
+                  (input)="updateCanvasBg($event)" />
+                <div class="canvas-presets">
+                  <button (click)="setCanvasPreset(1920, 1080)">1920x1080</button>
+                  <button (click)="setCanvasPreset(1280, 720)">1280x720</button>
+                  <button (click)="setCanvasPreset(2560, 1440)">2560x1440</button>
+                </div>
+              }
+            </div>
+          }
+        </div>
 
         <div class="zoom-controls">
-          <button class="toolbar-btn" (click)="zoomOut()">-</button>
-          <span class="zoom-label" (click)="resetZoom()">
+          <button class="toolbar-btn" (click)="zoomOut()" title="Alejar">-</button>
+          <span class="zoom-label" (click)="resetZoom()" title="Restablecer zoom">
             {{ (store.zoom() * 100) | number: '1.0-0' }}%
           </span>
-          <button class="toolbar-btn" (click)="zoomIn()">+</button>
+          <button class="toolbar-btn" (click)="zoomIn()" title="Acercar">+</button>
         </div>
+
+        @if (multiSelected()) {
+          <div class="toolbar-divider"></div>
+          <div class="align-dropdown-wrapper">
+            <button class="toolbar-btn" (click)="showAlignPopover.set(!showAlignPopover())" title="Alinear">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <line x1="2" y1="2" x2="2" y2="14"/><rect x="5" y="3" width="8" height="4" rx="1"/><rect x="5" y="9" width="5" height="4" rx="1"/>
+              </svg>
+            </button>
+            @if (showAlignPopover()) {
+              <div class="align-popover">
+                <span class="align-label">Alinear</span>
+                <div class="align-grid">
+                  <button class="align-btn" (click)="store.alignLeft()" data-tooltip="Izquierda">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="1" x2="2" y2="15"/><rect x="4" y="3" width="10" height="3" rx=".5"/><rect x="4" y="9" width="6" height="3" rx=".5"/></svg>
+                  </button>
+                  <button class="align-btn" (click)="store.alignCenterH()" data-tooltip="Centro H">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="8" y1="1" x2="8" y2="15" stroke-dasharray="2 1"/><rect x="3" y="3" width="10" height="3" rx=".5"/><rect x="5" y="9" width="6" height="3" rx=".5"/></svg>
+                  </button>
+                  <button class="align-btn" (click)="store.alignRight()" data-tooltip="Derecha">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="14" y1="1" x2="14" y2="15"/><rect x="2" y="3" width="10" height="3" rx=".5"/><rect x="6" y="9" width="6" height="3" rx=".5"/></svg>
+                  </button>
+                  <button class="align-btn" (click)="store.alignTop()" data-tooltip="Arriba">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="1" y1="2" x2="15" y2="2"/><rect x="3" y="4" width="3" height="10" rx=".5"/><rect x="9" y="4" width="3" height="6" rx=".5"/></svg>
+                  </button>
+                  <button class="align-btn" (click)="store.alignCenterV()" data-tooltip="Centro V">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="1" y1="8" x2="15" y2="8" stroke-dasharray="2 1"/><rect x="3" y="2" width="3" height="12" rx=".5"/><rect x="9" y="4" width="3" height="8" rx=".5"/></svg>
+                  </button>
+                  <button class="align-btn" (click)="store.alignBottom()" data-tooltip="Abajo">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="1" y1="14" x2="15" y2="14"/><rect x="3" y="2" width="3" height="10" rx=".5"/><rect x="9" y="6" width="3" height="6" rx=".5"/></svg>
+                  </button>
+                </div>
+                @if (tripleSelected()) {
+                  <span class="align-label" style="margin-top:6px">Distribuir</span>
+                  <div class="align-grid">
+                    <button class="align-btn" (click)="store.distributeH()" data-tooltip="Horizontal">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="4" width="3" height="8" rx=".5"/><rect x="6.5" y="5" width="3" height="6" rx=".5"/><rect x="12" y="3" width="3" height="10" rx=".5"/></svg>
+                    </button>
+                    <button class="align-btn" (click)="store.distributeV()" data-tooltip="Vertical">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="1" width="8" height="3" rx=".5"/><rect x="5" y="6.5" width="6" height="3" rx=".5"/><rect x="3" y="12" width="10" height="3" rx=".5"/></svg>
+                    </button>
+                  </div>
+                }
+
+                <span class="align-label" style="margin-top:6px">Igualar tamano</span>
+                <div class="align-grid">
+                  <button class="align-btn" (click)="store.matchWidth()" data-tooltip="Mismo ancho">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <rect x="2" y="4" width="5" height="8" rx=".5"/><rect x="9" y="2" width="5" height="12" rx=".5"/>
+                      <line x1="0" y1="1" x2="16" y2="1" stroke-dasharray="2 1"/>
+                    </svg>
+                  </button>
+                  <button class="align-btn" (click)="store.matchHeight()" data-tooltip="Misma altura">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <rect x="2" y="3" width="4" height="10" rx=".5"/><rect x="9" y="6" width="5" height="4" rx=".5"/>
+                      <line x1="15" y1="0" x2="15" y2="16" stroke-dasharray="2 1"/>
+                    </svg>
+                  </button>
+                  <button class="align-btn" (click)="store.matchSize()" data-tooltip="Mismo tamano">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <rect x="1" y="1" width="6" height="6" rx=".5"/><rect x="9" y="9" width="6" height="6" rx=".5"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+
+          <button
+            class="toolbar-btn toolbar-btn-label"
+            (click)="store.tidyUp()"
+            title="Acomodar widgets automáticamente en un grid ordenado"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="1" y="1" width="6" height="4" rx="1"/><rect x="9" y="1" width="6" height="4" rx="1"/>
+              <rect x="1" y="7" width="6" height="4" rx="1"/><rect x="9" y="7" width="6" height="4" rx="1"/>
+              <rect x="1" y="13" width="6" height="2" rx=".5"/><rect x="9" y="13" width="6" height="2" rx=".5"/>
+            </svg>
+            Acomodar
+          </button>
+
+          @if (store.hasGroupedSelection()) {
+            <button
+              class="toolbar-btn toolbar-btn-label"
+              (click)="store.ungroupSelected()"
+              title="Separa los widgets para moverlos independientemente (Ctrl+G)"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/>
+              </svg>
+              Desagrupar
+            </button>
+          } @else {
+            <button
+              class="toolbar-btn toolbar-btn-label"
+              (click)="store.groupSelected()"
+              [disabled]="!store.canGroup()"
+              title="Los widgets agrupados se mueven y seleccionan juntos (Ctrl+G)"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="1" y="1" width="6" height="6" rx="1" stroke-dasharray="2 1"/><rect x="9" y="9" width="6" height="6" rx="1" stroke-dasharray="2 1"/>
+                <path d="M7 4h2M4 7v2M12 7v2M7 12h2"/>
+              </svg>
+              Agrupar
+            </button>
+          }
+        }
       </div>
 
       <div class="toolbar-right">
         <span class="widget-count">{{ store.widgetCount() }} widgets</span>
-        @if (store.dirty()) {
+        <button class="toolbar-btn toolbar-btn-label" (click)="exportPNG()" title="Exportar PNG">
+          <ng-icon name="heroArrowDownTray" size="16" />
+          Exportar
+        </button>
+        <button class="toolbar-btn toolbar-btn-label" (click)="showActivityPanel.set(!showActivityPanel())" title="Historial">
+          <ng-icon name="heroClock" size="16" />
+          Historial
+        </button>
+        @if (saving()) {
+          <span class="status-saving">Guardando...</span>
+        } @else if (store.dirty()) {
           <span class="status-text">Sin guardar</span>
+        } @else if (savedTimeAgo()) {
+          <span class="status-autosaved">Guardado {{ savedTimeAgo() }}</span>
         }
-        <button class="toolbar-btn save-btn" (click)="save()" [disabled]="saving()">
+        <button
+          class="toolbar-btn save-btn"
+          (click)="save()"
+          [disabled]="saving() || !store.dirty()"
+        >
           <ng-icon name="heroCloudArrowUp" size="18" />
-          {{ saving() ? 'Guardando...' : 'Guardar' }}
+          Guardar
         </button>
       </div>
     </header>
@@ -70,8 +252,33 @@
           <!-- CONFIG PANEL -->
           <div class="sidebar-section">
             <div class="config-header">
+              <button class="btn-back-palette" (click)="store.clearSelection()">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10 3L5 8l5 5"/>
+                </svg>
+                Paleta
+              </button>
               <h4>{{ getWidgetTypeLabel(w.type) }}</h4>
-              <button class="btn-back-palette" (click)="store.clearSelection()">Paleta</button>
+            </div>
+
+            <!-- Position/Size fields (Feature 5) -->
+            <div class="position-fields">
+              <div class="pos-field">
+                <label>X</label>
+                <input type="number" [value]="w.x" (input)="updatePosition(w.id, 'x', $event)" />
+              </div>
+              <div class="pos-field">
+                <label>Y</label>
+                <input type="number" [value]="w.y" (input)="updatePosition(w.id, 'y', $event)" />
+              </div>
+              <div class="pos-field">
+                <label>W</label>
+                <input type="number" [value]="w.width" (input)="updatePosition(w.id, 'width', $event)" />
+              </div>
+              <div class="pos-field">
+                <label>H</label>
+                <input type="number" [value]="w.height" (input)="updatePosition(w.id, 'height', $event)" />
+              </div>
             </div>
 
             @switch (w.type) {
@@ -246,6 +453,7 @@
                     <div class="add-series-wrapper">
                       <tag-browser
                         placeholder="+ Agregar serie..."
+                        [showCreateView]="false"
                         (tagSelect)="addChartSeries(w.id, $event)"
                       />
                     </div>
@@ -311,6 +519,7 @@
                     <div class="add-column-wrapper">
                       <tag-browser
                         placeholder="+ Agregar columna..."
+                        [showCreateView]="false"
                         (tagSelect)="addTableColumn(w.id, $event)"
                       />
                     </div>
@@ -423,7 +632,152 @@
                   />
                 </div>
               }
+
+              <!-- ========== TEXT CONFIG ========== -->
+              @case ('text') {
+                <div class="config-form">
+                  <label>Contenido</label>
+                  <textarea rows="3" [value]="asText(w.config).text"
+                    (input)="updateConfig(w.id, 'text', $event)"></textarea>
+
+                  <div class="config-field-group">
+                    <span class="field-group-label">Tipografia</span>
+                    <div class="field-row-2">
+                      <div>
+                        <label>Tam. fuente</label>
+                        <input type="number" [value]="asText(w.config).fontSize"
+                          (input)="updateConfig(w.id, 'fontSize', $event, true)" />
+                      </div>
+                      <div>
+                        <label>Peso</label>
+                        <select [value]="asText(w.config).fontWeight"
+                          (change)="updateConfig(w.id, 'fontWeight', $event)">
+                          <option value="normal">Normal</option>
+                          <option value="bold">Negrita</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="field-row-2">
+                      <div>
+                        <label>Estilo</label>
+                        <select [value]="asText(w.config).fontStyle"
+                          (change)="updateConfig(w.id, 'fontStyle', $event)">
+                          <option value="normal">Normal</option>
+                          <option value="italic">Cursiva</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label>Alineacion</label>
+                        <select [value]="asText(w.config).textAlign"
+                          (change)="updateConfig(w.id, 'textAlign', $event)">
+                          <option value="left">Izquierda</option>
+                          <option value="center">Centro</option>
+                          <option value="right">Derecha</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="config-field-group">
+                    <span class="field-group-label">Apariencia</span>
+                    <label>Color texto</label>
+                    <input type="color" [value]="asText(w.config).color"
+                      (input)="updateConfig(w.id, 'color', $event)" />
+                    <label>Color fondo</label>
+                    <input type="color" [value]="asText(w.config).bgColor"
+                      (input)="updateConfig(w.id, 'bgColor', $event)" />
+                    <label>Padding</label>
+                    <input type="number" [value]="asText(w.config).padding"
+                      (input)="updateConfig(w.id, 'padding', $event, true)" />
+                  </div>
+                </div>
+              }
+
+              <!-- ========== SHAPE CONFIG ========== -->
+              @case ('shape') {
+                <div class="config-form">
+                  <label>Tipo de forma</label>
+                  <select [value]="asShape(w.config).shapeType"
+                    (change)="updateConfig(w.id, 'shapeType', $event)">
+                    <optgroup label="Basicas">
+                      <option value="rectangle">Rectangulo</option>
+                      <option value="ellipse">Circulo / Elipse</option>
+                      <option value="line">Linea</option>
+                    </optgroup>
+                    <optgroup label="Poligonos">
+                      <option value="triangle">Triangulo</option>
+                      <option value="diamond">Diamante</option>
+                      <option value="pentagon">Pentagono</option>
+                      <option value="hexagon">Hexagono</option>
+                      <option value="star">Estrella</option>
+                    </optgroup>
+                    <optgroup label="Flechas">
+                      <option value="arrow-right">Flecha derecha</option>
+                      <option value="arrow-down">Flecha abajo</option>
+                    </optgroup>
+                  </select>
+
+                  @if (asShape(w.config).shapeType !== 'line') {
+                    <div class="config-field-group">
+                      <span class="field-group-label">Relleno</span>
+                      <label>Color</label>
+                      <input type="color" [value]="asShape(w.config).fillColor"
+                        (input)="updateConfig(w.id, 'fillColor', $event)" />
+                    </div>
+                  }
+
+                  <div class="config-field-group">
+                    <span class="field-group-label">Borde</span>
+                    <label>Color</label>
+                    <input type="color" [value]="asShape(w.config).borderColor"
+                      (input)="updateConfig(w.id, 'borderColor', $event)" />
+                    <label>Grosor</label>
+                    <input type="number" min="0" [value]="asShape(w.config).borderWidth"
+                      (input)="updateConfig(w.id, 'borderWidth', $event, true)" />
+                    @if (asShape(w.config).shapeType === 'rectangle') {
+                      <label>Radio</label>
+                      <input type="number" min="0" [value]="asShape(w.config).borderRadius"
+                        (input)="updateConfig(w.id, 'borderRadius', $event, true)" />
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- ========== LINK CONFIG ========== -->
+              @case ('link') {
+                <div class="config-form">
+                  <label>Sinoptico destino</label>
+                  <select [value]="asLink(w.config).targetSinopticoId ?? ''"
+                    (change)="updateLinkTarget(w.id, $event)">
+                    <option value="">-- Seleccionar --</option>
+                    @for (s of availableSinopticos(); track s.id) {
+                      <option [value]="s.id">{{ s.name }}</option>
+                    }
+                  </select>
+                  <label>Etiqueta</label>
+                  <input type="text" [value]="asLink(w.config).label"
+                    (input)="updateConfig(w.id, 'label', $event)" />
+                  <label>Color fondo</label>
+                  <input type="color" [value]="asLink(w.config).bgColor"
+                    (input)="updateConfig(w.id, 'bgColor', $event)" />
+                  <label>Color texto</label>
+                  <input type="color" [value]="asLink(w.config).textColor"
+                    (input)="updateConfig(w.id, 'textColor', $event)" />
+                  <label>Tam. Fuente</label>
+                  <input type="number" [value]="asLink(w.config).fontSize"
+                    (input)="updateConfig(w.id, 'fontSize', $event, true)" />
+                </div>
+              }
             }
+
+            <!-- Opacity control (Feature 6) — all widget types -->
+            <div class="opacity-control">
+              <label>Opacidad</label>
+              <input type="range" min="0" max="1" step="0.05"
+                [value]="w.opacity ?? 1"
+                (input)="updateWidgetOpacity(w.id, $event)" />
+              <span class="opacity-value">{{ ((w.opacity ?? 1) * 100) | number:'1.0-0' }}%</span>
+            </div>
 
             <div class="config-actions">
               <button class="btn-config" (click)="store.bringToFront(w.id)">Al frente</button>
@@ -466,8 +820,19 @@
           [style.height.px]="canvasHeight() * store.zoom()"
           [class.grid-visible]="gridVisible()"
           [style.--grid-size.px]="store.grid().size * store.zoom()"
-          (mousedown)="onCanvasClick($event)"
+          [style.backgroundColor]="sinoptico()?.canvas_bg || '#fff'"
+          (mousedown)="onCanvasMouseDown($event)"
+          (contextmenu)="onContextMenu($event)"
         >
+          @if (marquee()) {
+            <div
+              class="marquee-rect"
+              [style.left.px]="marquee()!.x"
+              [style.top.px]="marquee()!.y"
+              [style.width.px]="marquee()!.w"
+              [style.height.px]="marquee()!.h"
+            ></div>
+          }
           <div
             class="canvas-inner"
             #canvasInner
@@ -484,13 +849,17 @@
                 [zIndex]="w.zIndex"
                 [selected]="store.selectedIds().has(w.id)"
                 [locked]="w.locked"
+                [grouped]="!!w.groupId"
                 [zoom]="store.zoom()"
+                [widgetId]="w.id"
+                [opacity]="w.opacity ?? 1"
                 (onSelect)="onWidgetSelect(w.id, $event)"
                 (onMove)="onWidgetMove(w.id, $event)"
                 (onResize)="onWidgetResize(w.id, $event)"
                 (onDelete)="store.removeWidget(w.id)"
                 (onToggleLock)="store.toggleLock(w.id)"
                 (onBringFront)="store.bringToFront(w.id)"
+                (onDuplicate)="store.duplicateSelected()"
               >
                 @switch (w.type) {
                   @case ('label') {
@@ -522,8 +891,26 @@
                   @case ('image') {
                     <widget-image [config]="$any(w.config)" />
                   }
+                  @case ('text') {
+                    <widget-text [config]="$any(w.config)" />
+                  }
+                  @case ('shape') {
+                    <widget-shape [config]="$any(w.config)" />
+                  }
+                  @case ('link') {
+                    <widget-link [config]="$any(w.config)" />
+                  }
                 }
               </widget-wrapper>
+            }
+
+            <!-- Snap guides (Feature 10) -->
+            @for (guide of snapGuides(); track $index) {
+              @if (guide.type === 'v') {
+                <div class="snap-guide-v" [style.left.px]="guide.pos"></div>
+              } @else {
+                <div class="snap-guide-h" [style.top.px]="guide.pos"></div>
+              }
             }
 
             @if (store.widgetCount() === 0) {
@@ -547,8 +934,52 @@
             }
           </div>
         </div>
+
+        <!-- Context Menu (Feature 4) -->
+        @if (contextMenu(); as ctx) {
+          <div class="ctx-overlay" (click)="closeContextMenu()" (contextmenu)="closeContextMenu(); $event.preventDefault()"></div>
+          <div class="ctx-menu" [style.left.px]="ctx.x" [style.top.px]="ctx.y">
+            @if (ctx.widgetId) {
+              <button class="ctx-item" (click)="store.duplicateSelected(); closeContextMenu()">
+                Duplicar <span class="ctx-shortcut">Ctrl+D</span>
+              </button>
+              <button class="ctx-item" (click)="store.copySelected(); closeContextMenu()">
+                Copiar <span class="ctx-shortcut">Ctrl+C</span>
+              </button>
+              <div class="ctx-divider"></div>
+              <button class="ctx-item" (click)="store.bringToFront(ctx.widgetId); closeContextMenu()">
+                Traer al frente
+              </button>
+              <button class="ctx-item" (click)="store.sendToBack(ctx.widgetId); closeContextMenu()">
+                Enviar al fondo
+              </button>
+              <div class="ctx-divider"></div>
+              <button class="ctx-item" (click)="store.toggleLock(ctx.widgetId); closeContextMenu()">
+                {{ isWidgetLocked(ctx.widgetId) ? 'Desbloquear' : 'Bloquear' }}
+              </button>
+              <div class="ctx-divider"></div>
+              <button class="ctx-item ctx-danger" (click)="store.removeWidget(ctx.widgetId); closeContextMenu()">
+                Eliminar <span class="ctx-shortcut">Del</span>
+              </button>
+            } @else {
+              <button class="ctx-item" (click)="store.paste(); closeContextMenu()"
+                [disabled]="!store.hasClipboard()">
+                Pegar <span class="ctx-shortcut">Ctrl+V</span>
+              </button>
+              <button class="ctx-item" (click)="store.selectAll(); closeContextMenu()">
+                Seleccionar todo <span class="ctx-shortcut">Ctrl+A</span>
+              </button>
+            }
+          </div>
+        }
       </div>
     </div>
+
+    <activity-panel
+      [sinopticoId]="sinoptico()?.id ?? 0"
+      [open]="showActivityPanel()"
+      (closePanel)="showActivityPanel.set(false)"
+    />
   </div>
 } @else {
   <div class="editor-loading">

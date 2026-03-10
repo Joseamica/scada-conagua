@@ -5,6 +5,7 @@ import {
   inject,
   signal,
   computed,
+  effect,
   HostListener,
   ViewChild,
   ElementRef,
@@ -26,6 +27,11 @@ import {
   heroRectangleGroup,
   heroPlus,
   heroTrash,
+  heroClock,
+  heroArrowDownTray,
+  heroDocumentText,
+  heroStop,
+  heroArrowTopRightOnSquare,
 } from '@ng-icons/heroicons/outline';
 import {
   SinopticoService,
@@ -37,6 +43,9 @@ import {
   TableConfig,
   HeaderConfig,
   ImageConfig,
+  TextConfig,
+  ShapeConfig,
+  LinkConfig,
 } from '../../../core/services/sinoptico.service';
 import { EditorStore } from './store/editor-store';
 import { SinopticoDataStore } from './store/sinoptico-data-store';
@@ -47,7 +56,11 @@ import { MapWidget } from '../shared/widget-renderers/map-widget';
 import { TableWidget } from '../shared/widget-renderers/table-widget';
 import { HeaderWidget } from '../shared/widget-renderers/header-widget';
 import { ImageWidget } from '../shared/widget-renderers/image-widget';
+import { TextWidget } from '../shared/widget-renderers/text-widget';
+import { ShapeWidget } from '../shared/widget-renderers/shape-widget';
+import { LinkWidget } from '../shared/widget-renderers/link-widget';
 import { TagBrowser, TagSelection } from '../shared/tag-browser/tag-browser';
+import { ActivityPanel } from '../shared/activity-panel/activity-panel';
 
 interface PaletteItem {
   type: CanvasWidget['type'];
@@ -73,7 +86,11 @@ const SERIES_COLORS = [
     TableWidget,
     HeaderWidget,
     ImageWidget,
+    TextWidget,
+    ShapeWidget,
+    LinkWidget,
     TagBrowser,
+    ActivityPanel,
   ],
   providers: [
     EditorStore,
@@ -92,6 +109,11 @@ const SERIES_COLORS = [
       heroRectangleGroup,
       heroPlus,
       heroTrash,
+      heroClock,
+      heroArrowDownTray,
+      heroDocumentText,
+      heroStop,
+      heroArrowTopRightOnSquare,
     }),
   ],
   templateUrl: './sinoptico-editor.html',
@@ -114,6 +136,28 @@ export class SinopticoEditor implements OnInit, OnDestroy {
   canvasWidth = computed(() => this.sinoptico()?.canvas_width ?? 1920);
   canvasHeight = computed(() => this.sinoptico()?.canvas_height ?? 1080);
 
+  // Alignment & grouping UI
+  showAlignPopover = signal(false);
+  multiSelected = computed(() => this.store.selectedWidgets().length >= 2);
+  tripleSelected = computed(() => this.store.selectedWidgets().length >= 3);
+
+  // Activity panel
+  showActivityPanel = signal(false);
+
+  // Context menu
+  contextMenu = signal<{ x: number; y: number; widgetId: string | null } | null>(null);
+
+  // Canvas & grid settings
+  showCanvasSettings = signal(false);
+  showGridSettings = signal(false);
+
+  // Snap guides
+  snapGuides = signal<{ type: 'h' | 'v'; pos: number }[]>([]);
+  private readonly SNAP_THRESHOLD = 5;
+
+  // Link widget: available sinopticos
+  availableSinopticos = signal<{ id: number; name: string }[]>([]);
+
   paletteItems: PaletteItem[] = [
     { type: 'label', label: 'Etiqueta', icon: 'heroTag' },
     { type: 'chart', label: 'Grafico', icon: 'heroChartBarSquare' },
@@ -121,9 +165,32 @@ export class SinopticoEditor implements OnInit, OnDestroy {
     { type: 'table', label: 'Tabla', icon: 'heroTableCells' },
     { type: 'header', label: 'Encabezado', icon: 'heroRectangleGroup' },
     { type: 'image', label: 'Imagen', icon: 'heroPhoto' },
+    { type: 'text', label: 'Texto', icon: 'heroDocumentText' },
+    { type: 'shape', label: 'Forma', icon: 'heroStop' },
+    { type: 'link', label: 'Enlace', icon: 'heroArrowTopRightOnSquare' },
   ];
 
+  // Auto-save
+  private readonly AUTO_SAVE_DELAY = 30_000; // 30 seconds
+  private autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private timeAgoTimer: ReturnType<typeof setInterval> | null = null;
+  lastAutoSave = signal<Date | null>(null);
+  savedTimeAgo = signal<string | null>(null);
+
+  private autoSaveEffect = effect(() => {
+    const dirty = this.store.dirty();
+    const loading = this.loading();
+    if (dirty && !loading) {
+      this.scheduleAutoSave();
+    }
+  });
+
   private isDragging = false;
+  private dragOrigins = new Map<string, { x: number; y: number }>();
+
+  // Marquee selection
+  marquee = signal<{ x: number; y: number; w: number; h: number } | null>(null);
+  private marqueeStart: { clientX: number; clientY: number; canvasX: number; canvasY: number } | null = null;
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -136,16 +203,27 @@ export class SinopticoEditor implements OnInit, OnDestroy {
         this.loading.set(false);
         // Start data polling
         this.dataStore.startPolling(data.id, this.store.widgets());
+        // Load available sinopticos for link widget
+        if (data.project_id) {
+          this.sinopticoService.getProjectSinopticos(data.project_id).subscribe((list) => {
+            this.availableSinopticos.set(list.filter((s) => s.id !== data.id).map((s) => ({ id: s.id, name: s.name })));
+          });
+        }
       },
       error: () => {
         this.loading.set(false);
         this.router.navigate(['/sinopticos']);
       },
     });
+
+    // Tick every 15s to update "hace X min" label
+    this.timeAgoTimer = setInterval(() => this.updateTimeAgo(), 15_000);
   }
 
   ngOnDestroy(): void {
     this.dataStore.stopPolling();
+    this.clearAutoSave();
+    if (this.timeAgoTimer) clearInterval(this.timeAgoTimer);
   }
 
   // ===== TOOLBAR =====
@@ -153,15 +231,70 @@ export class SinopticoEditor implements OnInit, OnDestroy {
   save(): void {
     const s = this.sinoptico();
     if (!s) return;
+    this.clearAutoSave();
     this.saving.set(true);
     const canvas = this.store.getCanvasState();
-    this.sinopticoService.saveSinoptico(s.id, { canvas: canvas as any }).subscribe({
+    this.sinopticoService.saveSinoptico(s.id, {
+      canvas: canvas as any,
+      canvas_width: s.canvas_width,
+      canvas_height: s.canvas_height,
+      canvas_bg: s.canvas_bg,
+    }).subscribe({
       next: (result) => {
         this.sinoptico.update((prev) =>
           prev ? { ...prev, version: result.version, updated_at: result.updated_at } : prev,
         );
         this.store.markSaved();
         this.saving.set(false);
+        this.lastAutoSave.set(new Date());
+        this.updateTimeAgo();
+      },
+      error: () => this.saving.set(false),
+    });
+  }
+
+  private scheduleAutoSave(): void {
+    this.clearAutoSave();
+    this.autoSaveTimer = setTimeout(() => this.autoSave(), this.AUTO_SAVE_DELAY);
+  }
+
+  private clearAutoSave(): void {
+    if (this.autoSaveTimer) {
+      clearTimeout(this.autoSaveTimer);
+      this.autoSaveTimer = null;
+    }
+  }
+
+  private updateTimeAgo(): void {
+    const last = this.lastAutoSave();
+    if (!last) { this.savedTimeAgo.set(null); return; }
+    const secs = Math.floor((Date.now() - last.getTime()) / 1000);
+    if (secs < 10) this.savedTimeAgo.set('hace un momento');
+    else if (secs < 60) this.savedTimeAgo.set(`hace ${secs}s`);
+    else if (secs < 3600) this.savedTimeAgo.set(`hace ${Math.floor(secs / 60)} min`);
+    else this.savedTimeAgo.set(`hace ${Math.floor(secs / 3600)}h`);
+  }
+
+  private autoSave(): void {
+    if (!this.store.dirty() || this.saving()) return;
+    const s = this.sinoptico();
+    if (!s) return;
+    this.saving.set(true);
+    const canvas = this.store.getCanvasState();
+    this.sinopticoService.saveSinoptico(s.id, {
+      canvas: canvas as any,
+      canvas_width: s.canvas_width,
+      canvas_height: s.canvas_height,
+      canvas_bg: s.canvas_bg,
+    }).subscribe({
+      next: (result) => {
+        this.sinoptico.update((prev) =>
+          prev ? { ...prev, version: result.version, updated_at: result.updated_at } : prev,
+        );
+        this.store.markSaved();
+        this.saving.set(false);
+        this.lastAutoSave.set(new Date());
+        this.updateTimeAgo();
       },
       error: () => this.saving.set(false),
     });
@@ -169,6 +302,16 @@ export class SinopticoEditor implements OnInit, OnDestroy {
 
   toggleGrid(): void {
     this.gridVisible.update((v) => !v);
+  }
+
+  toggleSettingsPopover(): void {
+    const anyOpen = this.showGridSettings() || this.showCanvasSettings();
+    if (anyOpen) {
+      this.showGridSettings.set(false);
+      this.showCanvasSettings.set(false);
+    } else {
+      this.showGridSettings.set(true);
+    }
   }
 
   zoomIn(): void {
@@ -226,11 +369,70 @@ export class SinopticoEditor implements OnInit, OnDestroy {
     this.store.addWidget(type, w / 2 - 100, h / 2 - 50);
   }
 
-  // ===== CANVAS CLICK =====
+  // ===== CANVAS CLICK / MARQUEE =====
 
-  onCanvasClick(event: MouseEvent): void {
+  onCanvasMouseDown(event: MouseEvent): void {
     if ((event.target as HTMLElement).closest('.widget-wrapper')) return;
-    this.store.clearSelection();
+    if (event.button !== 0) return;
+
+    this.showAlignPopover.set(false);
+
+    // Start marquee selection
+    const canvasEl = (event.currentTarget as HTMLElement);
+    const rect = canvasEl.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    this.marqueeStart = { clientX: event.clientX, clientY: event.clientY, canvasX: x, canvasY: y };
+    this.marquee.set(null);
+
+    if (!event.shiftKey) {
+      this.store.clearSelection();
+    }
+
+    const onMove = (e: MouseEvent) => {
+      if (!this.marqueeStart) return;
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const sx = this.marqueeStart.canvasX;
+      const sy = this.marqueeStart.canvasY;
+      this.marquee.set({
+        x: Math.min(sx, mx),
+        y: Math.min(sy, my),
+        w: Math.abs(mx - sx),
+        h: Math.abs(my - sy),
+      });
+    };
+
+    const onUp = (e: MouseEvent) => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+
+      const m = this.marquee();
+      if (m && (m.w > 5 || m.h > 5)) {
+        // Select widgets that intersect with marquee
+        const zoom = this.store.zoom();
+        // Convert marquee coords from zoomed canvas space to widget space
+        const mLeft = m.x / zoom;
+        const mTop = m.y / zoom;
+        const mRight = (m.x + m.w) / zoom;
+        const mBottom = (m.y + m.h) / zoom;
+
+        for (const w of this.store.widgets()) {
+          const wRight = w.x + w.width;
+          const wBottom = w.y + w.height;
+          if (w.x < mRight && wRight > mLeft && w.y < mBottom && wBottom > mTop) {
+            this.store.select(w.id, true);
+          }
+        }
+      }
+
+      this.marquee.set(null);
+      this.marqueeStart = null;
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   }
 
   // ===== WIDGET EVENTS =====
@@ -239,10 +441,92 @@ export class SinopticoEditor implements OnInit, OnDestroy {
     this.store.select(id, event.shiftKey);
     this.store.beginBatch();
     this.isDragging = true;
+    // Capture all selected positions for group drag
+    this.dragOrigins.clear();
+    for (const w of this.store.selectedWidgets()) {
+      this.dragOrigins.set(w.id, { x: w.x, y: w.y });
+    }
   }
 
   onWidgetMove(id: string, pos: { x: number; y: number }): void {
-    this.store.moveWidgetDirect(id, pos.x, pos.y);
+    const origin = this.dragOrigins.get(id);
+    if (!origin) {
+      this.store.moveWidgetDirect(id, pos.x, pos.y);
+      return;
+    }
+    let dx = pos.x - origin.x;
+    let dy = pos.y - origin.y;
+
+    // Compute snap guides
+    const moving = this.store.widgets().find((w) => w.id === id);
+    if (moving) {
+      const others = this.store.widgets().filter((w) => !this.dragOrigins.has(w.id));
+      const guides: { type: 'h' | 'v'; pos: number }[] = [];
+      const threshold = this.SNAP_THRESHOLD / this.store.zoom();
+
+      const mx = origin.x + dx;
+      const my = origin.y + dy;
+      const mRight = mx + moving.width;
+      const mBottom = my + moving.height;
+      const mCenterX = mx + moving.width / 2;
+      const mCenterY = my + moving.height / 2;
+
+      let snapDx = 0;
+      let snapDy = 0;
+      let foundV = false;
+      let foundH = false;
+
+      for (const o of others) {
+        const oRight = o.x + o.width;
+        const oBottom = o.y + o.height;
+        const oCenterX = o.x + o.width / 2;
+        const oCenterY = o.y + o.height / 2;
+
+        if (!foundV) {
+          const vChecks = [
+            { from: mx, to: o.x },
+            { from: mx, to: oRight },
+            { from: mRight, to: o.x },
+            { from: mRight, to: oRight },
+            { from: mCenterX, to: oCenterX },
+          ];
+          for (const c of vChecks) {
+            if (Math.abs(c.from - c.to) < threshold) {
+              snapDx = c.to - c.from;
+              guides.push({ type: 'v', pos: c.to });
+              foundV = true;
+              break;
+            }
+          }
+        }
+
+        if (!foundH) {
+          const hChecks = [
+            { from: my, to: o.y },
+            { from: my, to: oBottom },
+            { from: mBottom, to: o.y },
+            { from: mBottom, to: oBottom },
+            { from: mCenterY, to: oCenterY },
+          ];
+          for (const c of hChecks) {
+            if (Math.abs(c.from - c.to) < threshold) {
+              snapDy = c.to - c.from;
+              guides.push({ type: 'h', pos: c.to });
+              foundH = true;
+              break;
+            }
+          }
+        }
+      }
+
+      dx += snapDx;
+      dy += snapDy;
+      this.snapGuides.set(guides);
+    }
+
+    for (const [wid, orig] of this.dragOrigins) {
+      this.store.moveWidgetDirect(wid, orig.x + dx, orig.y + dy);
+    }
   }
 
   onWidgetResize(
@@ -257,6 +541,7 @@ export class SinopticoEditor implements OnInit, OnDestroy {
     if (this.isDragging) {
       this.isDragging = false;
       this.store.commitBatch();
+      this.snapGuides.set([]);
     }
   }
 
@@ -270,6 +555,9 @@ export class SinopticoEditor implements OnInit, OnDestroy {
       table: 'Tabla',
       header: 'Encabezado',
       image: 'Imagen',
+      text: 'Texto',
+      shape: 'Forma',
+      link: 'Enlace',
     };
     return labels[type] || type;
   }
@@ -534,6 +822,96 @@ export class SinopticoEditor implements OnInit, OnDestroy {
   asImage(config: any): ImageConfig {
     return config;
   }
+  asText(config: any): TextConfig {
+    return config;
+  }
+  asShape(config: any): ShapeConfig {
+    return config;
+  }
+  asLink(config: any): LinkConfig {
+    return config;
+  }
+
+  // ===== CONTEXT MENU =====
+
+  onContextMenu(event: MouseEvent): void {
+    event.preventDefault();
+    const wrapper = (event.target as HTMLElement).closest('[data-widget-id]');
+    const widgetId = wrapper?.getAttribute('data-widget-id') || null;
+    if (widgetId && !this.store.selectedIds().has(widgetId)) {
+      this.store.select(widgetId);
+    }
+    this.contextMenu.set({ x: event.clientX, y: event.clientY, widgetId });
+  }
+
+  closeContextMenu(): void {
+    this.contextMenu.set(null);
+  }
+
+  isWidgetLocked(id: string): boolean {
+    return this.store.widgets().find((w) => w.id === id)?.locked ?? false;
+  }
+
+  // ===== POSITION / SIZE (Feature 5) =====
+
+  updatePosition(id: string, prop: 'x' | 'y' | 'width' | 'height', event: Event): void {
+    const val = Number((event.target as HTMLInputElement).value);
+    if (isNaN(val)) return;
+    if (prop === 'x' || prop === 'y') {
+      const w = this.store.selectedWidget()!;
+      this.store.moveWidget(id, prop === 'x' ? val : w.x, prop === 'y' ? val : w.y);
+    } else {
+      const w = this.store.selectedWidget()!;
+      this.store.resizeWidget(id, prop === 'width' ? val : w.width, prop === 'height' ? val : w.height);
+    }
+  }
+
+  // ===== OPACITY (Feature 6) =====
+
+  updateWidgetOpacity(id: string, event: Event): void {
+    const val = Number((event.target as HTMLInputElement).value);
+    this.store.updateWidgetField(id, 'opacity', val);
+  }
+
+  // ===== CANVAS CONFIG (Feature 8) =====
+
+  updateCanvasSize(prop: 'canvas_width' | 'canvas_height', event: Event): void {
+    const val = Number((event.target as HTMLInputElement).value);
+    if (isNaN(val) || val < 100) return;
+    this.sinoptico.update((s) => (s ? { ...s, [prop]: val } : s));
+    this.store.markDirty();
+  }
+
+  updateCanvasBg(event: Event): void {
+    const val = (event.target as HTMLInputElement).value;
+    this.sinoptico.update((s) => (s ? { ...s, canvas_bg: val } : s));
+    this.store.markDirty();
+  }
+
+  setCanvasPreset(w: number, h: number): void {
+    this.sinoptico.update((s) => (s ? { ...s, canvas_width: w, canvas_height: h } : s));
+    this.store.markDirty();
+  }
+
+  // ===== GRID CONFIG (Feature 9) =====
+
+  updateGridSize(event: Event): void {
+    const size = Number((event.target as HTMLInputElement).value);
+    if (size < 1 || size > 100) return;
+    this.store.setGrid({ ...this.store.grid(), size });
+  }
+
+  toggleGridSnap(): void {
+    this.store.setGrid({ ...this.store.grid(), snap: !this.store.grid().snap });
+  }
+
+  // ===== LINK WIDGET (Feature 11) =====
+
+  updateLinkTarget(widgetId: string, event: Event): void {
+    const id = Number((event.target as HTMLSelectElement).value) || null;
+    const name = this.availableSinopticos().find((s) => s.id === id)?.name || '';
+    this.store.updateWidgetConfig(widgetId, { targetSinopticoId: id, targetName: name });
+  }
 
   // ===== KEYBOARD SHORTCUTS =====
 
@@ -561,6 +939,13 @@ export class SinopticoEditor implements OnInit, OnDestroy {
     } else if (ctrl && event.key === 'a') {
       event.preventDefault();
       this.store.selectAll();
+    } else if (ctrl && event.key === 'g') {
+      event.preventDefault();
+      if (this.store.hasGroupedSelection()) this.store.ungroupSelected();
+      else this.store.groupSelected();
+    } else if (ctrl && event.key === 'd') {
+      event.preventDefault();
+      this.store.duplicateSelected();
     } else if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault();
       this.store.deleteSelected();
@@ -568,5 +953,18 @@ export class SinopticoEditor implements OnInit, OnDestroy {
       event.preventDefault();
       this.save();
     }
+  }
+
+  // ===== EXPORT PNG =====
+
+  async exportPNG(): Promise<void> {
+    const el = this.canvasInner?.nativeElement;
+    if (!el) return;
+    const { default: html2canvas } = await import('html2canvas');
+    const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#fff' });
+    const a = document.createElement('a');
+    a.download = `${this.sinoptico()?.name || 'sinoptico'}.png`;
+    a.href = canvas.toDataURL('image/png');
+    a.click();
   }
 }

@@ -74,12 +74,14 @@ interface WizardColumn {
       @if (isOpen()) {
         <div class="tag-dropdown">
           <!-- Create view button -->
-          <button class="create-view-btn" (click)="openWizard(); $event.stopPropagation()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
-            </svg>
-            Crear Vista de Variables
-          </button>
+          @if (showCreateView()) {
+            <button class="create-view-btn" (click)="openWizard(); $event.stopPropagation()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
+              </svg>
+              Crear Vista de Variables
+            </button>
+          }
 
           <input
             class="tag-search"
@@ -1396,6 +1398,7 @@ export class TagBrowser implements OnInit {
   placeholder = input('Seleccionar variable...');
   currentDevEUI = input('');
   currentMeasurement = input('');
+  showCreateView = input(true);
 
   tagSelect = output<TagSelection>();
 

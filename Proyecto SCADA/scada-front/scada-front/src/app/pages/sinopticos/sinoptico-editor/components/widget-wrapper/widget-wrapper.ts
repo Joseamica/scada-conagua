@@ -1,23 +1,26 @@
 import { Component, input, output, ElementRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
-import { heroTrash, heroLockClosed, heroLockOpen, heroArrowsPointingOut } from '@ng-icons/heroicons/outline';
+import { heroTrash, heroLockClosed, heroLockOpen, heroArrowsPointingOut, heroDocumentDuplicate } from '@ng-icons/heroicons/outline';
 
 @Component({
   selector: 'widget-wrapper',
   standalone: true,
   imports: [CommonModule, NgIconComponent],
-  providers: [provideIcons({ heroTrash, heroLockClosed, heroLockOpen, heroArrowsPointingOut })],
+  providers: [provideIcons({ heroTrash, heroLockClosed, heroLockOpen, heroArrowsPointingOut, heroDocumentDuplicate })],
   template: `
     <div
       class="widget-wrapper"
       [class.selected]="selected()"
       [class.locked]="locked()"
+      [class.grouped]="grouped()"
+      [attr.data-widget-id]="widgetId()"
       [style.left.px]="x()"
       [style.top.px]="y()"
       [style.width.px]="width()"
       [style.height.px]="height()"
       [style.zIndex]="zIndex()"
+      [style.opacity]="opacity()"
       (mousedown)="onMouseDown($event)"
     >
       <!-- Content slot -->
@@ -44,6 +47,9 @@ import { heroTrash, heroLockClosed, heroLockOpen, heroArrowsPointingOut } from '
           </button>
           <button class="tb-btn" (mousedown)="$event.stopPropagation()" (click)="onToggleLock.emit()" title="Bloquear">
             <ng-icon [name]="locked() ? 'heroLockClosed' : 'heroLockOpen'" size="14" />
+          </button>
+          <button class="tb-btn" (mousedown)="$event.stopPropagation()" (click)="onDuplicate.emit()" title="Duplicar (Ctrl+D)">
+            <ng-icon name="heroDocumentDuplicate" size="14" />
           </button>
           <button class="tb-btn" (mousedown)="$event.stopPropagation()" (click)="onBringFront.emit()" title="Al frente">
             <ng-icon name="heroArrowsPointingOut" size="14" />
@@ -81,6 +87,11 @@ import { heroTrash, heroLockClosed, heroLockOpen, heroArrowsPointingOut } from '
 
     .widget-wrapper.locked {
       cursor: default;
+    }
+
+    .widget-wrapper.grouped:not(.selected) {
+      border-color: rgba(109, 0, 43, 0.15);
+      border-style: dashed;
     }
 
     .widget-content {
@@ -177,7 +188,10 @@ export class WidgetWrapper {
   zIndex = input(0);
   selected = input(false);
   locked = input(false);
+  grouped = input(false);
   zoom = input(1);
+  widgetId = input('');
+  opacity = input(1);
 
   // Outputs
   onSelect = output<MouseEvent>();
@@ -186,6 +200,7 @@ export class WidgetWrapper {
   onDelete = output<void>();
   onToggleLock = output<void>();
   onBringFront = output<void>();
+  onDuplicate = output<void>();
 
   private el = inject(ElementRef);
   private dragState: { startX: number; startY: number; origX: number; origY: number } | null = null;

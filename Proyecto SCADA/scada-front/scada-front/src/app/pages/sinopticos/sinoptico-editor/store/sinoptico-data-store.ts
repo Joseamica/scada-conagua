@@ -257,7 +257,11 @@ export class SinopticoDataStore implements OnDestroy {
   }
 
   private extractValue(entry: any, measurement: string): number | null {
-    // The batch query returns site_status fields. Map measurement to the correct field.
+    // New format: backend returns { value, last_updated_at } directly from InfluxDB
+    if (entry.value !== undefined) {
+      return entry.value !== null ? Number(entry.value) : null;
+    }
+    // Legacy fallback: site_status field mapping
     const fieldMap: Record<string, string> = {
       caudal_lts: 'last_flow_value',
       presion_kg: 'last_pressure_value',
@@ -267,7 +271,6 @@ export class SinopticoDataStore implements OnDestroy {
       rssi: 'rssi',
       snr: 'snr',
       battery: 'battery_level',
-      // Ignition mappings
       value_presion: 'last_pressure_value',
       value_caudal: 'last_flow_value',
       value_caudal_totalizado: 'last_total_flow',
@@ -275,7 +278,6 @@ export class SinopticoDataStore implements OnDestroy {
       value_nivel: 'last_nivel_value',
       value_lluvia: 'last_lluvia_value',
     };
-
     const field = fieldMap[measurement] || measurement;
     const val = entry[field] ?? entry[measurement];
     return val !== null && val !== undefined ? Number(val) : null;

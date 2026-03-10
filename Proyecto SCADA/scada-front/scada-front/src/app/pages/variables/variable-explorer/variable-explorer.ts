@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -34,7 +34,11 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
         <aside class="folder-sidebar">
           <h4>Carpetas</h4>
           <div class="folder-list">
-            <div *ngFor="let f of folders()" class="folder-item" (click)="selectFolder(f)">
+            <div class="folder-item" [class.active]="selectedFolderId() === null" (click)="selectedFolderId.set(null)">
+              <ng-icon name="heroTableCells" size="16" />
+              <span>Todas las vistas</span>
+            </div>
+            <div *ngFor="let f of folders()" class="folder-item" [class.active]="selectedFolderId() === f.id" (click)="selectFolder(f)">
               <ng-icon name="heroFolder" size="16" />
               <span>{{ f.name }}</span>
             </div>
@@ -52,7 +56,7 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
         <main class="views-area">
           <div *ngIf="loading()" class="loading-state"><div class="spinner"></div></div>
           <div *ngIf="!loading()" class="views-list">
-            <div *ngFor="let v of views()" class="view-card" (click)="openView(v)">
+            <div *ngFor="let v of filteredViews()" class="view-card" (click)="openView(v)">
               <div class="view-info">
                 <h3>{{ v.name }}</h3>
                 <p>{{ v.column_count }} columnas, {{ v.formula_count }} formulas</p>
@@ -63,7 +67,7 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
                 </button>
               </div>
             </div>
-            <div class="empty-state" *ngIf="views().length === 0">
+            <div class="empty-state" *ngIf="filteredViews().length === 0">
               <ng-icon name="heroTableCells" size="40" />
               <p>No hay vistas de variables</p>
             </div>
@@ -122,6 +126,7 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
       transition: background 0.15s ease, color 0.15s ease;
     }
     .folder-item:hover { background: var(--table-hover); color: var(--text-primary); }
+    .folder-item.active { background: rgba(109, 0, 43, 0.08); color: var(--accent); font-weight: 600; }
     .empty-hint { font-size: 12px; color: var(--text-muted); margin: 8px 14px; }
     .folder-create { display: flex; gap: 6px; padding: 10px; border-top: 1.5px solid var(--border-strong); }
     .folder-create input {
@@ -235,6 +240,11 @@ export class VariableExplorer implements OnInit {
   views = signal<VariableView[]>([]);
   folders = signal<VariableFolder[]>([]);
   loading = signal(true);
+  selectedFolderId = signal<number | null>(null);
+  filteredViews = computed(() => {
+    const fid = this.selectedFolderId();
+    return fid === null ? this.views() : this.views().filter((v) => v.folder_id === fid);
+  });
   showCreateView = false;
   newViewName = '';
   newFolderName = '';
@@ -259,7 +269,7 @@ export class VariableExplorer implements OnInit {
   }
 
   selectFolder(folder: VariableFolder): void {
-    // Phase 4: filter views by folder
+    this.selectedFolderId.set(this.selectedFolderId() === folder.id ? null : folder.id);
   }
 
   createFolder(): void {

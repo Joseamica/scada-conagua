@@ -16,6 +16,9 @@
             Actualizado: {{ dataStore.lastUpdate() | date: 'HH:mm:ss' }}
           </span>
         }
+        <button class="toolbar-btn" (click)="showActivityPanel.set(!showActivityPanel())" title="Historial">
+          <ng-icon name="heroClock" size="16" />
+        </button>
         <button class="toolbar-btn edit-btn" (click)="openEditor()" title="Abrir editor">
           <ng-icon name="heroPencilSquare" size="16" />
           Editar
@@ -38,6 +41,7 @@
             [style.width.px]="w.width"
             [style.height.px]="w.height"
             [style.zIndex]="w.zIndex"
+            [style.opacity]="w.opacity ?? 1"
           >
             @switch (w.type) {
               @case ('label') {
@@ -69,6 +73,16 @@
               @case ('image') {
                 <widget-image [config]="$any(w.config)" />
               }
+              @case ('text') {
+                <widget-text [config]="$any(w.config)" />
+              }
+              @case ('shape') {
+                <widget-shape [config]="$any(w.config)" />
+              }
+              @case ('link') {
+                <widget-link [config]="$any(w.config)"
+                  (navigate)="onLinkNavigate($event)" />
+              }
             }
           </div>
         }
@@ -94,6 +108,12 @@
         }
       </div>
     </div>
+
+    <activity-panel
+      [sinopticoId]="sinoptico()?.id ?? 0"
+      [open]="showActivityPanel()"
+      (closePanel)="showActivityPanel.set(false)"
+    />
   </div>
 } @else {
   <div class="viewer-loading">

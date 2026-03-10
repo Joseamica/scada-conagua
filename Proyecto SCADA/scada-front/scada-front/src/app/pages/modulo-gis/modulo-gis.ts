@@ -273,48 +273,43 @@ export class ModuloGis implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Resolve estatus preferring live API data over hardcoded POZOS_DATA.
+   */
+  private resolveEstatus(name: string): string {
+    // 1. Live API data (from DB)
+    const apiSite = this.apiSitesByName.get(this.normalizeKey(name));
+    if (apiSite?.estatus) {
+      return apiSite.estatus.toLowerCase().trim();
+    }
+    // 2. Hardcoded POZOS_DATA fallback
+    const normalized = this.normalizeKey(name);
+    const pozoId = POZO_NAME_TO_ID[normalized] || this.slugify(name);
+    const data = POZOS_DATA[pozoId];
+    if (data?.estatus) {
+      return (data.estatus || '').toLowerCase().trim();
+    }
+    return 'activo';
+  }
+
   private resolveSiteIconUrl(name: string): string {
+    const type = this.inferTypeFromName(name) ?? 'well';
+    const fileType = type.replaceAll('_', '-');
 
-  const normalized = this.normalizeKey(name);
+    if (type !== 'well') {
+      return `assets/icons/map/${fileType}-gray.svg`;
+    }
 
-  // resolver id
-  let pozoId = POZO_NAME_TO_ID[normalized];
-  if (!pozoId) pozoId = this.slugify(name);
+    const status = this.resolveEstatus(name);
 
-  const data = POZOS_DATA[pozoId];
-
-  // 🔥 detectar tipo por nombre
-  const type = this.inferTypeFromName(name) ?? 'well';
-
-  const fileType = type.replaceAll('_','-');
-
-  // ===============================
-  // NO POZOS → icono fijo
-  // ===============================
- if (type !== 'well') {
-  return `assets/icons/map/${fileType}-gray.svg`;
-}
-
-  // ===============================
-  // POZOS → depende del estatus
-  // ===============================
-  if (!data) {
-    // Sitio no está en POZOS_DATA (creado dinámicamente) — mostrar activo por defecto
+    if (status === 'obra') {
+      return `assets/icons/map/well-yellow.svg`;
+    }
+    if (status === 'inactivo') {
+      return `assets/icons/map/well-gray.svg`;
+    }
     return `assets/icons/map/well.svg`;
   }
-
-  const status = (data.estatus || '').toLowerCase().trim();
-
-  if (status === 'activo') {
-    return `assets/icons/map/well.svg`;
-  }
-
-  if (status === 'obra') {
-    return `assets/icons/map/well-yellow.svg`;
-  }
-
-  return `assets/icons/map/well-gray.svg`;
-}
 
 
 
@@ -560,8 +555,7 @@ export class ModuloGis implements OnInit, OnDestroy {
               pozoId = this.slugify(name);
             }
 
-            const data = POZOS_DATA[pozoId];
-            const estado = (data?.estatus || 'activo').toLowerCase().trim();
+            const estado = this.resolveEstatus(name);
 
             // Agregar al layer correcto (default activo para sitios dinámicos)
             if (estado === 'activo') {

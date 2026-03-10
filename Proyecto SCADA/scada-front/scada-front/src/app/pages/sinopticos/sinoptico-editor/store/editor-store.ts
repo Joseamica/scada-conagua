@@ -44,6 +44,11 @@ export class EditorStore {
     const sel = this.selectedWidgets();
     return sel.length === 1 ? sel[0] : null;
   });
+  readonly hasGroupedSelection = computed(() =>
+    this.selectedWidgets().some((w) => !!w.groupId),
+  );
+  readonly canGroup = computed(() => this.selectedWidgets().length >= 2);
+  readonly hasClipboard = computed(() => this._clipboard().length > 0);
 
   // --- Initialize from loaded sinoptico ---
   loadCanvas(state: CanvasState): void {
@@ -109,12 +114,15 @@ export class EditorStore {
     this.pushUndo();
     const id = crypto.randomUUID();
     const defaults: Record<CanvasWidget['type'], { width: number; height: number }> = {
-      label: { width: 200, height: 100 },
+      label: { width: 240, height: 120 },
       chart: { width: 500, height: 300 },
       map: { width: 500, height: 400 },
       table: { width: 600, height: 300 },
       header: { width: 800, height: 80 },
       image: { width: 300, height: 200 },
+      text: { width: 200, height: 60 },
+      shape: { width: 150, height: 100 },
+      link: { width: 160, height: 50 },
     };
     const size = defaults[type];
     const widget: CanvasWidget = {
@@ -178,17 +186,27 @@ export class EditorStore {
     );
   }
 
-  // --- Selection ---
+  // --- Selection (with group expansion) ---
   select(id: string, additive = false): void {
+    const widget = this._widgets().find((w) => w.id === id);
+    const targetIds = [id];
+    if (widget?.groupId) {
+      for (const w of this._widgets()) {
+        if (w.groupId === widget.groupId && w.id !== id) targetIds.push(w.id);
+      }
+    }
     if (additive) {
       this._selectedIds.update((ids) => {
         const next = new Set(ids);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
+        if (next.has(id)) {
+          for (const g of targetIds) next.delete(g);
+        } else {
+          for (const g of targetIds) next.add(g);
+        }
         return next;
       });
     } else {
-      this._selectedIds.set(new Set([id]));
+      this._selectedIds.set(new Set(targetIds));
     }
   }
 
@@ -258,6 +276,78 @@ export class EditorStore {
     this._selectedIds.set(new Set());
   }
 
+  // --- Duplicate selected ---
+  duplicateSelected(): void {
+    const sel = this.selectedWidgets();
+    if (sel.length === 0) return;
+    this.pushUndo();
+    const newIds: string[] = [];
+    for (const item of sel) {
+      const id = crypto.randomUUID();
+      newIds.push(id);
+      const widget: CanvasWidget = {
+        ...item,
+        id,
+        x: item.x + 20,
+        y: item.y + 20,
+        zIndex: this._nextZIndex(),
+        config: { ...item.config },
+        groupId: undefined,
+      };
+      this._nextZIndex.update((z) => z + 1);
+      this._widgets.update((list) => [...list, widget]);
+    }
+    this._selectedIds.set(new Set(newIds));
+  }
+
+  // --- Update widget field ---
+  updateWidgetField(id: string, field: keyof CanvasWidget, value: any): void {
+    this.pushUndo();
+    this._widgets.update((list) =>
+      list.map((w) => (w.id === id ? { ...w, [field]: value } : w)),
+    );
+  }
+
+  // --- Mark dirty (for external changes like canvas size) ---
+  markDirty(): void {
+    this._dirty.set(true);
+  }
+
+  // --- Match Size (requires ≥2 selected) ---
+  matchWidth(): void {
+    const sel = this.selectedWidgets();
+    if (sel.length < 2) return;
+    this.pushUndo();
+    const maxW = Math.max(...sel.map((w) => w.width));
+    const ids = new Set(sel.map((w) => w.id));
+    this._widgets.update((list) =>
+      list.map((w) => (ids.has(w.id) ? { ...w, width: maxW } : w)),
+    );
+  }
+
+  matchHeight(): void {
+    const sel = this.selectedWidgets();
+    if (sel.length < 2) return;
+    this.pushUndo();
+    const maxH = Math.max(...sel.map((w) => w.height));
+    const ids = new Set(sel.map((w) => w.id));
+    this._widgets.update((list) =>
+      list.map((w) => (ids.has(w.id) ? { ...w, height: maxH } : w)),
+    );
+  }
+
+  matchSize(): void {
+    const sel = this.selectedWidgets();
+    if (sel.length < 2) return;
+    this.pushUndo();
+    const maxW = Math.max(...sel.map((w) => w.width));
+    const maxH = Math.max(...sel.map((w) => w.height));
+    const ids = new Set(sel.map((w) => w.id));
+    this._widgets.update((list) =>
+      list.map((w) => (ids.has(w.id) ? { ...w, width: maxW, height: maxH } : w)),
+    );
+  }
+
   // --- Zoom ---
   setZoom(z: number): void {
     this._zoom.set(Math.max(0.2, Math.min(3, z)));
@@ -324,5 +414,179 @@ export class EditorStore {
 
   selectAll(): void {
     this._selectedIds.set(new Set(this._widgets().map((w) => w.id)));
+  }
+
+  // --- Alignment (requires ≥2 selected) ---
+  alignLeft(): void {
+    const sel = this.selectedWidgets();
+    if (sel.length < 2) return;
+    this.pushUndo();
+    const minX = Math.min(...sel.map((w) => w.x));
+    const ids = new Set(sel.map((w) => w.id));
+    this._widgets.update((list) => list.map((w) => (ids.has(w.id) ? { ...w, x: minX } : w)));
+  }
+
+  alignCenterH(): void {
+    const sel = this.selectedWidgets();
+    if (sel.length < 2) return;
+    this.pushUndo();
+    const avg = sel.reduce((s, w) => s + w.x + w.width / 2, 0) / sel.length;
+    const ids = new Set(sel.map((w) => w.id));
+    this._widgets.update((list) =>
+      list.map((w) => (ids.has(w.id) ? { ...w, x: Math.round(avg - w.width / 2) } : w)),
+    );
+  }
+
+  alignRight(): void {
+    const sel = this.selectedWidgets();
+    if (sel.length < 2) return;
+    this.pushUndo();
+    const maxR = Math.max(...sel.map((w) => w.x + w.width));
+    const ids = new Set(sel.map((w) => w.id));
+    this._widgets.update((list) => list.map((w) => (ids.has(w.id) ? { ...w, x: maxR - w.width } : w)));
+  }
+
+  alignTop(): void {
+    const sel = this.selectedWidgets();
+    if (sel.length < 2) return;
+    this.pushUndo();
+    const minY = Math.min(...sel.map((w) => w.y));
+    const ids = new Set(sel.map((w) => w.id));
+    this._widgets.update((list) => list.map((w) => (ids.has(w.id) ? { ...w, y: minY } : w)));
+  }
+
+  alignCenterV(): void {
+    const sel = this.selectedWidgets();
+    if (sel.length < 2) return;
+    this.pushUndo();
+    const avg = sel.reduce((s, w) => s + w.y + w.height / 2, 0) / sel.length;
+    const ids = new Set(sel.map((w) => w.id));
+    this._widgets.update((list) =>
+      list.map((w) => (ids.has(w.id) ? { ...w, y: Math.round(avg - w.height / 2) } : w)),
+    );
+  }
+
+  alignBottom(): void {
+    const sel = this.selectedWidgets();
+    if (sel.length < 2) return;
+    this.pushUndo();
+    const maxB = Math.max(...sel.map((w) => w.y + w.height));
+    const ids = new Set(sel.map((w) => w.id));
+    this._widgets.update((list) => list.map((w) => (ids.has(w.id) ? { ...w, y: maxB - w.height } : w)));
+  }
+
+  // --- Distribution (requires ≥3 selected) ---
+  distributeH(): void {
+    const sel = this.selectedWidgets();
+    if (sel.length < 3) return;
+    this.pushUndo();
+    const sorted = [...sel].sort((a, b) => a.x - b.x);
+    const left = sorted[0].x;
+    const right = sorted[sorted.length - 1].x + sorted[sorted.length - 1].width;
+    const totalW = sorted.reduce((s, w) => s + w.width, 0);
+    const gap = (right - left - totalW) / (sorted.length - 1);
+    let cx = left;
+    const posMap = new Map<string, number>();
+    for (const w of sorted) {
+      posMap.set(w.id, Math.round(cx));
+      cx += w.width + gap;
+    }
+    this._widgets.update((list) =>
+      list.map((w) => (posMap.has(w.id) ? { ...w, x: posMap.get(w.id)! } : w)),
+    );
+  }
+
+  distributeV(): void {
+    const sel = this.selectedWidgets();
+    if (sel.length < 3) return;
+    this.pushUndo();
+    const sorted = [...sel].sort((a, b) => a.y - b.y);
+    const top = sorted[0].y;
+    const bottom = sorted[sorted.length - 1].y + sorted[sorted.length - 1].height;
+    const totalH = sorted.reduce((s, w) => s + w.height, 0);
+    const gap = (bottom - top - totalH) / (sorted.length - 1);
+    let cy = top;
+    const posMap = new Map<string, number>();
+    for (const w of sorted) {
+      posMap.set(w.id, Math.round(cy));
+      cy += w.height + gap;
+    }
+    this._widgets.update((list) =>
+      list.map((w) => (posMap.has(w.id) ? { ...w, y: posMap.get(w.id)! } : w)),
+    );
+  }
+
+  // --- Tidy / Auto-arrange ---
+  tidyUp(): void {
+    const sel = this.selectedWidgets();
+    const targets = sel.length >= 2 ? sel : this._widgets();
+    if (targets.length < 2) return;
+    this.pushUndo();
+
+    const gap = 20;
+    const gridSize = this._grid().size;
+    const snap = (v: number) => (this._grid().snap ? Math.round(v / gridSize) * gridSize : Math.round(v));
+
+    // Start position: top-left of current bounding box
+    const startX = Math.min(...targets.map((w) => w.x));
+    const startY = Math.min(...targets.map((w) => w.y));
+
+    // Sort: larger widgets first (by area), then left-to-right
+    const sorted = [...targets].sort((a, b) => {
+      const areaA = a.width * a.height;
+      const areaB = b.width * b.height;
+      if (areaB !== areaA) return areaB - areaA;
+      return a.x - b.x || a.y - b.y;
+    });
+
+    // Canvas width hint — fit within ~1200px or max existing right edge
+    const maxRight = Math.max(...targets.map((w) => w.x + w.width));
+    const canvasW = Math.max(1200, maxRight - startX);
+
+    // Simple row packing
+    const posMap = new Map<string, { x: number; y: number }>();
+    let rowX = startX;
+    let rowY = startY;
+    let rowMaxH = 0;
+
+    for (const w of sorted) {
+      // If adding this widget exceeds canvas width, wrap to next row
+      if (rowX > startX && rowX + w.width > startX + canvasW) {
+        rowX = startX;
+        rowY += rowMaxH + gap;
+        rowMaxH = 0;
+      }
+      posMap.set(w.id, { x: snap(rowX), y: snap(rowY) });
+      rowX += w.width + gap;
+      rowMaxH = Math.max(rowMaxH, w.height);
+    }
+
+    const ids = posMap;
+    this._widgets.update((list) =>
+      list.map((w) => {
+        const pos = ids.get(w.id);
+        return pos ? { ...w, x: pos.x, y: pos.y } : w;
+      }),
+    );
+  }
+
+  // --- Grouping ---
+  groupSelected(): void {
+    const sel = this.selectedWidgets();
+    if (sel.length < 2) return;
+    this.pushUndo();
+    const groupId = crypto.randomUUID();
+    const ids = new Set(sel.map((w) => w.id));
+    this._widgets.update((list) => list.map((w) => (ids.has(w.id) ? { ...w, groupId } : w)));
+  }
+
+  ungroupSelected(): void {
+    const sel = this.selectedWidgets();
+    const groupIds = new Set(sel.map((w) => w.groupId).filter(Boolean));
+    if (groupIds.size === 0) return;
+    this.pushUndo();
+    this._widgets.update((list) =>
+      list.map((w) => (groupIds.has(w.groupId) ? { ...w, groupId: undefined } : w)),
+    );
   }
 }

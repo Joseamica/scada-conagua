@@ -259,6 +259,26 @@
   color: #94a3b8;
 }
 
+.action-badge[data-cat="sinoptico"] {
+  background: rgba(109, 0, 43, 0.12);
+  color: #e44b83;
+}
+
+.action-badge[data-cat="variable"] {
+  background: rgba(234, 179, 8, 0.12);
+  color: #eab308;
+}
+
+.action-badge[data-cat="alarm"] {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+
+.action-badge[data-cat="gis"] {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+}
+
 .empty{
   text-align:center;
   color:var(--text-secondary);

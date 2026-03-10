@@ -64,6 +64,21 @@ export interface FormulaSeriesResult {
   data: [number, number][];
 }
 
+export interface ViewShare {
+  id: number;
+  user_id: number;
+  permission: 'read' | 'edit';
+  full_name: string;
+  email: string;
+  created_at: string;
+}
+
+export interface ShareCandidate {
+  id: number;
+  full_name: string;
+  email: string;
+}
+
 export interface FormulaValidation {
   valid: boolean;
   variables: string[];
@@ -174,5 +189,27 @@ export class VariableService {
       `${this.base}/views/${viewId}/execute-series`,
       { formulaId, range },
     );
+  }
+
+  // Sharing
+  getViewShares(viewId: number): Observable<ViewShare[]> {
+    return this.http.get<ViewShare[]>(`${this.base}/views/${viewId}/shares`);
+  }
+
+  addViewShare(viewId: number, userId: number, permission: string): Observable<ViewShare> {
+    return this.http.post<ViewShare>(`${this.base}/views/${viewId}/shares`, {
+      user_id: userId,
+      permission,
+    });
+  }
+
+  removeViewShare(viewId: number, shareId: number): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(`${this.base}/views/${viewId}/shares/${shareId}`);
+  }
+
+  searchShareCandidates(viewId: number, q: string): Observable<ShareCandidate[]> {
+    return this.http.get<ShareCandidate[]>(`${this.base}/views/${viewId}/share-candidates`, {
+      params: { q },
+    });
   }
 }

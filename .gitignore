@@ -51,3 +51,7 @@ AUDITORIA-SCADA.md
 
 # Local Docker init scripts
 influx-init.sh
+
+# Screenshots / debug images
+*.png
+screenshots/

@@ -4,6 +4,7 @@ import { pool } from '../services/db-service';
 import { isAuth, canEditSinopticos } from '../middlewares/auth-middleware';
 import { auditLog } from '../services/audit-service';
 import { evaluateFormulasBatch } from '../services/formula-engine';
+import { getLatestValue } from '../services/influx-query-service';
 
 const router = Router();
 
@@ -127,6 +128,7 @@ router.put('/projects/:id', canEditSinopticos, async (req: Request, res: Respons
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Proyecto no encontrado o sin permisos.' });
         }
+        await auditLog(req.user!.id, 'SINOPTICO_PROJECT_UPDATED', { project_id: id, name: result.rows[0].name }, req.ip!);
         res.json(result.rows[0]);
     } catch (e: any) {
         console.error('Error updating project:', e.message);
@@ -208,6 +210,7 @@ router.post('/projects/:id/sinopticos', canEditSinopticos, async (req: Request, 
              VALUES ($1, $2, 'created', $3)`,
             [result.rows[0].id, req.user!.id, JSON.stringify({ name })]
         );
+        await auditLog(req.user!.id, 'SINOPTICO_CREATED', { sinoptico_id: result.rows[0].id, project_id: req.params.id, name }, req.ip!);
 
         res.status(201).json(result.rows[0]);
     } catch (e: any) {
@@ -266,6 +269,7 @@ router.put('/sinopticos/:id', canEditSinopticos, async (req: Request, res: Respo
              VALUES ($1, $2, 'saved', $3)`,
             [req.params.id, req.user!.id, JSON.stringify({ version: result.rows[0].version })]
         );
+        await auditLog(req.user!.id, 'SINOPTICO_SAVED', { sinoptico_id: req.params.id, version: result.rows[0].version }, req.ip!);
 
         res.json(result.rows[0]);
     } catch (e: any) {
@@ -305,6 +309,7 @@ router.post('/sinopticos/:id/duplicate', canEditSinopticos, async (req: Request,
              VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
             [src.project_id, `${src.name} (copia)`, src.description, JSON.stringify(src.canvas), src.canvas_width, src.canvas_height, req.user!.id]
         );
+        await auditLog(req.user!.id, 'SINOPTICO_DUPLICATED', { sinoptico_id: result.rows[0].id, original_id: req.params.id, name: result.rows[0].name }, req.ip!);
         res.status(201).json(result.rows[0]);
     } catch (e: any) {
         console.error('Error duplicating sinoptico:', e.message);
@@ -348,6 +353,7 @@ router.post('/sinopticos/:id/shares', canEditSinopticos, async (req: Request, re
              RETURNING *`,
             [req.params.id, user_id, permission]
         );
+        await auditLog(req.user!.id, 'SINOPTICO_SHARED', { sinoptico_id: req.params.id, shared_with: user_id, permission }, req.ip!);
         res.status(201).json(result.rows[0]);
     } catch (e: any) {
         res.status(500).json({ error: 'Error al compartir sinoptico.' });
@@ -358,6 +364,7 @@ router.post('/sinopticos/:id/shares', canEditSinopticos, async (req: Request, re
 router.delete('/sinopticos/:id/shares/:shareId', canEditSinopticos, async (req: Request, res: Response) => {
     try {
         await pool.query('DELETE FROM scada.sinoptico_shares WHERE id = $1 AND sinoptico_id = $2', [req.params.shareId, req.params.id]);
+        await auditLog(req.user!.id, 'SINOPTICO_UNSHARED', { sinoptico_id: req.params.id, share_id: req.params.shareId }, req.ip!);
         res.json({ message: 'Permiso eliminado.' });
     } catch (e: any) {
         res.status(500).json({ error: 'Error al eliminar permiso.' });
@@ -416,20 +423,46 @@ router.post('/sinopticos/:id/query', isAuth, async (req: Request, res: Response)
             }
         }
 
-        // For now, fetch latest values from site_status (fast, no InfluxDB)
+        // 1) Try site_status (PostgreSQL) first — fast, always fresh in production
+        const STALE_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
         const results: Record<string, any> = {};
-        for (const [key, { devEUI }] of queries) {
-            const pgResult = await pool.query(
-                `SELECT s.last_flow_value, s.last_pressure_value, s.battery_level,
-                        s.rssi, s.snr, s.last_nivel_value, s.last_lluvia_value,
-                        s.last_updated_at, s.bomba_activa, s.fallo_arrancador
-                 FROM scada.site_status s
-                 WHERE TRIM(s.dev_eui) = $1`,
-                [devEUI.trim()]
-            );
-            if (pgResult.rows.length > 0) {
-                results[key] = pgResult.rows[0];
+        const missingKeys: [string, { devEUI: string; measurement: string }][] = [];
+
+        for (const [key, { devEUI, measurement }] of queries) {
+            const field = measurementToField(measurement);
+            if (ALLOWED_SITE_STATUS_FIELDS.has(field)) {
+                const pgResult = await pool.query(
+                    `SELECT ${field}, last_updated_at FROM scada.site_status WHERE TRIM(dev_eui) = $1`,
+                    [devEUI.trim()]
+                );
+                const row = pgResult.rows[0];
+                if (row && row[field] !== null && row[field] !== undefined) {
+                    const age = Date.now() - new Date(row.last_updated_at).getTime();
+                    if (age < STALE_THRESHOLD_MS) {
+                        // Fresh data from PostgreSQL
+                        results[key] = {
+                            value: Number(row[field]),
+                            last_updated_at: row.last_updated_at,
+                        };
+                        continue;
+                    }
+                }
             }
+            missingKeys.push([key, { devEUI, measurement }]);
+        }
+
+        // 2) Fallback to InfluxDB for stale/missing values
+        if (missingKeys.length > 0) {
+            const influxPromises = missingKeys.map(async ([key, { devEUI, measurement }]) => {
+                const latest = await getLatestValue(devEUI, measurement);
+                if (latest.value !== null) {
+                    results[key] = {
+                        value: latest.value,
+                        last_updated_at: latest.timestamp,
+                    };
+                }
+            });
+            await Promise.all(influxPromises);
         }
 
         // === Resolve variable view formulas ===
@@ -464,26 +497,32 @@ router.post('/sinopticos/:id/query', isAuth, async (req: Request, res: Response)
 
                 if (!fResult.rows.length) continue;
 
-                // Build column bindings from site_status
+                // Build column bindings: site_status first, InfluxDB fallback
                 const bindings: Record<string, number | null> = {};
-                let colIdx = 1;
-                for (const col of colResult.rows) {
-                    const field = measurementToField(col.measurement);
+                const colPromises = colResult.rows.map(async (col: any, idx: number) => {
                     let val: number | null = null;
+                    const field = measurementToField(col.measurement);
 
+                    // Try site_status first
                     if (ALLOWED_SITE_STATUS_FIELDS.has(field)) {
                         const siteRow = await pool.query(
                             `SELECT ${field} FROM scada.site_status WHERE dev_eui = $1`,
                             [col.dev_eui]
                         );
                         const raw = siteRow.rows[0]?.[field] ?? null;
-                        val = raw !== null ? Number(raw) : null;
+                        if (raw !== null) val = Number(raw);
+                    }
+
+                    // Fallback to InfluxDB
+                    if (val === null) {
+                        const latest = await getLatestValue(col.dev_eui, col.measurement);
+                        val = latest.value !== null ? Number(latest.value) : null;
                     }
 
                     bindings[col.alias] = val;
-                    bindings[`i_${colIdx}`] = val;
-                    colIdx++;
-                }
+                    bindings[`i_${idx + 1}`] = val;
+                });
+                await Promise.all(colPromises);
 
                 // Evaluate all formulas in topological order
                 const evaluated = evaluateFormulasBatch(

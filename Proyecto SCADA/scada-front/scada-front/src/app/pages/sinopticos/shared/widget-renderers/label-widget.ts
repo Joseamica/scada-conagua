@@ -67,6 +67,10 @@ interface LabelConfig {
         text-transform: uppercase;
         letter-spacing: 0.05em;
         margin-bottom: 4px;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .label-value {
         font-weight: 700;
@@ -84,6 +88,10 @@ interface LabelConfig {
         font-size: 10px;
         color: var(--text-muted);
         margin-top: 4px;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .label-placeholder {
         font-size: 12px;

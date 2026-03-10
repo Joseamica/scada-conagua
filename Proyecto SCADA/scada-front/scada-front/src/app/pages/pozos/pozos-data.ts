@@ -514,7 +514,7 @@ export const POZOS_DATA: Record<string, any> = {
     lat: 19.33432577592962,
     lng: -98.94470506895368,
     tipo: 'Pozo',
-    estatus: 'Obra',
+    estatus: 'Activo',
     proveedor: 'ICH'
   },
 
@@ -529,7 +529,7 @@ export const POZOS_DATA: Record<string, any> = {
     lat: 19.32364785186973,
     lng: -98.87981993461943,
     tipo: 'Pozo',
-    estatus: 'Obra',
+    estatus: 'Activo',
     proveedor: 'ICH'
   },
 
@@ -574,7 +574,7 @@ export const POZOS_DATA: Record<string, any> = {
     lat: 19.30509519080447,
     lng: -98.86636257998913,
     tipo: 'Pozo',
-    estatus: 'Obra',
+    estatus: 'Activo',
     proveedor: 'ICH'
   },
 
@@ -619,7 +619,7 @@ export const POZOS_DATA: Record<string, any> = {
     lat: 19.2963312411926,
     lng: -98.89162771063241,
     tipo: 'Pozo',
-    estatus: 'Obra',
+    estatus: 'Activo',
     proveedor: 'ICH'
   },
 
@@ -634,7 +634,7 @@ export const POZOS_DATA: Record<string, any> = {
     lat: 19.30870385803725,
     lng: -98.89395572551975,
     tipo: 'Pozo',
-    estatus: 'Obra',
+    estatus: 'Activo',
     proveedor: 'ICH'
   },
 
@@ -694,7 +694,7 @@ export const POZOS_DATA: Record<string, any> = {
     lat: 19.31815063300321,
     lng: -98.8992275054901,
     tipo: 'Pozo',
-    estatus: 'Obra',
+    estatus: 'Activo',
     proveedor: 'ICH'
   },
 
@@ -739,7 +739,7 @@ export const POZOS_DATA: Record<string, any> = {
     lat: 19.28941510630607,
     lng: -98.84606746023525,
     tipo: 'Pozo',
-    estatus: 'Obra',
+    estatus: 'Activo',
     proveedor: 'ICH'
   },
 

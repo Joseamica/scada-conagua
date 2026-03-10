@@ -5,6 +5,7 @@ import { pool } from '../services/db-service';
 import { influxDB, org, queryApi } from '../services/influx-query-service';
 import { isAuth, canEditSinopticos } from '../middlewares/auth-middleware';
 import { validateFormula, evaluateFormulasBatch } from '../services/formula-engine';
+import { auditLog } from '../services/audit-service';
 
 const router = Router();
 
@@ -16,11 +17,14 @@ router.get('/tags', isAuth, async (req: Request, res: Response) => {
     try {
         const user = req.user!;
 
-        // Base query: all sites from inventory
+        // Base query: all sites from inventory (normalize municipality casing, exclude ICH lab)
         let sql = `
-            SELECT TRIM(i.dev_eui) AS dev_eui, i.site_name, i.municipality, i.site_type, i.proveedor
+            SELECT TRIM(i.dev_eui) AS dev_eui, i.site_name,
+                   UPPER(TRIM(i.municipality)) AS municipality, i.site_type, i.proveedor
             FROM scada.inventory i
             WHERE TRIM(COALESCE(i.dev_eui, '')) != ''
+              AND LENGTH(TRIM(i.dev_eui)) >= 8
+              AND UPPER(TRIM(COALESCE(i.municipality, ''))) NOT IN ('JIQUILPAN', '', 'ENSENADA')
         `;
         const params: any[] = [];
 
@@ -89,6 +93,7 @@ router.post('/folders', canEditSinopticos, async (req: Request, res: Response) =
             'INSERT INTO scada.variable_folders (name, parent_id, owner_id) VALUES ($1, $2, $3) RETURNING *',
             [name.trim(), parent_id || null, req.user!.id]
         );
+        await auditLog(req.user!.id, 'VARIABLE_FOLDER_CREATED', { folder_id: result.rows[0].id, name }, req.ip!);
         res.status(201).json(result.rows[0]);
     } catch (e: any) {
         res.status(500).json({ error: 'Error al crear carpeta.' });
@@ -98,6 +103,7 @@ router.post('/folders', canEditSinopticos, async (req: Request, res: Response) =
 router.delete('/folders/:id', canEditSinopticos, async (req: Request, res: Response) => {
     try {
         await pool.query('DELETE FROM scada.variable_folders WHERE id = $1 AND owner_id = $2', [req.params.id, req.user!.id]);
+        await auditLog(req.user!.id, 'VARIABLE_FOLDER_DELETED', { folder_id: req.params.id }, req.ip!);
         res.json({ message: 'Carpeta eliminada.' });
     } catch (e: any) {
         res.status(500).json({ error: 'Error al eliminar carpeta.' });
@@ -147,6 +153,7 @@ router.post('/views', canEditSinopticos, async (req: Request, res: Response) => 
              VALUES ($1, $2, $3, $4) RETURNING *`,
             [name.trim(), description || null, folder_id || null, req.user!.id]
         );
+        await auditLog(req.user!.id, 'VARIABLE_VIEW_CREATED', { view_id: result.rows[0].id, name }, req.ip!);
         res.status(201).json(result.rows[0]);
     } catch (e: any) {
         res.status(500).json({ error: 'Error al crear vista.' });
@@ -188,6 +195,7 @@ router.put('/views/:id', canEditSinopticos, async (req: Request, res: Response) 
             [name?.trim(), description, folder_id, is_shared, req.params.id, req.user!.id]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Vista no encontrada.' });
+        await auditLog(req.user!.id, 'VARIABLE_VIEW_UPDATED', { view_id: req.params.id, name: result.rows[0].name }, req.ip!);
         res.json(result.rows[0]);
     } catch (e: any) {
         res.status(500).json({ error: 'Error al actualizar vista.' });
@@ -201,6 +209,7 @@ router.delete('/views/:id', canEditSinopticos, async (req: Request, res: Respons
             [req.params.id, req.user!.id]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Vista no encontrada.' });
+        await auditLog(req.user!.id, 'VARIABLE_VIEW_DELETED', { view_id: req.params.id }, req.ip!);
         res.json({ message: 'Vista eliminada.' });
     } catch (e: any) {
         res.status(500).json({ error: 'Error al eliminar vista.' });
@@ -223,6 +232,7 @@ router.post('/views/:id/columns', canEditSinopticos, async (req: Request, res: R
             [req.params.id, alias.trim(), dev_eui, measurement, aggregation || 'AVG', sort_order || 0]
         );
         await pool.query('UPDATE scada.variable_views SET updated_at = NOW() WHERE id = $1', [req.params.id]);
+        await auditLog(req.user!.id, 'VARIABLE_COLUMN_ADDED', { view_id: req.params.id, column_id: result.rows[0].id, alias, dev_eui, measurement }, req.ip!);
         res.status(201).json(result.rows[0]);
     } catch (e: any) {
         res.status(500).json({ error: 'Error al agregar columna.' });
@@ -241,6 +251,7 @@ router.put('/views/:viewId/columns/:colId', canEditSinopticos, async (req: Reque
             [alias?.trim(), dev_eui, measurement, aggregation, sort_order, req.params.colId, req.params.viewId]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Columna no encontrada.' });
+        await auditLog(req.user!.id, 'VARIABLE_COLUMN_UPDATED', { view_id: req.params.viewId, column_id: req.params.colId }, req.ip!);
         res.json(result.rows[0]);
     } catch (e: any) {
         res.status(500).json({ error: 'Error al actualizar columna.' });
@@ -250,6 +261,7 @@ router.put('/views/:viewId/columns/:colId', canEditSinopticos, async (req: Reque
 router.delete('/views/:viewId/columns/:colId', canEditSinopticos, async (req: Request, res: Response) => {
     try {
         await pool.query('DELETE FROM scada.view_columns WHERE id = $1 AND view_id = $2', [req.params.colId, req.params.viewId]);
+        await auditLog(req.user!.id, 'VARIABLE_COLUMN_DELETED', { view_id: req.params.viewId, column_id: req.params.colId }, req.ip!);
         res.json({ message: 'Columna eliminada.' });
     } catch (e: any) {
         res.status(500).json({ error: 'Error al eliminar columna.' });
@@ -279,6 +291,7 @@ router.post('/views/:id/formulas', canEditSinopticos, async (req: Request, res: 
             [req.params.id, alias.trim(), expression, depends_on || [], sort_order || 0]
         );
         await pool.query('UPDATE scada.variable_views SET updated_at = NOW() WHERE id = $1', [req.params.id]);
+        await auditLog(req.user!.id, 'VARIABLE_FORMULA_CREATED', { view_id: req.params.id, formula_id: result.rows[0].id, alias, expression }, req.ip!);
         res.status(201).json(result.rows[0]);
     } catch (e: any) {
         res.status(500).json({ error: 'Error al crear formula.' });
@@ -304,6 +317,7 @@ router.put('/views/:viewId/formulas/:formulaId', canEditSinopticos, async (req: 
             [alias?.trim(), expression, depends_on, sort_order, req.params.formulaId, req.params.viewId]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Formula no encontrada.' });
+        await auditLog(req.user!.id, 'VARIABLE_FORMULA_UPDATED', { view_id: req.params.viewId, formula_id: req.params.formulaId }, req.ip!);
         res.json(result.rows[0]);
     } catch (e: any) {
         res.status(500).json({ error: 'Error al actualizar formula.' });
@@ -313,6 +327,7 @@ router.put('/views/:viewId/formulas/:formulaId', canEditSinopticos, async (req: 
 router.delete('/views/:viewId/formulas/:formulaId', canEditSinopticos, async (req: Request, res: Response) => {
     try {
         await pool.query('DELETE FROM scada.view_formulas WHERE id = $1 AND view_id = $2', [req.params.formulaId, req.params.viewId]);
+        await auditLog(req.user!.id, 'VARIABLE_FORMULA_DELETED', { view_id: req.params.viewId, formula_id: req.params.formulaId }, req.ip!);
         res.json({ message: 'Formula eliminada.' });
     } catch (e: any) {
         res.status(500).json({ error: 'Error al eliminar formula.' });
@@ -355,8 +370,8 @@ router.post('/views/:id/execute', isAuth, async (req: Request, res: Response) =>
 
         for (const col of columns.rows) {
             const statusResult = await pool.query(
-                `SELECT last_flow_value, last_pressure_value, battery_level, rssi, snr,
-                        last_nivel_value, last_lluvia_value
+                `SELECT last_flow_value, last_pressure_value, last_total_flow,
+                        battery_level, rssi, snr, last_nivel_value, last_lluvia_value
                  FROM scada.site_status
                  WHERE TRIM(dev_eui) = $1`,
                 [col.dev_eui.trim()]
@@ -364,6 +379,7 @@ router.post('/views/:id/execute', isAuth, async (req: Request, res: Response) =>
             if (statusResult.rows.length > 0) {
                 const row = statusResult.rows[0];
                 const measurementMap: Record<string, string> = {
+                    // ChirpStack
                     caudal_lts: 'last_flow_value',
                     presion_kg: 'last_pressure_value',
                     battery: 'battery_level',
@@ -371,6 +387,13 @@ router.post('/views/:id/execute', isAuth, async (req: Request, res: Response) =>
                     snr: 'snr',
                     nivel_m: 'last_nivel_value',
                     lluvia_mm: 'last_lluvia_value',
+                    // Ignition / ICH
+                    value_presion: 'last_pressure_value',
+                    value_caudal: 'last_flow_value',
+                    value_caudal_totalizado: 'last_total_flow',
+                    value_senal: 'rssi',
+                    value_nivel: 'last_nivel_value',
+                    value_lluvia: 'last_lluvia_value',
                 };
                 const pgField = measurementMap[col.measurement] || col.measurement;
                 columnValues[col.alias] = row[pgField] !== null ? Number(row[pgField]) : null;
@@ -608,6 +631,85 @@ router.post('/views/:id/execute-series', isAuth, async (req: Request, res: Respo
     } catch (err) {
         console.error('Error executing formula series:', err);
         res.status(500).json({ error: 'Error computing formula series' });
+    }
+});
+
+// ═══════════════════════════════════════════
+// VIEW SHARING
+// ═══════════════════════════════════════════
+
+// GET /views/:id/shares — list shares for a view
+router.get('/views/:id/shares', isAuth, async (req: Request, res: Response) => {
+    try {
+        const result = await pool.query(
+            `SELECT vs.id, vs.user_id, vs.permission, vs.created_at,
+                    u.full_name, u.email
+             FROM scada.view_shares vs
+             JOIN scada.users u ON u.id = vs.user_id
+             WHERE vs.view_id = $1
+             ORDER BY u.full_name`,
+            [req.params.id]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching view shares:', err);
+        res.status(500).json({ error: 'Error fetching shares' });
+    }
+});
+
+// POST /views/:id/shares — add or update a share
+router.post('/views/:id/shares', canEditSinopticos, async (req: Request, res: Response) => {
+    try {
+        const { user_id, permission } = req.body;
+        if (!user_id) {
+            res.status(400).json({ error: 'user_id is required' });
+            return;
+        }
+        const result = await pool.query(
+            `INSERT INTO scada.view_shares (view_id, user_id, permission)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (view_id, user_id) DO UPDATE SET permission = $3
+             RETURNING *`,
+            [req.params.id, user_id, permission || 'read']
+        );
+        await auditLog(req.user!.id, 'VARIABLE_VIEW_SHARED', { view_id: req.params.id, shared_with: user_id, permission: permission || 'read' }, req.ip!);
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error('Error adding view share:', err);
+        res.status(500).json({ error: 'Error adding share' });
+    }
+});
+
+// DELETE /views/:viewId/shares/:shareId — remove a share
+router.delete('/views/:viewId/shares/:shareId', canEditSinopticos, async (req: Request, res: Response) => {
+    try {
+        await pool.query(
+            'DELETE FROM scada.view_shares WHERE id = $1 AND view_id = $2',
+            [req.params.shareId, req.params.viewId]
+        );
+        await auditLog(req.user!.id, 'VARIABLE_VIEW_UNSHARED', { view_id: req.params.viewId, share_id: req.params.shareId }, req.ip!);
+        res.json({ message: 'Permiso eliminado.' });
+    } catch (err) {
+        console.error('Error removing view share:', err);
+        res.status(500).json({ error: 'Error removing share' });
+    }
+});
+
+// GET /views/:id/share-candidates — search users to share with
+router.get('/views/:id/share-candidates', isAuth, async (req: Request, res: Response) => {
+    try {
+        const q = ((req.query.q as string) || '').toLowerCase();
+        const result = await pool.query(
+            `SELECT id, full_name, email FROM scada.users
+             WHERE is_deleted = false AND id != $1
+             AND (LOWER(full_name) LIKE $2 OR LOWER(email) LIKE $2)
+             ORDER BY full_name LIMIT 20`,
+            [req.user!.id, `%${q}%`]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error searching share candidates:', err);
+        res.status(500).json({ error: 'Error searching users' });
     }
 });
 

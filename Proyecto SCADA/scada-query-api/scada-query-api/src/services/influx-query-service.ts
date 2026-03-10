@@ -118,3 +118,74 @@ export async function getTelemetryData(
         };
     }
 }
+
+/**
+ * Get the latest value for a devEUI+measurement pair directly from InfluxDB.
+ * Used by sinóptico widgets for live values instead of stale site_status.
+ */
+export async function getLatestValue(
+    devEUI: string,
+    measurementField: string
+): Promise<{ value: number | null; timestamp: string | null }> {
+    try {
+        const isIgnition = devEUI.toLowerCase().startsWith('dev');
+        const activeBucket = isIgnition ? 'telemetria_ignition' : (process.env.INFLUX_BUCKET || 'telemetria_sitios');
+        const activeMeasurement = isIgnition ? 'mediciones_ignition' : 'mediciones_pozos';
+
+        let influxField = measurementField;
+        if (isIgnition) {
+            const mapping: Record<string, string> = {
+                'presion_kg': 'value_presion',
+                'caudal_lts': 'value_caudal',
+                'last_total_flow': 'value_caudal_totalizado',
+                'rssi': 'value_senal',
+                'nivel_m': 'value_nivel',
+                'lluvia_mm': 'value_lluvia'
+            };
+            influxField = mapping[measurementField] || measurementField;
+        }
+
+        // For Ignition, we need the site name to filter by 'pozo' tag
+        let tagFilter: string;
+        if (isIgnition) {
+            const pgRes = await pool.query(
+                'SELECT site_name FROM scada.inventory WHERE dev_eui = $1 LIMIT 1',
+                [devEUI.trim()]
+            );
+            const siteName = pgRes.rows[0]?.site_name || '';
+            const safeSiteName = siteName.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\n\r]/g, '');
+            tagFilter = `r["pozo"] == "${safeSiteName}"`;
+        } else {
+            tagFilter = `r["devEui"] == "${devEUI}"`;
+        }
+
+        const fluxQuery = `
+            from(bucket: "${activeBucket}")
+                |> range(start: -30d)
+                |> filter(fn: (r) => r["_measurement"] == "${activeMeasurement}")
+                |> filter(fn: (r) => ${tagFilter})
+                |> filter(fn: (r) => r["_field"] == "${influxField}")
+                |> group()
+                |> last()
+        `;
+
+        const qa = influxDB.getQueryApi(org);
+        let result: { value: number | null; timestamp: string | null } = { value: null, timestamp: null };
+
+        await new Promise<void>((resolve, reject) => {
+            qa.queryRows(fluxQuery, {
+                next: (row: string[], tableMeta: FluxTableMetaData) => {
+                    const o = tableMeta.toObject(row);
+                    result = { value: o._value ?? null, timestamp: o._time ?? null };
+                },
+                error: (error: Error) => reject(error),
+                complete: () => resolve(),
+            });
+        });
+
+        return result;
+    } catch (error) {
+        console.error(`getLatestValue error for ${devEUI}/${measurementField}:`, error);
+        return { value: null, timestamp: null };
+    }
+}

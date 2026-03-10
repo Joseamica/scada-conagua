@@ -27,6 +27,7 @@ export interface Sinoptico {
   canvas: CanvasState;
   canvas_width: number;
   canvas_height: number;
+  canvas_bg?: string;
   thumbnail: string | null;
   version: number;
   owner_id: number;
@@ -45,7 +46,7 @@ export interface CanvasState {
 
 export interface CanvasWidget {
   id: string;
-  type: 'table' | 'chart' | 'map' | 'label' | 'header' | 'image';
+  type: 'table' | 'chart' | 'map' | 'label' | 'header' | 'image' | 'text' | 'shape' | 'link';
   x: number;
   y: number;
   width: number;
@@ -53,6 +54,7 @@ export interface CanvasWidget {
   zIndex: number;
   locked: boolean;
   groupId?: string;
+  opacity?: number; // 0-1, defaults to 1
   config: WidgetConfig;
 }
 
@@ -130,13 +132,44 @@ export interface ImageConfig {
   borderRadius: number;
 }
 
+export interface TextConfig {
+  text: string;
+  fontSize: number;
+  fontWeight: 'normal' | 'bold';
+  fontStyle: 'normal' | 'italic';
+  textAlign: 'left' | 'center' | 'right';
+  color: string;
+  bgColor: string;
+  padding: number;
+}
+
+export interface ShapeConfig {
+  shapeType: 'rectangle' | 'ellipse' | 'line' | 'triangle' | 'diamond' | 'arrow-right' | 'arrow-down' | 'pentagon' | 'hexagon' | 'star';
+  fillColor: string;
+  borderColor: string;
+  borderWidth: number;
+  borderRadius: number;
+}
+
+export interface LinkConfig {
+  targetSinopticoId: number | null;
+  targetName: string;
+  label: string;
+  bgColor: string;
+  textColor: string;
+  fontSize: number;
+}
+
 export type WidgetConfig =
   | LabelConfig
   | ChartConfig
   | MapConfig
   | TableConfig
   | HeaderConfig
-  | ImageConfig;
+  | ImageConfig
+  | TextConfig
+  | ShapeConfig
+  | LinkConfig;
 
 export function defaultWidgetConfig(type: CanvasWidget['type']): WidgetConfig {
   switch (type) {
@@ -167,6 +200,12 @@ export function defaultWidgetConfig(type: CanvasWidget['type']): WidgetConfig {
       };
     case 'image':
       return { src: '', alt: '', objectFit: 'contain', borderRadius: 0 };
+    case 'text':
+      return { text: 'Texto', fontSize: 16, fontWeight: 'normal', fontStyle: 'normal', textAlign: 'left', color: '#0f172a', bgColor: 'transparent', padding: 8 };
+    case 'shape':
+      return { shapeType: 'rectangle', fillColor: '#e2e8f0', borderColor: '#94a3b8', borderWidth: 2, borderRadius: 0 };
+    case 'link':
+      return { targetSinopticoId: null, targetName: '', label: 'Ir a...', bgColor: '#6d002b', textColor: '#ffffff', fontSize: 14 };
   }
 }
 

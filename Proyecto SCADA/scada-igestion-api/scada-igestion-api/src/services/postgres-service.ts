@@ -93,9 +93,17 @@ export const updateIgnitionSiteStatus = async (data: any): Promise<void> => {
             `;
 
             const finalValue = (data.variable === 'bomba') ? (data.valor === true) : Number(data.valor);
-            
+
             // Usamos data.timestamp para mantener la sincronía con el origen
             await pool.query(upsertQuery, [devEui, finalValue, data.timestamp]);
+
+            // Auto-promote obra → activo for meaningful measurements
+            const isValidMeasurement =
+                (data.variable === 'presion' || data.variable === 'caudal' || data.variable === 'caudal_totalizado')
+                && typeof data.valor === 'number' && data.valor > 0;
+            if (isValidMeasurement) {
+                await promoteObraSiteIfNeeded(devEui);
+            }
         }
 
     } catch (error) {
@@ -161,10 +169,40 @@ export const updateSiteStatus = async (devEUI: string, data: TelemetryProcessed)
     try {
         await pool.query(query, values);
         console.log(`✅ [Postgres] Site status fully synchronized: ${devEUI}`);
+
+        // Auto-promote obra → activo if valid telemetry
+        const hasValidData = (data.caudal_lts !== null && data.caudal_lts > 0)
+                          || (data.presion_kg !== null && data.presion_kg > 0);
+        if (hasValidData) {
+            await promoteObraSiteIfNeeded(devEUI);
+        }
     } catch (error) {
         console.error(`❌ [Postgres] Sync Error for ${devEUI}:`, error);
     }
 }; 
+
+/**
+ * Auto-promote: if a site is currently 'obra' in inventory,
+ * promote it to 'activo' when valid telemetry arrives.
+ * One-way only — never demotes 'activo' back to 'obra'.
+ */
+const promoteObraSiteIfNeeded = async (devEUI: string): Promise<void> => {
+    if (!pool) return;
+    try {
+        const result = await pool.query(
+            `UPDATE scada.inventory
+             SET estatus = 'activo'
+             WHERE TRIM(dev_eui) = $1
+               AND LOWER(TRIM(COALESCE(estatus, ''))) = 'obra'`,
+            [devEUI.trim()]
+        );
+        if (result.rowCount && result.rowCount > 0) {
+            console.log(`🔄 [Postgres] Site ${devEUI} auto-promoted: obra → activo`);
+        }
+    } catch (error) {
+        console.error(`⚠️ [Postgres] Auto-promote check failed for ${devEUI}:`, error);
+    }
+};
 
 /**
  * Consulta de metadata básica del sitio

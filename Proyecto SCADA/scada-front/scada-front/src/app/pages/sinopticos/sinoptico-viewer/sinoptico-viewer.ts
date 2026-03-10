@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
-import { heroArrowLeft, heroPencilSquare } from '@ng-icons/heroicons/outline';
+import { heroArrowLeft, heroPencilSquare, heroClock } from '@ng-icons/heroicons/outline';
 import {
   SinopticoService,
   Sinoptico,
@@ -11,6 +11,9 @@ import {
   LabelConfig,
   ChartConfig,
   TableConfig,
+  TextConfig,
+  ShapeConfig,
+  LinkConfig,
 } from '../../../core/services/sinoptico.service';
 import { SinopticoDataStore } from '../sinoptico-editor/store/sinoptico-data-store';
 import { LabelWidget } from '../shared/widget-renderers/label-widget';
@@ -19,6 +22,10 @@ import { MapWidget } from '../shared/widget-renderers/map-widget';
 import { TableWidget } from '../shared/widget-renderers/table-widget';
 import { HeaderWidget } from '../shared/widget-renderers/header-widget';
 import { ImageWidget } from '../shared/widget-renderers/image-widget';
+import { TextWidget } from '../shared/widget-renderers/text-widget';
+import { ShapeWidget } from '../shared/widget-renderers/shape-widget';
+import { LinkWidget } from '../shared/widget-renderers/link-widget';
+import { ActivityPanel } from '../shared/activity-panel/activity-panel';
 
 @Component({
   selector: 'app-sinoptico-viewer',
@@ -32,8 +39,12 @@ import { ImageWidget } from '../shared/widget-renderers/image-widget';
     TableWidget,
     HeaderWidget,
     ImageWidget,
+    TextWidget,
+    ShapeWidget,
+    LinkWidget,
+    ActivityPanel,
   ],
-  providers: [SinopticoDataStore, provideIcons({ heroArrowLeft, heroPencilSquare })],
+  providers: [SinopticoDataStore, provideIcons({ heroArrowLeft, heroPencilSquare, heroClock })],
   templateUrl: './sinoptico-viewer.html',
   styleUrl: './sinoptico-viewer.css',
 })
@@ -49,6 +60,7 @@ export class SinopticoViewer implements OnInit, OnDestroy {
 
   canvasWidth = computed(() => this.sinoptico()?.canvas_width ?? 1920);
   canvasHeight = computed(() => this.sinoptico()?.canvas_height ?? 1080);
+  showActivityPanel = signal(false);
   widgets = computed(() => this.canvas().widgets);
   widgetCount = computed(() => this.canvas().widgets.length);
 
@@ -117,5 +129,18 @@ export class SinopticoViewer implements OnInit, OnDestroy {
   }
   asTable(config: any): TableConfig {
     return config;
+  }
+  asText(config: any): TextConfig {
+    return config;
+  }
+  asShape(config: any): ShapeConfig {
+    return config;
+  }
+  asLink(config: any): LinkConfig {
+    return config;
+  }
+
+  onLinkNavigate(targetId: number | null): void {
+    if (targetId) this.router.navigate(['/sinopticos/ver', targetId]);
   }
 }
