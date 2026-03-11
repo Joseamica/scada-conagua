@@ -211,7 +211,13 @@ export const routes: Routes = [
     data: { title: 'Editor de Vista' },
   },
 
-  // ===== ALARMAS CONFIG =====
+  // ===== ALARMAS =====
+  {
+    path: 'alarmas',
+    canActivate: [authGuard, totpSetupGuard],
+    component: Alarmas,
+    data: { title: 'Alarmas Activas' },
+  },
   {
     path: 'alarmas/configuracion',
     canActivate: [authGuard, totpSetupGuard],

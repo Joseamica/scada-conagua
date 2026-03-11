@@ -1,1 +1,156 @@
-<p>alarmas works!</p>
+<div class="alarmas-page">
+
+  <!-- HEADER -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">
+        <ng-icon name="heroBellAlertSolid" size="24"></ng-icon>
+        Alarmas Activas
+      </h1>
+      <span class="alarm-total-badge" *ngIf="alarms().length > 0">
+        {{ alarms().length }}
+      </span>
+    </div>
+    <div class="page-header-right">
+      <button class="btn-secondary" (click)="fetchAlarms()" title="Actualizar">
+        <ng-icon name="heroArrowPath" size="16" [class.spinning]="loading()"></ng-icon>
+        Actualizar
+      </button>
+      <button class="btn-secondary" (click)="goHistory()">
+        <ng-icon name="heroClockSolid" size="16"></ng-icon>
+        Historial
+      </button>
+      <button class="btn-primary" (click)="goConfig()">
+        <ng-icon name="heroCog6Tooth" size="16"></ng-icon>
+        Configuracion
+      </button>
+    </div>
+  </div>
+
+  <!-- SEVERITY FILTERS -->
+  <div class="severity-filters">
+    <button class="filter-chip" [class.active]="severityFilter() === 'all'" (click)="setFilter('all')">
+      Todas
+      <span class="chip-count">{{ alarms().length }}</span>
+    </button>
+    <button class="filter-chip filter-chip--critico" [class.active]="severityFilter() === 'critico'" (click)="setFilter('critico')">
+      Critico
+      <span class="chip-count">{{ countBySeverity().critico }}</span>
+    </button>
+    <button class="filter-chip filter-chip--alerta" [class.active]="severityFilter() === 'alerta'" (click)="setFilter('alerta')">
+      Alerta
+      <span class="chip-count">{{ countBySeverity().alerta }}</span>
+    </button>
+    <button class="filter-chip filter-chip--aviso" [class.active]="severityFilter() === 'aviso'" (click)="setFilter('aviso')">
+      Aviso
+      <span class="chip-count">{{ countBySeverity().aviso }}</span>
+    </button>
+  </div>
+
+  <!-- ALARM TABLE -->
+  @if (filtered().length > 0) {
+    <div class="alarm-table-wrap">
+      <table class="alarm-table">
+        <thead>
+          <tr>
+            <th class="col-severity">Severidad</th>
+            <th class="col-site">Sitio</th>
+            <th class="col-alarm">Alarma</th>
+            <th class="col-value">Valor</th>
+            <th class="col-threshold">Umbral</th>
+            <th class="col-state">Estado</th>
+            <th class="col-time">Desde</th>
+            <th class="col-actions">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (alarm of filtered(); track alarm.id) {
+            <tr [class]="'row-' + alarm.severity" [class.row-acked]="alarm.current_state === 'ACTIVE_ACK'">
+              <td class="col-severity">
+                <span [class]="'sev-badge sev-' + alarm.severity">
+                  {{ severityLabel(alarm.severity) }}
+                </span>
+              </td>
+              <td class="col-site">
+                <div class="site-cell">
+                  <span class="site-name">{{ alarm.site_name || alarm.dev_eui }}</span>
+                  <span class="site-municipality">{{ alarm.municipality }}</span>
+                </div>
+              </td>
+              <td class="col-alarm">
+                <div class="alarm-cell">
+                  <span class="alarm-name">{{ alarm.name }}</span>
+                  <span class="alarm-group">{{ alarm.group_name }}</span>
+                </div>
+              </td>
+              <td class="col-value">
+                <span class="value-text">{{ alarm.last_value }}</span>
+                <span class="value-unit">{{ alarm.measurement }}</span>
+              </td>
+              <td class="col-threshold">
+                {{ alarm.comparison_operator }} {{ alarm.threshold_value }}
+              </td>
+              <td class="col-state">
+                <span [class]="'state-badge state-' + alarm.current_state">
+                  {{ stateLabel(alarm.current_state) }}
+                </span>
+              </td>
+              <td class="col-time">
+                {{ timeAgo(alarm.last_triggered_at) }}
+              </td>
+              <td class="col-actions">
+                @if (alarm.current_state === 'ACTIVE_UNACK') {
+                  <button class="btn-ack" (click)="openAck(alarm)">
+                    <ng-icon name="heroCheckCircleSolid" size="14"></ng-icon>
+                    ACK
+                  </button>
+                } @else {
+                  <span class="ack-info">
+                    Reconocida
+                  </span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <div class="empty-state">
+      <ng-icon name="heroBellAlert" size="48" class="empty-icon"></ng-icon>
+      <h3>Sin alarmas activas</h3>
+      <p>No hay alarmas disparadas en este momento. El sistema esta operando con normalidad.</p>
+    </div>
+  }
+
+</div>
+
+<!-- ACK MODAL -->
+@if (showAckModal()) {
+  <div class="modal-backdrop" (click)="cancelAck()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <h2 class="modal-title">Reconocer Alarma</h2>
+      <p class="modal-desc">
+        Al reconocer esta alarma confirmas que estas al tanto de la situacion.
+        La alarma permanecera activa hasta que la condicion se normalice.
+      </p>
+      <label class="modal-label">
+        Comentario (opcional)
+        <textarea
+          class="modal-textarea"
+          rows="3"
+          placeholder="Ej: Se notifico al operador de turno..."
+          [value]="ackComment()"
+          (input)="onAckCommentChange($event)"
+        ></textarea>
+      </label>
+      <div class="modal-actions">
+        <button class="btn-secondary" (click)="cancelAck()">Cancelar</button>
+        <button class="btn-ack-confirm" (click)="confirmAck()">
+          <ng-icon name="heroCheckCircleSolid" size="16"></ng-icon>
+          Reconocer
+        </button>
+      </div>
+    </div>
+  </div>
+}

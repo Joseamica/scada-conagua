@@ -71,7 +71,7 @@ export class FooterTabsComponent {
     { label: 'Telemetria', icon: 'heroChartBarSquare', route: '/telemetria', exact: false },
     { label: 'Mapa SIG', icon: 'heroMapPin', route: '/modulo-gis', exact: false },
     { label: 'Sinopticos', icon: 'heroRectangleGroup', route: '/sinopticos', exact: false },
-    { label: 'Alarmas', icon: 'heroBellAlert', route: '/dashboard/alarmas', exact: false },
+    { label: 'Alarmas', icon: 'heroBellAlert', route: '/alarmas', exact: false },
   ];
 
   private allMoreItems: MoreItem[] = [

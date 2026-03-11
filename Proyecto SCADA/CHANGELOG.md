@@ -23,6 +23,15 @@ Todos los cambios notables del proyecto se documentan aquí.
 ### scada-front (Alarm config: sonido y banner configurable)
 - **feat:** Two new toggles in alarm create/edit dialog: "Reproducir sonido al activarse" and "Mostrar banner en pantalla"
 
+### scada-front (Pagina de Alarmas Activas)
+- **feat:** New `/alarmas` page — real-time table of active alarms with severity, site, value, threshold, state, time
+- **feat:** Severity filter chips (Todas, Critico, Alerta, Aviso) with live counts
+- **feat:** ACK modal — acknowledge alarms with optional comment, updates state to ACTIVE_ACK
+- **feat:** Quick navigation buttons: Actualizar, Historial, Configuracion
+- **feat:** Empty state when no alarms are active
+- **feat:** Footer nav "Alarmas" link now points to `/alarmas` (was broken `/dashboard/alarmas`)
+- **fix:** Alarm sound pattern reduced to 2 beeps every 30s (was 6 tones every 8s)
+
 ### scada-query-api (Migration 028: alarm sound + banner columns)
 - **feat:** Migration 028 adds `play_sound` and `show_banner` BOOLEAN columns to `scada.alarms` table
 - **feat:** POST/PUT /alarms endpoints accept `play_sound` and `show_banner` fields

@@ -174,8 +174,8 @@ export class HeaderBarComponent implements OnInit, OnDestroy {
     this.stopAlarmSound();
     this.soundPending = true;
     this.playAlarmPattern();
-    // Repeat alarm pattern every 8 seconds
-    this.soundInterval = setInterval(() => this.playAlarmPattern(), 8000);
+    // Repeat alarm pattern every 30 seconds
+    this.soundInterval = setInterval(() => this.playAlarmPattern(), 30000);
   }
 
   private stopAlarmSound() {
@@ -194,15 +194,10 @@ export class HeaderBarComponent implements OnInit, OnDestroy {
       return;
     }
     try {
-      // Urgent 3-pulse alarm pattern: HIGH-LOW-HIGH
+      // Two-beep alarm: short pause between beeps
       const tones = [
-        { freq: 880, start: 0,    dur: 0.15 },
-        { freq: 660, start: 0.2,  dur: 0.15 },
-        { freq: 880, start: 0.4,  dur: 0.15 },
-        // Second burst after short pause
-        { freq: 880, start: 0.7,  dur: 0.15 },
-        { freq: 660, start: 0.9,  dur: 0.15 },
-        { freq: 880, start: 1.1,  dur: 0.15 },
+        { freq: 880, start: 0,   dur: 0.18 },
+        { freq: 880, start: 0.3, dur: 0.18 },
       ];
       for (const t of tones) {
         const osc = ctx.createOscillator();
