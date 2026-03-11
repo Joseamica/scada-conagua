@@ -182,9 +182,9 @@ export const updateSiteStatus = async (devEUI: string, data: TelemetryProcessed)
 }; 
 
 /**
- * Auto-promote: if a site is currently 'obra' in inventory,
+ * Auto-promote: if a site is currently 'obra' or 'pendiente' in inventory,
  * promote it to 'activo' when valid telemetry arrives.
- * One-way only — never demotes 'activo' back to 'obra'.
+ * One-way only — never demotes 'activo' back.
  */
 const promoteObraSiteIfNeeded = async (devEUI: string): Promise<void> => {
     if (!pool) return;
@@ -193,11 +193,11 @@ const promoteObraSiteIfNeeded = async (devEUI: string): Promise<void> => {
             `UPDATE scada.inventory
              SET estatus = 'activo'
              WHERE TRIM(dev_eui) = $1
-               AND LOWER(TRIM(COALESCE(estatus, ''))) = 'obra'`,
+               AND LOWER(TRIM(COALESCE(estatus, ''))) IN ('obra', 'pendiente')`,
             [devEUI.trim()]
         );
         if (result.rowCount && result.rowCount > 0) {
-            console.log(`🔄 [Postgres] Site ${devEUI} auto-promoted: obra → activo`);
+            console.log(`🔄 [Postgres] Site ${devEUI} auto-promoted: obra/pendiente → activo`);
         }
     } catch (error) {
         console.error(`⚠️ [Postgres] Auto-promote check failed for ${devEUI}:`, error);

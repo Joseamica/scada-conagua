@@ -37,6 +37,8 @@ export interface Alarm {
   notification_template: string | null;
   resend_period_min: number;
   resend_enabled: boolean;
+  play_sound: boolean;
+  show_banner: boolean;
   current_state?: string;
   last_value?: number;
   last_evaluated_at?: string;
@@ -53,6 +55,8 @@ export interface ActiveAlarm {
   measurement: string;
   comparison_operator: string;
   threshold_value: number;
+  play_sound: boolean;
+  show_banner: boolean;
   current_state: string;
   last_value: number;
   last_triggered_at: string;
@@ -109,6 +113,8 @@ export class AlarmService {
   activeAlarms = signal<ActiveAlarm[]>([]);
   activeCount = computed(() => this.activeAlarms().length);
   criticalCount = computed(() => this.activeAlarms().filter(a => a.severity === 'critico').length);
+  bannerAlarms = computed(() => this.activeAlarms().filter(a => a.show_banner && a.current_state === 'ACTIVE_UNACK'));
+  soundAlarms = computed(() => this.activeAlarms().filter(a => a.play_sound && a.current_state === 'ACTIVE_UNACK'));
 
   private pollingInterval: any = null;
 

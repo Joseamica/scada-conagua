@@ -7,9 +7,7 @@ import * as echarts from 'echarts';
 import { forkJoin } from 'rxjs';
 import { HeaderBarComponent } from '../../layout/header-bar/header-bar';
 import { FooterTabsComponent } from '../../layout/footer-tabs/footer-tabs';
-import { POZOS_DATA } from '../pozos/pozos-data';
 import { POZOS_LAYOUT } from '../pozos/pozos-layout';
-import { POZO_NAME_TO_ID } from '../../core/stores/pozo-name.map';
 import { PozosStore } from '../../core/stores/pozos.store';
 import { TelemetryService } from '../../core/services/telemetry';
 import { ThemeService } from '../../core/services/theme.service';
@@ -21,7 +19,7 @@ import { heroPresentationChartLine } from '@ng-icons/heroicons/outline';
 
 const DETAIL_BASE_URL = '/pozos';
 
-type ScadaIconKey = 'well' | 'tank' | 'block_water' | 'rain_gauge';
+type ScadaIconKey = 'well' | 'tank' | 'block_water' | 'rain_gauge' | 'drainage';
 
 interface GisSource {
   type: 'kml';
@@ -52,7 +50,8 @@ const SCADA_ICON_MAP: Record<ScadaIconKey, string> = {
   well: 'well.svg',
   tank: 'tank.svg',
   block_water: 'block-water.svg',
-  rain_gauge: 'rain-gauge.svg'
+  rain_gauge: 'rain-gauge.svg',
+  drainage: 'drainage.svg'
 };
 
 const GRAY_ICON_MAP: Record<ScadaIconKey, L.Icon> = {
@@ -73,6 +72,11 @@ const GRAY_ICON_MAP: Record<ScadaIconKey, L.Icon> = {
   }),
   rain_gauge: L.icon({
     iconUrl: 'assets/icons/map/rain-gauge-gray.svg',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
+  }),
+  drainage: L.icon({
+    iconUrl: 'assets/icons/map/drainage-gray.svg',
     iconSize: [32, 32],
     iconAnchor: [16, 16]
   })
@@ -116,6 +120,7 @@ export class ModuloGis implements OnInit, OnDestroy {
   pozosActivosLayer = L.layerGroup();
   pozosObraLayer = L.layerGroup();
   pozosInactivosLayer = L.layerGroup();
+  pozosPendienteLayer = L.layerGroup();
 
 
   // Municipios
@@ -169,13 +174,25 @@ export class ModuloGis implements OnInit, OnDestroy {
   // ─────────────────────────────
   // Helpers
   // ─────────────────────────────
-  private inferTypeFromName(name: string): ScadaIconKey | null {
+  private inferTypeFromName(name: string, siteType?: string): ScadaIconKey | null {
+    // Prefer explicit site_type from DB when available
+    if (siteType) {
+      const t = siteType.toLowerCase().trim();
+      if (t === 'pozo') return 'well';
+      if (t === 'pluviometro') return 'rain_gauge';
+      if (t === 'drenaje' || t === 'carcamo') return 'drainage';
+      if (t === 'tanque' || t === 'estanque') return 'tank';
+      if (t === 'agua_bloque') return 'block_water';
+    }
+    // Fallback: infer from name
     const n = name.toUpperCase();
     if (n.includes('POZO')) return 'well';
     if (n.includes('PLUVIO') || n.includes('PLUVI')) return 'rain_gauge';
     if (n.includes('NIVEL') || n.includes('TANQUE')) return 'tank';
     if (n.includes('AGUA EN BLOQUE')) return 'block_water';
     if (n.includes('CAUDAL') || n.includes('PRESION')) return 'block_water';
+    if (n.includes('CARCAMO') || n.includes('CÁRCAMO') || n.includes('DRENAJE')) return 'drainage';
+    if (n.includes('RED PRIMARIA') || n.includes('RED SECUNDARIA')) return 'block_water';
     return null;
   }
 
@@ -234,16 +251,7 @@ export class ModuloGis implements OnInit, OnDestroy {
   private buildGastoByMunicipio() {
     this.gastoByMunicipio.clear();
 
-    // Build devEUI → municipioId mapping from POZOS_DATA
-    const devEuiToMunicipio = new Map<string, number>();
-    Object.values(POZOS_DATA as any).forEach((pozo: any) => {
-      const munId = Number(pozo?.municipioId ?? pozo?.CVE_MUN);
-      if (!munId || !MUNICIPIOS_CON_POZO.has(munId)) return;
-      const devEui = (pozo?.devEui || '').trim().toLowerCase();
-      if (devEui) devEuiToMunicipio.set(devEui, munId);
-    });
-
-    // Fetch live flow data from API
+    // Use API data with municipio_id — no more POZOS_DATA
     this.telemetryService.getSites().subscribe({
       next: (sites) => {
         // Also update cache from this response
@@ -254,9 +262,8 @@ export class ModuloGis implements OnInit, OnDestroy {
         });
 
         sites.forEach(site => {
-          const devEui = (site.dev_eui || '').trim().toLowerCase();
-          const munId = devEuiToMunicipio.get(devEui);
-          if (munId == null) return;
+          const munId = site.municipio_id;
+          if (!munId || !MUNICIPIOS_CON_POZO.has(munId)) return;
           const flow = Number(site.last_flow_value || 0);
           if (flow <= 0.01) return;
           const prev = this.gastoByMunicipio.get(munId) || 0;
@@ -274,41 +281,28 @@ export class ModuloGis implements OnInit, OnDestroy {
   }
 
   /**
-   * Resolve estatus preferring live API data over hardcoded POZOS_DATA.
+   * Resolve estatus from API cache (DB is the single source of truth).
    */
   private resolveEstatus(name: string): string {
-    // 1. Live API data (from DB)
     const apiSite = this.apiSitesByName.get(this.normalizeKey(name));
     if (apiSite?.estatus) {
       return apiSite.estatus.toLowerCase().trim();
     }
-    // 2. Hardcoded POZOS_DATA fallback
-    const normalized = this.normalizeKey(name);
-    const pozoId = POZO_NAME_TO_ID[normalized] || this.slugify(name);
-    const data = POZOS_DATA[pozoId];
-    if (data?.estatus) {
-      return (data.estatus || '').toLowerCase().trim();
-    }
-    return 'activo';
+    return 'activo'; // default until API cache loads
   }
 
-  private resolveSiteIconUrl(name: string): string {
-    const type = this.inferTypeFromName(name) ?? 'well';
+  private resolveSiteIconUrl(name: string, siteType?: string): string {
+    const type = this.inferTypeFromName(name, siteType) ?? 'well';
     const fileType = type.replaceAll('_', '-');
-
-    if (type !== 'well') {
-      return `assets/icons/map/${fileType}-gray.svg`;
-    }
-
     const status = this.resolveEstatus(name);
 
     if (status === 'obra') {
-      return `assets/icons/map/well-yellow.svg`;
+      return `assets/icons/map/${fileType}-yellow.svg`;
     }
-    if (status === 'inactivo') {
-      return `assets/icons/map/well-gray.svg`;
+    if (status === 'inactivo' || status === 'pendiente') {
+      return `assets/icons/map/${fileType}-gray.svg`;
     }
-    return `assets/icons/map/well.svg`;
+    return `assets/icons/map/${fileType}.svg`;
   }
 
 
@@ -378,7 +372,8 @@ export class ModuloGis implements OnInit, OnDestroy {
   [
     this.pozosActivosLayer,
     this.pozosObraLayer,
-    this.pozosInactivosLayer
+    this.pozosInactivosLayer,
+    this.pozosPendienteLayer
   ].forEach(group => {
 
     group.eachLayer((l:any)=>{
@@ -411,54 +406,12 @@ export class ModuloGis implements OnInit, OnDestroy {
   // ─────────────────────────────
 
   private buildPozoPopup(name: string): string {
-    const normalized = this.normalizeKey(name);
-    const pozoId = POZO_NAME_TO_ID[normalized] || this.slugify(name);
-    const d = POZOS_DATA[pozoId];
-    const l = POZOS_LAYOUT[pozoId];
-
-    // Site exists in hardcoded data — full popup
-    if (d) {
-      const detailUrl = `${DETAIL_BASE_URL}/${this.slugify(name)}`;
-      // Prefer API-uploaded render over static asset
-      const hcApiSite = this.apiSitesByName.get(this.normalizeKey(name));
-      const hcRenderSrc = hcApiSite?.render_url || (l?.render ? `assets/pozos/${l.render}` : '');
-      return `
-        <div class="scada-popup">
-          ${hcRenderSrc ? `
-            <div class="scada-popup-render">
-              <img src="${hcRenderSrc}" alt="${d.nombre}" />
-            </div>
-          ` : ''}
-
-          <div class="scada-popup-header">${d.nombre}</div>
-
-          <div class="scada-popup-metrics">
-            <div class="metric"><span>Latitud:</span> <b>${d.lat}</b></div>
-            <div class="metric"><span>Longitud:</span> <b>${d.lng}</b></div>
-          </div>
-
-          <div class="scada-popup-meta"><div><b>Estatus:</b> ${d.estatus}</div></div>
-          <div class="scada-popup-meta"><div><b>Proveedor:</b> ${d.proveedor}</div></div>
-
-          <div class="scada-popup-chart" id="popup-chart-pozo-${this.slugify(name)}">
-            <div class="scada-popup-chart-loading">Cargando...</div>
-          </div>
-
-          <button class="scada-popup-btn" data-url="${detailUrl}">
-            Ver isométrico →
-          </button>
-        </div>
-      `;
-    }
-
-    // Dynamic site (not in POZOS_DATA) — build popup from API cache
     const nameKey = this.normalizeKey(name);
     const apiSite = this.apiSitesByName.get(nameKey);
     const devEui = (apiSite?.dev_eui || '').trim();
     // Navigate to isometric view using devEUI as slug
     const detailUrl = devEui ? `${DETAIL_BASE_URL}/${devEui}` : '';
 
-    // For hardcoded sites, check if API has a render_url override
     const renderUrl = apiSite?.render_url;
 
     return `
@@ -543,18 +496,8 @@ export class ModuloGis implements OnInit, OnDestroy {
             const name = layerItem.feature?.properties?.name;
             if (!name) return;
 
-            // ⚠️ MISMA lógica, solo con fallback seguro
             const marker = layerItem as L.Marker;
-
-            // 👇 obtener data igual que en resolvePozoIconUrl
             const normalized = this.normalizeKey(name);
-
-            let pozoId = POZO_NAME_TO_ID[normalized];
-
-            if (!pozoId) {
-              pozoId = this.slugify(name);
-            }
-
             const estado = this.resolveEstatus(name);
 
             // Agregar al layer correcto (default activo para sitios dinámicos)
@@ -563,6 +506,9 @@ export class ModuloGis implements OnInit, OnDestroy {
             }
             else if (estado === 'obra') {
               marker.addTo(this.pozosObraLayer);
+            }
+            else if (estado === 'pendiente') {
+              marker.addTo(this.pozosPendienteLayer);
             }
             else {
               marker.addTo(this.pozosInactivosLayer);
@@ -591,8 +537,9 @@ export class ModuloGis implements OnInit, OnDestroy {
             });
 
 
-          // Decide qué URL usar (gris o color)
-            const iconUrl = this.resolveSiteIconUrl(name); 
+          // Decide qué URL usar (gris o color) — prefer API site_type if cached
+            const cachedSite = this.apiSitesByName.get(this.normalizeKey(name));
+            const iconUrl = this.resolveSiteIconUrl(name, cachedSite?.site_type);
 
           // ✅ meta primero, luego scale
           this.setMarkerIconMeta(marker, iconUrl);
@@ -624,14 +571,7 @@ export class ModuloGis implements OnInit, OnDestroy {
               }
 
               // Render mini chart for this well
-              const normalized = this.normalizeKey(name);
-              const pid = POZO_NAME_TO_ID[normalized];
-              const pData = pid ? POZOS_DATA[pid] : null;
-              let devEui = (pData?.devEui || '').trim();
-              // Fallback: look up devEUI from API cache for dynamic sites
-              if (!devEui) {
-                devEui = (this.apiSitesByName.get(this.normalizeKey(name))?.dev_eui || '').trim();
-              }
+              const devEui = (this.apiSitesByName.get(this.normalizeKey(name))?.dev_eui || '').trim();
               if (devEui) {
                 this.renderPozoPopupChart(devEui, this.slugify(name));
               }
@@ -708,10 +648,12 @@ export class ModuloGis implements OnInit, OnDestroy {
               ? this.pozosObraLayer
               : siteEstatus === 'inactivo'
                 ? this.pozosInactivosLayer
-                : this.pozosActivosLayer;
+                : siteEstatus === 'pendiente'
+                  ? this.pozosPendienteLayer
+                  : this.pozosActivosLayer;
           marker.addTo(targetLayer);
 
-          const iconUrl = this.resolveSiteIconUrl(name);
+          const iconUrl = this.resolveSiteIconUrl(name, site.site_type);
           this.setMarkerIconMeta(marker, iconUrl);
           this.applyIconScaleToMarker(marker);
           if (this.map.getZoom() < 10) marker.setOpacity(0);
@@ -1149,6 +1091,7 @@ export class ModuloGis implements OnInit, OnDestroy {
     this.pozosActivosLayer.addTo(this.map);
     this.pozosObraLayer.addTo(this.map);
     this.pozosInactivosLayer.addTo(this.map);
+    this.pozosPendienteLayer.addTo(this.map);
 
     // 3) Control de capas
     this.layersControl = L.control.layers(
@@ -1166,6 +1109,9 @@ export class ModuloGis implements OnInit, OnDestroy {
 
     '<span class="layer-label"><span class="legend-dot gray"></span> Sitios inactivos</span>':
       this.pozosInactivosLayer,
+
+    '<span class="layer-label"><span class="legend-dot gray" style="border:1px dashed #888"></span> Sitios pendientes</span>':
+      this.pozosPendienteLayer,
 
     '<span class="layer-label"><img src="assets/icons/red-primaria.svg" width="20 "> Red primaria</span>':
       this.redPrimariaLayer,
@@ -1207,7 +1153,7 @@ export class ModuloGis implements OnInit, OnDestroy {
     // Mantener pozos al frente si prenden municipios
     this.map.on('overlayadd', (e: any) => {
       if (e?.name === 'Municipios') {
-        [this.pozosActivosLayer, this.pozosObraLayer, this.pozosInactivosLayer]
+        [this.pozosActivosLayer, this.pozosObraLayer, this.pozosInactivosLayer, this.pozosPendienteLayer]
           .forEach(group => {
             group.eachLayer((l:any)=>{
               if (l instanceof L.Marker) this.applyIconScaleToMarker(l);
@@ -1362,13 +1308,12 @@ export class ModuloGis implements OnInit, OnDestroy {
       return;
     }
 
-    // Build devEUI list for this municipality
+    // Build devEUI list for this municipality from API cache
     const wells: string[] = [];
-    Object.values(POZOS_DATA as any).forEach((pozo: any) => {
-      const munId = Number(pozo?.municipioId ?? pozo?.CVE_MUN);
-      if (munId !== municipioId) return;
-      if ((pozo?.estatus || '').toLowerCase() !== 'activo') return;
-      const devEui = (pozo?.devEui || '').trim();
+    this.apiSitesByName.forEach((site) => {
+      if (site.municipio_id !== municipioId) return;
+      if ((site.estatus || '').toLowerCase() !== 'activo') return;
+      const devEui = (site.dev_eui || '').trim();
       if (devEui) wells.push(devEui);
     });
 

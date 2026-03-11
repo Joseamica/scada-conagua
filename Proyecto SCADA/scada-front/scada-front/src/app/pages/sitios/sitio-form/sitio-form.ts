@@ -19,8 +19,6 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
 import { TelemetryService } from '../../../core/services/telemetry';
-import { POZOS_DATA } from '../../pozos/pozos-data';
-import { POZOS_LAYOUT } from '../../pozos/pozos-layout';
 
 const estadosJson = require('../../../../assets/data/estados.json');
 
@@ -176,7 +174,7 @@ export class SitioForm implements OnInit {
         // Disable devEUI in edit mode — it's the primary key
         this.form.get('devEUI')?.disable();
 
-        // Patch proveedor from API if available, fallback to POZOS_DATA
+        // Patch proveedor from API if available
         if (site.proveedor) {
           const provMatch = this.proveedores.find(
             (p) => p.nombre.toLowerCase() === site.proveedor!.toLowerCase(),
@@ -191,33 +189,6 @@ export class SitioForm implements OnInit {
         if (site.render_url) {
           this.form.patchValue({ render: site.render_url });
           this.renderFileName = site.render_url.split('/').pop() || '';
-        }
-
-        // Fallback: look up proveedor and render from hardcoded data by devEUI
-        const devEui = (site.dev_eui || '').trim();
-        const dataKey = Object.keys(POZOS_DATA).find(
-          (k) => (POZOS_DATA[k].devEui || '').trim() === devEui,
-        );
-        if (dataKey) {
-          const pozoData = POZOS_DATA[dataKey];
-          // Only use hardcoded proveedor if API didn't provide one
-          if (!site.proveedor) {
-            const provMatch = this.proveedores.find(
-              (p) => p.nombre.toLowerCase() === (pozoData.proveedor || '').toLowerCase(),
-            );
-            if (provMatch) {
-              this.form.patchValue({ proveedor: provMatch.id });
-            }
-          }
-
-          // Load render from layout data only if no API render_url
-          if (!site.render_url) {
-            const layoutData = POZOS_LAYOUT[dataKey];
-            if (layoutData?.render) {
-              this.form.patchValue({ render: 'assets/pozos/' + layoutData.render });
-              this.renderFileName = layoutData.render;
-            }
-          }
         }
 
         // Trigger location detection from lat/lng to populate estado + municipio

@@ -1,3 +1,4 @@
+import '../../../../../test-init';
 import { EditorStore } from './editor-store';
 import { CanvasWidget } from '../../../../core/services/sinoptico.service';
 

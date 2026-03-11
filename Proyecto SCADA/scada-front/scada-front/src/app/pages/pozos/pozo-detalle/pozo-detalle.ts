@@ -5,7 +5,6 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
-import { POZOS_DATA } from '../pozos-data';
 import { POZOS_LAYOUT } from '../pozos-layout';
 import { TIME_RANGES, TimeRange } from '../../../shared/time-ranges';
 import { TelemetryService } from '../../../core/services/telemetry';
@@ -520,43 +519,46 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   // =========================
   ngOnInit() {
     const slug = this.route.snapshot.paramMap.get('id')!;
-    let staticData = POZOS_DATA[slug];
-    let layoutKey = slug;
+    // slug may be a devEUI or a human-readable slug — always resolve via API
+    this.pozoId.set(slug);
 
-    // If slug is a devEUI (not a human-readable slug), find the matching entry
-    if (!staticData) {
-      const entry = Object.entries(POZOS_DATA).find(
-        ([, v]) => (v as any).devEui === slug
-      );
-      if (entry) {
-        layoutKey = entry[0];
-        staticData = entry[1] as any;
-      }
-    }
-
-    if (staticData?.devEui) {
-      // Sitio hardcodeado — usar datos estáticos
-      this.pozoId.set(staticData.devEui);
-      this.lat.set(staticData.lat);
-      this.lng.set(staticData.lng);
-      this.layout.set(POZOS_LAYOUT[layoutKey]);
-      this.startAutoRefresh(staticData.devEui);
-    } else {
-      // Sitio dinámico — el slug es el devEUI, cargar desde API
-      const devEui = slug;
-      this.pozoId.set(devEui);
-      this.telemetryService.getSite(devEui).subscribe({
-        next: (site) => {
-          this.pozoNombre.set(site.site_name || devEui);
+    // Try to load site from API (handles both devEUI and slug-based lookups)
+    this.telemetryService.getSites().subscribe({
+      next: (sites) => {
+        // Match by devEUI or by slugified site_name
+        const site = sites.find(s =>
+          s.dev_eui.trim() === slug ||
+          this.slugify(s.site_name || '') === slug
+        );
+        if (site) {
+          this.pozoId.set(site.dev_eui);
+          this.pozoNombre.set(site.site_name || slug);
           if (site.latitude) this.lat.set(site.latitude);
           if (site.longitude) this.lng.set(site.longitude);
-        },
-        error: () => {
-          this.pozoNombre.set(devEui);
-        },
-      });
-      this.startAutoRefresh(devEui);
-    }
+          // Try to load overlay layout by slugified name
+          const layoutKey = this.slugify(site.site_name || '');
+          if (POZOS_LAYOUT[layoutKey]) {
+            this.layout.set(POZOS_LAYOUT[layoutKey]);
+          }
+          this.startAutoRefresh(site.dev_eui);
+        } else {
+          // Fallback: treat slug as devEUI directly
+          this.pozoNombre.set(slug);
+          this.startAutoRefresh(slug);
+        }
+      },
+      error: () => {
+        this.pozoNombre.set(slug);
+        this.startAutoRefresh(slug);
+      },
+    });
+  }
+
+  private slugify(name: string): string {
+    return name.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
   }
 
   ngAfterViewInit() {

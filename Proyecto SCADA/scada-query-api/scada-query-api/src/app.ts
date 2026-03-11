@@ -227,6 +227,19 @@ export const getSiteHistory = async (req: Request, res: Response) => {
 // Catálogo de todos los sitios con telemetría activa
 app.get('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
     try {
+        const user = (req as any).user;
+        let scopeFilter = '';
+        const params: any[] = [];
+
+        // Municipal users only see their municipality's sites
+        if (user?.scope === 'Municipal' && user?.scope_id) {
+            scopeFilter = `AND LOWER(TRIM(i.municipality)) IN (
+                SELECT LOWER(TRIM(e.name)) FROM scada.entities e
+                WHERE e.municipio_id = $1 AND e.level = 'Municipal'
+            )`;
+            params.push(user.scope_id);
+        }
+
         const result = await pool.query(`
             SELECT
                 COALESCE(TRIM(i.dev_eui), TRIM(s.dev_eui)) AS dev_eui,
@@ -244,12 +257,15 @@ app.get('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
                 i.estatus,
                 i.render_url,
                 s.last_nivel_value,
-                s.last_lluvia_value
+                s.last_lluvia_value,
+                e.municipio_id
             FROM scada.inventory i
             LEFT JOIN scada.site_status s ON TRIM(s.dev_eui) = TRIM(i.dev_eui)
+            LEFT JOIN scada.entities e ON LOWER(TRIM(i.municipality)) = LOWER(TRIM(e.name)) AND e.level = 'Municipal'
             WHERE TRIM(COALESCE(i.dev_eui, '')) != ''
+            ${scopeFilter}
             ORDER BY site_name
-        `);
+        `, params);
         res.json(result.rows);
     } catch (e) {
         console.error('❌ Sites catalog error:', e);

@@ -52,7 +52,7 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
         <main class="alarm-list-area">
           <div class="list-header" *ngIf="selectedGroupId()">
             <h2>{{ selectedGroupName() }}</h2>
-            <button class="btn-primary" (click)="showCreateAlarm = true">
+            <button class="btn-primary" (click)="editingAlarmId = null; resetNewAlarm(); showCreateAlarm = true">
               <ng-icon name="heroPlus" size="16" /> Nueva Alarma
             </button>
           </div>
@@ -111,9 +111,9 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
     </div>
 
     <!-- Create Alarm Dialog -->
-    <div class="dialog-overlay" *ngIf="showCreateAlarm" (click)="showCreateAlarm = false">
+    <div class="dialog-overlay" *ngIf="showCreateAlarm" (click)="showCreateAlarm = false; editingAlarmId = null">
       <div class="dialog dialog-wide" (click)="$event.stopPropagation()">
-        <h2>Nueva Alarma</h2>
+        <h2>{{ editingAlarmId ? 'Editar Alarma' : 'Nueva Alarma' }}</h2>
         <div class="form-row">
           <div class="form-group">
             <label>Nombre *</label>
@@ -153,9 +153,23 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
             <input type="number" [(ngModel)]="newAlarm.threshold_value" placeholder="Valor umbral" />
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="toggle-label">
+              <input type="checkbox" [(ngModel)]="newAlarm.play_sound" />
+              Reproducir sonido al activarse
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="toggle-label">
+              <input type="checkbox" [(ngModel)]="newAlarm.show_banner" />
+              Mostrar banner en pantalla
+            </label>
+          </div>
+        </div>
         <div class="dialog-actions">
-          <button class="btn-secondary" (click)="showCreateAlarm = false">Cancelar</button>
-          <button class="btn-primary" (click)="createAlarm()" [disabled]="!isAlarmValid()">Crear</button>
+          <button class="btn-secondary" (click)="showCreateAlarm = false; editingAlarmId = null">Cancelar</button>
+          <button class="btn-primary" (click)="saveAlarm()" [disabled]="!isAlarmValid()">{{ editingAlarmId ? 'Guardar' : 'Crear' }}</button>
         </div>
       </div>
     </div>
@@ -289,6 +303,14 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
       box-shadow: 0 0 0 3px rgba(109, 0, 43, 0.10);
     }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .toggle-label {
+      display: flex; align-items: center; gap: 8px; cursor: pointer;
+      font-size: 13px; font-weight: 500; color: var(--text-primary);
+      padding: 9px 0;
+    }
+    .toggle-label input[type="checkbox"] {
+      width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer;
+    }
     .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
     @media (max-width: 768px) { .config-grid { grid-template-columns: 1fr; } .form-row { grid-template-columns: 1fr; } }
   `],
@@ -305,6 +327,7 @@ export class AlarmConfig implements OnInit {
 
   showCreateGroup = false;
   showCreateAlarm = false;
+  editingAlarmId: number | null = null;
   newGroupName = '';
   newGroupMunicipality = '';
   newAlarm: Partial<Alarm> = { severity: 'aviso', comparison_operator: '>', threshold_value: 0 };
@@ -344,7 +367,34 @@ export class AlarmConfig implements OnInit {
   }
 
   editAlarm(alarm: Alarm): void {
-    // Phase 5: open alarm wizard for edit
+    this.editingAlarmId = alarm.id;
+    this.newAlarm = {
+      name: alarm.name,
+      dev_eui: alarm.dev_eui,
+      measurement: alarm.measurement,
+      comparison_operator: alarm.comparison_operator,
+      severity: alarm.severity,
+      threshold_value: alarm.threshold_value,
+      play_sound: alarm.play_sound ?? false,
+      show_banner: alarm.show_banner ?? false,
+    };
+    this.showCreateAlarm = true;
+  }
+
+  saveAlarm(): void {
+    if (!this.isAlarmValid()) return;
+    if (this.editingAlarmId) {
+      this.alarmService.updateAlarm(this.editingAlarmId, this.newAlarm as any).subscribe({
+        next: (updated) => {
+          this.alarms.update((list) => list.map((a) => (a.id === updated.id ? updated : a)));
+          this.showCreateAlarm = false;
+          this.editingAlarmId = null;
+          this.resetNewAlarm();
+        },
+      });
+    } else {
+      this.createAlarm();
+    }
   }
 
   deleteAlarm(alarm: Alarm): void {
@@ -354,7 +404,7 @@ export class AlarmConfig implements OnInit {
     });
   }
 
-  private resetNewAlarm(): void {
-    this.newAlarm = { severity: 'aviso', comparison_operator: '>', threshold_value: 0 };
+  resetNewAlarm(): void {
+    this.newAlarm = { severity: 'aviso', comparison_operator: '>', threshold_value: 0, play_sound: false, show_banner: false };
   }
 }

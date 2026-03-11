@@ -7,6 +7,7 @@ import { writeTelemetryToInflux } from './services/influx-service';
 import { getSiteMetadata, updateSiteStatus } from './services/postgres-service'; // Placeholder
 import { transformTelemetry } from './services/transformer-service'; // Importamos el transformador
 import { transformIgnition } from './services/ignition-transformer'; // Nuevo servicio ICH
+import { evaluateAlarmsForDevice } from './services/alarm-evaluator';
 import { writeGroupedIgnitionToInflux } from './services/influx-service';
 import { updateIgnitionSiteStatus } from './services/postgres-service';
 
@@ -166,6 +167,15 @@ client.on('message', async (topic: string, message: Buffer): Promise<void> => {
 
                     // 4. ACTUALIZACIÓN EN POSTGRESQL (Estado actual/Last Value)
                     await updateSiteStatus(devEUI, processedData);
+
+                    // 5. EVALUACIÓN DE ALARMAS (fire-and-forget)
+                    evaluateAlarmsForDevice(devEUI, {
+                      presion_kg: processedData.presion_kg,
+                      caudal_lts: processedData.caudal_lts,
+                      battery: processedData.battery,
+                      nivel_m: processedData.nivel_m ?? null,
+                      lluvia_mm: processedData.lluvia_mm ?? null,
+                    }).catch(err => console.error('⚠️ Alarm evaluation error:', err));
                 } else {
                     console.log(`ℹ️ [${devEUI}] Heartbeat frame ignorado.`);
                 }

@@ -2,6 +2,62 @@
 
 Todos los cambios notables del proyecto se documentan aquí.
 
+## [Unreleased]
+
+### scada-igestion-api (Motor de Evaluación de Alarmas)
+- **feat:** New `alarm-evaluator.ts` — evaluates telemetry values against configured alarm thresholds on every ChirpStack uplink
+- **feat:** State transitions: INACTIVE → ACTIVE_UNACK (condition met), ACTIVE_UNACK/ACK → INACTIVE (condition cleared)
+- **feat:** Logs state transitions to console and writes to `alarm_state` + `alarm_history` tables
+- **feat:** Fire-and-forget integration in `ingestion-client.ts` — alarm evaluation runs after site status update without blocking telemetry flow
+- **feat:** Auto-promote now includes 'pendiente' estatus (pendiente → activo when valid telemetry arrives)
+
+### scada-front (Header-bar con alarmas reales + banner + sonido)
+- **feat:** Header-bar alert pill now shows live alarm count from `GET /alarms/active` (polls every 15s)
+- **feat:** Alert dropdown populated with real active alarms — shows site name, alarm name, value, and threshold
+- **feat:** Dynamic styling: danger pill only when alarms are active, severity-based colors in dropdown
+- **feat:** Persistent alarm banner — full-width red pulsing bar at top of screen for alarms with `show_banner = true`
+- **feat:** Audible alarm — two-tone beep plays on alarm activation and repeats every 30s for alarms with `play_sound = true`
+- **feat:** Banner dismiss button — users can close the banner per alarm (reappears if new alarm triggers)
+- **fix:** Removed hardcoded "4 Alertas" and fake alert items
+
+### scada-front (Alarm config: sonido y banner configurable)
+- **feat:** Two new toggles in alarm create/edit dialog: "Reproducir sonido al activarse" and "Mostrar banner en pantalla"
+
+### scada-query-api (Migration 028: alarm sound + banner columns)
+- **feat:** Migration 028 adds `play_sound` and `show_banner` BOOLEAN columns to `scada.alarms` table
+- **feat:** POST/PUT /alarms endpoints accept `play_sound` and `show_banner` fields
+- **feat:** GET /alarms/active returns `play_sound` and `show_banner` for frontend consumption
+
+### scada-front (Estatus 'pendiente' en mapa GIS)
+- **feat:** New `pozosPendienteLayer` in GIS map — gray icons with dashed border legend dot
+- **feat:** `resolveSiteIconUrl()` renders pendiente sites with gray icons (same as inactivo)
+- **feat:** Layer control includes "Sitios pendientes" toggle
+
+### scada-query-api (Migration 027: estatus pendiente)
+- **docs:** Migration 027 documents 'pendiente' as valid estatus value in inventory table
+
+### scada-query-api (API: municipio_id en respuesta de sites)
+- **feat:** `GET /api/v1/sites` now returns `municipio_id` (INEGI numeric code) via LEFT JOIN with `scada.entities` — enables frontend to filter/aggregate by municipality without hardcoded data
+- **fix:** `GET /api/v1/sites` now filters by user's municipal scope — municipal users only see sites belonging to their municipality (same logic as `/variables/tags`)
+
+### scada-front (Migración: POZOS_DATA eliminado — DB es fuente única de verdad)
+- **refactor:** Removed `POZOS_DATA` (746 lines, 54 hardcoded sites) and `POZO_NAME_TO_ID` (49 entries) — all 6 consumer components now use API data from `/api/v1/sites`
+- **refactor:** `overview.ts` — consolidated `initScopedData()` + `loadStaticData()` + `loadLiveFlowData()` into single `loadData()` method using API with `municipio_id`
+- **refactor:** `gerencia-municipio.ts` — consolidated `loadMunicipioData()` + `loadLiveFlowData()` into single `loadData()` using API with `municipio_id`
+- **refactor:** `modulo-gis.ts` — removed POZOS_DATA from `buildGastoByMunicipio()`, `resolveEstatus()`, `buildPozoPopup()`, and popup chart builder; all now use `apiSitesByName` cache
+- **refactor:** `pozo-detalle.ts` — always resolves site via API (supports both devEUI and slugified name as route param); keeps POZOS_LAYOUT for overlay positions only
+- **refactor:** `sitio-form.ts` — removed POZOS_DATA fallback for proveedor/render (API provides both)
+- **refactor:** `telemetria-avanzada.ts` — removed redundant client-side scope filtering (API already scopes by municipality)
+
+### scada-igestion-api (InfluxDB Ignition write fix)
+- **fix:** `writeGroupedIgnitionToInflux()` — changed from creating a new `writeApi` per call (then `close()`) to using a persistent module-level `writeApiIgnition` with `flush()`. The previous pattern silently failed to persist Ignition/ICH telemetry to InfluxDB, leaving `telemetria_ignition` bucket empty. Historical charts for Ixtapaluca/ICH sites will now work after redeployment.
+
+### scada-front (Anibal Obs #1 — Site type icons)
+- **fix:** GIS `inferTypeFromName()` now recognizes "Cárcamo", "Drenaje", "Red primaria" — assigns drainage/block_water icons instead of defaulting to pozo icon
+- **fix:** `inferTypeFromName()` now accepts optional `siteType` from DB, preferring it over name inference
+- **fix:** `resolveSiteIconUrl()` applies status-based icons (activo/obra/inactivo) to ALL site types, not just wells — fixes layer toggle issues (Obs #4, #5)
+- **feat:** Added `drainage` to `ScadaIconKey` type, `SCADA_ICON_MAP`, and `GRAY_ICON_MAP` — uses existing `drainage.svg` / `drainage-gray.svg` / `drainage-yellow.svg` assets
+
 ## [v0.11.0] - 2026-03-10
 
 ### scada-front (Sinoptico Sharing from Project Detail)

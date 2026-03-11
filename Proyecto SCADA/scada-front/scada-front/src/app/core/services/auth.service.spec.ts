@@ -1,3 +1,4 @@
+import '../../../test-init';
 import { AuthService } from './auth.service';
 
 /** Creates a fake JWT with a given exp timestamp (seconds) */

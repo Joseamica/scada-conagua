@@ -1,3 +1,4 @@
+import '../../../test-init';
 import { ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 
 const { mockIsTokenExpired, mockClearSessionAndRedirect } = vi.hoisted(() => ({

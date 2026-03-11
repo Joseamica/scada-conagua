@@ -12,7 +12,8 @@ const org: string = process.env.INFLUX_ORG || '';
 const bucket: string = process.env.INFLUX_BUCKET || '';
 
 const influxDB: InfluxDB = new InfluxDB({ url, token });
-const writeApi: WriteApi = influxDB.getWriteApi(org, bucket); 
+const writeApi: WriteApi = influxDB.getWriteApi(org, bucket);
+const writeApiIgnition: WriteApi = influxDB.getWriteApi(org, process.env.INFLUX_BUCKET_IGNITION || 'telemetria_ignition'); 
 
 export const writeTelemetryToInflux = async (data: TelemetryProcessed): Promise<void> => {
     try {
@@ -55,10 +56,8 @@ export const writeTelemetryToInflux = async (data: TelemetryProcessed): Promise<
     }
 };
 
-// Nuevo bucket para ICH
+// Nuevo bucket para ICH — usa writeApi persistente (igual que ChirpStack)
 export const writeGroupedIgnitionToInflux = async (data: any): Promise<void> => {
-    const writeApi = influxDB.getWriteApi(org, process.env.INFLUX_BUCKET_IGNITION || 'telemetria_ignition');
-    
     try {
         const point = new Point('mediciones_ignition')
             .tag('municipio', data.municipio)
@@ -86,8 +85,9 @@ export const writeGroupedIgnitionToInflux = async (data: any): Promise<void> => 
         });
 
         point.timestamp(new Date());
-        writeApi.writePoint(point);
-        await writeApi.close();
+        writeApiIgnition.writePoint(point);
+        await writeApiIgnition.flush();
+        console.log(`✅ InfluxDB Ignition: Persistencia exitosa para ${data.pozo_name}`);
     } catch (error) {
         console.error('❌ Error InfluxDB Grouped Write:', error);
         throw error;

@@ -105,7 +105,7 @@ router.post('/', isSupervisor, async (req: Request, res: Response) => {
         comparison_operator, threshold_value,
         hysteresis_activation_sec, hysteresis_deactivation_sec,
         action_type, notify_on_state_change, notification_template,
-        resend_period_min, resend_enabled,
+        resend_period_min, resend_enabled, play_sound, show_banner,
     } = req.body;
 
     if (!group_id || !name?.trim() || !dev_eui || !measurement || !comparison_operator || threshold_value === undefined) {
@@ -119,14 +119,15 @@ router.post('/', isSupervisor, async (req: Request, res: Response) => {
               comparison_operator, threshold_value,
               hysteresis_activation_sec, hysteresis_deactivation_sec,
               action_type, notify_on_state_change, notification_template,
-              resend_period_min, resend_enabled, created_by)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
+              resend_period_min, resend_enabled, play_sound, show_banner, created_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING *`,
             [
                 group_id, name.trim(), description || null, severity || 'aviso',
                 dev_eui, measurement, comparison_operator, threshold_value,
                 hysteresis_activation_sec || 0, hysteresis_deactivation_sec || 0,
                 action_type || 'none', notify_on_state_change ?? true, notification_template || null,
-                resend_period_min || 1440, resend_enabled ?? false, req.user!.id,
+                resend_period_min || 1440, resend_enabled ?? false,
+                play_sound ?? false, show_banner ?? false, req.user!.id,
             ]
         );
 
@@ -150,7 +151,7 @@ router.put('/:id', isSupervisor, async (req: Request, res: Response) => {
         comparison_operator, threshold_value,
         hysteresis_activation_sec, hysteresis_deactivation_sec,
         action_type, notify_on_state_change, notification_template,
-        resend_period_min, resend_enabled,
+        resend_period_min, resend_enabled, play_sound, show_banner,
     } = req.body;
 
     try {
@@ -168,14 +169,16 @@ router.put('/:id', isSupervisor, async (req: Request, res: Response) => {
                 notification_template = $13,
                 resend_period_min = COALESCE($14, resend_period_min),
                 resend_enabled = COALESCE($15, resend_enabled),
+                play_sound = COALESCE($16, play_sound),
+                show_banner = COALESCE($17, show_banner),
                 updated_at = NOW()
-             WHERE id = $16 RETURNING *`,
+             WHERE id = $18 RETURNING *`,
             [
                 name?.trim(), description, severity, is_enabled, dev_eui, measurement,
                 comparison_operator, threshold_value,
                 hysteresis_activation_sec, hysteresis_deactivation_sec,
                 action_type, notify_on_state_change, notification_template,
-                resend_period_min, resend_enabled, req.params.id,
+                resend_period_min, resend_enabled, play_sound, show_banner, req.params.id,
             ]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Alarma no encontrada.' });
@@ -205,6 +208,7 @@ router.get('/active', isAuth, async (req: Request, res: Response) => {
         const result = await pool.query(
             `SELECT a.id, a.name, a.severity, a.dev_eui, a.measurement,
                     a.comparison_operator, a.threshold_value,
+                    a.play_sound, a.show_banner,
                     s.current_state, s.last_value, s.last_triggered_at,
                     s.acknowledged_by, s.acknowledged_at, s.ack_comment,
                     g.name AS group_name, i.site_name, i.municipality

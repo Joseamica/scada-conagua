@@ -46,7 +46,7 @@ export class TelemetryService {
     private readonly BASE_URL = environment.apiQueryUrl;
   
   // Catálogo completo de sitios del inventario (incluye last_flow_value para agregaciones)
-  getSites(): Observable<{ dev_eui: string; site_name: string; municipality: string; site_type: string; last_flow_value: number | null; last_pressure_value: number | null; last_updated_at: string | null; rssi?: number; snr?: number; latitude?: number | null; longitude?: number | null; proveedor?: string | null; estatus?: string | null; render_url?: string | null; last_nivel_value?: number | null; last_lluvia_value?: number | null }[]> {
+  getSites(): Observable<{ dev_eui: string; site_name: string; municipality: string; site_type: string; last_flow_value: number | null; last_pressure_value: number | null; last_updated_at: string | null; rssi?: number; snr?: number; latitude?: number | null; longitude?: number | null; proveedor?: string | null; estatus?: string | null; render_url?: string | null; last_nivel_value?: number | null; last_lluvia_value?: number | null; municipio_id?: number | null }[]> {
     return this.http.get<any[]>(`${this.BASE_URL}/sites`);
   }
 

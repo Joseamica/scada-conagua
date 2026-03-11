@@ -13,7 +13,6 @@ import {
 } from '@ng-icons/heroicons/outline';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
-import { POZOS_DATA } from '../../pozos/pozos-data';
 import { TelemetryService } from '../../../core/services/telemetry';
 import { AuthService } from '../../../core/services/auth.service';
 import { ThemeService } from '../../../core/services/theme.service';
@@ -339,27 +338,21 @@ export class Overview implements OnInit, AfterViewInit, OnDestroy {
   goBack() { this.location.back(); }
 
   ngOnInit() {
-    this.initScopedData();
-    this.loadStaticData();
-    this.loadLiveFlowData();
+    this.initScopedSources();
+    this.loadData();
   }
 
-  private initScopedData() {
+  private initScopedSources() {
     const user = this.authService.currentUser();
     const scope = user?.scope;
     const scopeId = user?.scope_id;
 
     if (scope === 'Municipal' && scopeId) {
       this.scopedSources = SITIOS_SOURCES.filter(s => s.municipioId === scopeId);
-      this.scopedPozos = Object.values(POZOS_DATA).filter(
-        (p: any) => Number(p.municipioId) === scopeId
-      );
     } else if (scope === 'Estatal' && user?.estado_id) {
       this.scopedSources = SITIOS_SOURCES.filter(s => s.estadoId === user.estado_id);
-      this.scopedPozos = Object.values(POZOS_DATA);
     } else {
       this.scopedSources = [...SITIOS_SOURCES];
-      this.scopedPozos = Object.values(POZOS_DATA);
     }
 
     // Build municipality series data
@@ -373,6 +366,65 @@ export class Overview implements OnInit, AfterViewInit, OnDestroy {
     }));
     this.municipioSeries.set(series);
     this.selectedMunicipios.set(new Set(series.map(s => s.id)));
+  }
+
+  /** Load sites from API — replaces POZOS_DATA */
+  private loadData() {
+    this.telemetryService.getSites().subscribe({
+      next: (sites) => {
+        // Build scopedPozos from API data (API already scopes by municipality)
+        this.scopedPozos = sites.map(s => ({
+          devEui: s.dev_eui,
+          nombre: s.site_name,
+          municipioId: s.municipio_id,
+          estatus: s.estatus || 'activo',
+        }));
+
+        // KPIs
+        this.totalPozos = this.scopedPozos.length;
+        this.pozosActivos = this.scopedPozos.filter(
+          (p: any) => (p.estatus || '').toLowerCase() === 'activo'
+        ).length;
+        this.municipiosCount = this.scopedSources.length;
+
+        // Live flow aggregation from same response
+        const scopedMunicipioIds = new Set(this.scopedSources.map(s => s.municipioId));
+        let totalGlobal = 0;
+        sites.forEach(site => {
+          const munId = site.municipio_id;
+          if (!munId || !scopedMunicipioIds.has(munId)) return;
+          if ((site.estatus || '').toLowerCase() !== 'activo') return;
+          const flow = Number(site.last_flow_value || 0);
+          if (flow <= 0.01) return;
+          totalGlobal += flow;
+          const current = this.gastoByMunicipio.get(munId) || 0;
+          this.gastoByMunicipio.set(munId, Math.round((current + flow) * 100) / 100);
+        });
+
+        this.gastoTotalGlobal = Math.round(totalGlobal * 100) / 100;
+        this.promedioPorPozo = this.pozosActivos > 0
+          ? Math.round((this.gastoTotalGlobal / this.pozosActivos) * 100) / 100
+          : 0;
+
+        // Update municipality live flow values
+        const series = this.municipioSeries().map(m => ({
+          ...m,
+          liveFlow: this.gastoByMunicipio.get(m.id) || 0
+        }));
+        this.municipioSeries.set(series);
+
+        this.dataReady = true;
+        this.tryLoadOverlay();
+        this.loadHistoricalData();
+      },
+      error: () => {
+        this.scopedPozos = [];
+        this.totalPozos = 0;
+        this.pozosActivos = 0;
+        this.dataReady = true;
+        this.tryLoadOverlay();
+      }
+    });
   }
 
   ngAfterViewInit() {
@@ -402,7 +454,7 @@ export class Overview implements OnInit, AfterViewInit, OnDestroy {
 
     this.mapReady = true;
     this.tryLoadOverlay();
-    this.loadHistoricalData();
+    if (this.dataReady) this.loadHistoricalData(); // data may arrive before or after DOM
     window.addEventListener('resize', this.resizeHandler);
   }
 
@@ -416,57 +468,7 @@ export class Overview implements OnInit, AfterViewInit, OnDestroy {
   // DATA LOGIC
   // =========================
 
-  private loadStaticData() {
-    this.totalPozos = this.scopedPozos.length;
-    this.pozosActivos = this.scopedPozos.filter((p: any) => (p.estatus || '').toLowerCase() === 'activo').length;
-    this.municipiosCount = this.scopedSources.length;
-  }
-
-  private loadLiveFlowData() {
-    const devEuiToMunicipio = new Map<string, number>();
-    const scopedMunicipioIds = new Set(this.scopedSources.map(s => s.municipioId));
-    this.scopedPozos.forEach((p: any) => {
-      if ((p.estatus || '').toLowerCase() !== 'activo') return;
-      if (!p.devEui || !p.municipioId) return;
-      if (!scopedMunicipioIds.has(Number(p.municipioId))) return;
-      devEuiToMunicipio.set(p.devEui.trim().toLowerCase(), Number(p.municipioId));
-    });
-
-    this.telemetryService.getSites().subscribe({
-      next: (sites) => {
-        let totalGlobal = 0;
-        sites.forEach(site => {
-          const devEui = (site.dev_eui || '').trim().toLowerCase();
-          const municipioId = devEuiToMunicipio.get(devEui);
-          if (municipioId == null) return;
-          const flow = Number(site.last_flow_value || 0);
-          if (flow <= 0.01) return;
-          totalGlobal += flow;
-          const current = this.gastoByMunicipio.get(municipioId) || 0;
-          this.gastoByMunicipio.set(municipioId, Math.round((current + flow) * 100) / 100);
-        });
-
-        this.gastoTotalGlobal = Math.round(totalGlobal * 100) / 100;
-        this.promedioPorPozo = this.pozosActivos > 0
-          ? Math.round((this.gastoTotalGlobal / this.pozosActivos) * 100) / 100
-          : 0;
-
-        // Update municipality live flow values
-        const series = this.municipioSeries().map(m => ({
-          ...m,
-          liveFlow: this.gastoByMunicipio.get(m.id) || 0
-        }));
-        this.municipioSeries.set(series);
-
-        this.dataReady = true;
-        this.tryLoadOverlay();
-      },
-      error: () => {
-        this.dataReady = true;
-        this.tryLoadOverlay();
-      }
-    });
-  }
+  // loadStaticData and loadLiveFlowData consolidated into loadData() above
 
   // =========================
   // HISTORICAL DATA

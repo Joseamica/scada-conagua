@@ -1,3 +1,18 @@
+<!-- ========= BANNER DE ALARMAS CRITICAS ========= -->
+@for (alarm of visibleBanners(); track alarm.id) {
+  <div class="alarm-banner" role="alert">
+    <div class="alarm-banner-content">
+      <span class="alarm-banner-icon">&#9888;</span>
+      <span class="alarm-banner-text">
+        <strong>ALARMA {{ alarm.severity | uppercase }}:</strong>
+        {{ alarm.site_name || alarm.dev_eui }} — {{ alarm.name }}
+        ({{ alarm.measurement }} = {{ alarm.last_value }}, umbral {{ alarm.comparison_operator }} {{ alarm.threshold_value }})
+      </span>
+    </div>
+    <button class="alarm-banner-dismiss" (click)="dismissBanner(alarm.id)" aria-label="Cerrar alerta">&#10005;</button>
+  </div>
+}
+
 <header class="header" role="banner">
 
   <!-- ========= IZQUIERDA: LOGO + TÍTULO ========= -->
@@ -25,14 +40,15 @@
 
     <!-- ALERTAS -->
     <button
-      class="header-pill-btn header-pill-btn--danger"
+      class="header-pill-btn"
+      [class.header-pill-btn--danger]="alertCount() > 0"
       [class.is-active]="alertsOpen"
       (click)="toggleAlerts()"
       aria-label="Alertas activas"
       aria-haspopup="true"
       [attr.aria-expanded]="alertsOpen">
       <ng-icon name="heroBellAlertSolid" size="16"></ng-icon>
-      <span>4 Alertas</span>
+      <span>{{ alertLabel() }}</span>
     </button>
 
     <!-- MENSAJES -->
@@ -82,36 +98,30 @@
   <div class="dropdown alerts-dropdown" *ngIf="alertsOpen" role="menu">
     <div class="dropdown-header">
       <span class="dropdown-title">Alertas activas</span>
-      <span class="dropdown-count">3</span>
+      <span class="dropdown-count">{{ alertCount() }}</span>
     </div>
 
     <div class="dropdown-body">
-      <div class="alert-item alert-item--critical" role="menuitem">
-        <div class="alert-indicator" aria-hidden="true"></div>
-        <div class="alert-content">
-          <div class="alert-title">Pozo 1</div>
-          <div class="alert-text">Caída abrupta de presión (1.75 bar)</div>
-          <div class="alert-time">Hoy · 10:32</div>
+      @for (alarm of alarmService.activeAlarms(); track alarm.id) {
+        <div class="alert-item"
+             [class.alert-item--critical]="alarm.severity === 'critico'"
+             [class.alert-item--warning]="alarm.severity === 'alerta'"
+             [class.alert-item--info]="alarm.severity === 'aviso'"
+             role="menuitem">
+          <div class="alert-indicator" aria-hidden="true"></div>
+          <div class="alert-content">
+            <div class="alert-title">{{ alarm.site_name || alarm.dev_eui }}</div>
+            <div class="alert-text">{{ alarm.name }} ({{ alarm.last_value }})</div>
+            <div class="alert-time">{{ alarm.measurement }} {{ alarm.comparison_operator }} {{ alarm.threshold_value }}</div>
+          </div>
         </div>
-      </div>
-
-      <div class="alert-item alert-item--warning" role="menuitem">
-        <div class="alert-indicator" aria-hidden="true"></div>
-        <div class="alert-content">
-          <div class="alert-title">Red Primaria 1</div>
-          <div class="alert-text">Disminución de caudal</div>
-          <div class="alert-time">Hoy · 09:58</div>
+      } @empty {
+        <div class="alert-item" role="menuitem">
+          <div class="alert-content">
+            <div class="alert-text">No hay alertas activas</div>
+          </div>
         </div>
-      </div>
-
-      <div class="alert-item alert-item--info" role="menuitem">
-        <div class="alert-indicator" aria-hidden="true"></div>
-        <div class="alert-content">
-          <div class="alert-title">Pozo 2</div>
-          <div class="alert-text">Sitio sin comunicación</div>
-          <div class="alert-time">Ayer · 23:12</div>
-        </div>
-      </div>
+      }
     </div>
 
     <div class="dropdown-footer">

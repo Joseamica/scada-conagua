@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, computed } from '@angular/core';
+import { Component, ElementRef, HostListener, computed, OnInit, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavigationEnd, ActivatedRoute, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -19,6 +19,7 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { AuditService } from '../../core/services/audit.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { AlarmService } from '../../core/services/alarm.service';
 import { ROLE_MAP } from '../../core/constants/roles';
 
 @Component({
@@ -40,7 +41,7 @@ import { ROLE_MAP } from '../../core/constants/roles';
     })
   ]
 })
-export class HeaderBarComponent {
+export class HeaderBarComponent implements OnInit, OnDestroy {
 
   // ======================
   // ESTADOS
@@ -50,6 +51,26 @@ export class HeaderBarComponent {
   menuOpen = false;
   alertsOpen = false;
   inboxOpen = false;
+
+  // ======================
+  // ALARMAS (datos reales)
+  // ======================
+  alertCount = computed(() => this.alarmService.activeCount());
+  alertLabel = computed(() => {
+    const c = this.alertCount();
+    return c === 0 ? 'Sin alertas' : `${c} Alerta${c > 1 ? 's' : ''}`;
+  });
+  hasCritical = computed(() => this.alarmService.criticalCount() > 0);
+  bannerAlarms = computed(() => this.alarmService.bannerAlarms());
+  bannerDismissed = new Set<number>();
+
+  // ======================
+  // SONIDO DE ALARMA
+  // ======================
+  private audioCtx: AudioContext | null = null;
+  private soundInterval: any = null;
+  private prevSoundIds = new Set<number>();
+  private soundPending = false;
 
   // ======================
   // USUARIO (computed from AuthService signal)
@@ -106,13 +127,105 @@ export class HeaderBarComponent {
     private auditService: AuditService,
     private elementRef: ElementRef,
     public headerTitleService: HeaderTitleService,
-    private themeService: ThemeService
+    private themeService: ThemeService,
+    public alarmService: AlarmService
   ) {
     this.router.events
       .pipe(filter(e => e instanceof NavigationEnd))
       .subscribe(() => {
         this.pageTitle = this.getRouteTitle(this.router.routerState.root);
       });
+  }
+
+  private soundEffect = effect(() => {
+    const soundAlarms = this.alarmService.soundAlarms();
+    const newIds = new Set(soundAlarms.map(a => a.id));
+    // Check if there are NEW sound alarms we haven't seen before
+    const hasNew = soundAlarms.some(a => !this.prevSoundIds.has(a.id));
+    this.prevSoundIds = newIds;
+
+    if (hasNew && soundAlarms.length > 0) {
+      this.startAlarmSound();
+    } else if (soundAlarms.length === 0) {
+      this.stopAlarmSound();
+    }
+  });
+
+  ngOnInit() {
+    this.alarmService.startPolling(15000);
+  }
+
+  ngOnDestroy() {
+    this.alarmService.stopPolling();
+    this.stopAlarmSound();
+  }
+
+  private getAudioCtx(): AudioContext | null {
+    if (!this.audioCtx) {
+      try { this.audioCtx = new AudioContext(); } catch { return null; }
+    }
+    if (this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume().catch(() => {});
+    }
+    return this.audioCtx;
+  }
+
+  private startAlarmSound() {
+    this.stopAlarmSound();
+    this.soundPending = true;
+    this.playAlarmPattern();
+    // Repeat alarm pattern every 8 seconds
+    this.soundInterval = setInterval(() => this.playAlarmPattern(), 8000);
+  }
+
+  private stopAlarmSound() {
+    this.soundPending = false;
+    if (this.soundInterval) {
+      clearInterval(this.soundInterval);
+      this.soundInterval = null;
+    }
+  }
+
+  private playAlarmPattern() {
+    const ctx = this.getAudioCtx();
+    if (!ctx || ctx.state === 'suspended') {
+      // AudioContext blocked — will retry on next user click
+      this.soundPending = true;
+      return;
+    }
+    try {
+      // Urgent 3-pulse alarm pattern: HIGH-LOW-HIGH
+      const tones = [
+        { freq: 880, start: 0,    dur: 0.15 },
+        { freq: 660, start: 0.2,  dur: 0.15 },
+        { freq: 880, start: 0.4,  dur: 0.15 },
+        // Second burst after short pause
+        { freq: 880, start: 0.7,  dur: 0.15 },
+        { freq: 660, start: 0.9,  dur: 0.15 },
+        { freq: 880, start: 1.1,  dur: 0.15 },
+      ];
+      for (const t of tones) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = t.freq;
+        osc.type = 'square';
+        gain.gain.value = 0.25;
+        const s = ctx.currentTime + t.start;
+        osc.start(s);
+        osc.stop(s + t.dur);
+      }
+    } catch { /* AudioContext error */ }
+  }
+
+
+  dismissBanner(alarmId: number) {
+    this.bannerDismissed.add(alarmId);
+  }
+
+  visibleBanners() {
+    return this.bannerAlarms().filter(a => !this.bannerDismissed.has(a.id));
   }
 
   private getRouteTitle(route: ActivatedRoute): string {
@@ -164,6 +277,12 @@ export class HeaderBarComponent {
     const clickedInside = this.elementRef.nativeElement.contains(event.target);
     if (!clickedInside) {
       this.closeAll();
+    }
+    // Resume alarm sound after user interaction unlocks AudioContext
+    if (this.soundPending && this.audioCtx?.state === 'suspended') {
+      this.audioCtx.resume().then(() => {
+        if (this.soundPending) this.playAlarmPattern();
+      }).catch(() => {});
     }
   }
 

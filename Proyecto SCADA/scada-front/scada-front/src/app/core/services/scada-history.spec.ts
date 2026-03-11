@@ -1,13 +1,14 @@
+import '../../../test-init';
 import { TestBed } from '@angular/core/testing';
 
-import { ScadaHistory } from './scada-history';
+import { ScadaHistoryService } from './scada-history';
 
-describe('ScadaHistory', () => {
-  let service: ScadaHistory;
+describe('ScadaHistoryService', () => {
+  let service: ScadaHistoryService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
-    service = TestBed.inject(ScadaHistory);
+    service = TestBed.inject(ScadaHistoryService);
   });
 
   it('should be created', () => {

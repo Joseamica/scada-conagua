@@ -11,7 +11,6 @@ import {
   heroPresentationChartLine, heroChartBar, heroChartBarSquare, heroChartPie
 } from '@ng-icons/heroicons/outline';
 
-import { POZOS_DATA } from '../pozos/pozos-data';
 import { HeaderBarComponent } from '../../layout/header-bar/header-bar';
 import { FooterTabsComponent } from '../../layout/footer-tabs/footer-tabs';
 import { TelemetryService } from '../../core/services/telemetry';
@@ -136,8 +135,7 @@ export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit() {
     this.municipioId = Number(this.route.snapshot.paramMap.get('id'));
-    this.loadMunicipioData();
-    this.loadLiveFlowData();
+    this.loadData();
   }
 
   ngAfterViewInit() {
@@ -154,58 +152,53 @@ export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
 
   // ── Data ──
 
-  loadMunicipioData() {
-    const allEntries = Object.entries(POZOS_DATA);
-    const filtered = allEntries.filter(([, p]) => Number(p.municipioId) === this.municipioId);
-
-    this.pozosMunicipio = filtered.map(([, p]) => p);
-    this.totalPozos = this.pozosMunicipio.length;
-    this.pozosActivos = this.pozosMunicipio.filter((p: any) => (p.estatus || '').toLowerCase() === 'activo').length;
-
-    const active = this.pozosMunicipio.find((p: any) => (p.estatus || '').toLowerCase() === 'activo' && p.devEui);
-    this.activeDevEui = active?.devEui || '';
-
-    // Build sitios list from static data (enriched with live data later)
-    this.sitios.set(filtered.map(([slug, p]) => ({
-      slug,
-      nombre: p.nombre || slug,
-      estatus: p.estatus || 'Desconocido',
-      caudal: 0,
-      presion: 0,
-      lat: p.lat || 0,
-      lng: p.lng || 0
-    })));
-  }
-
-  private loadLiveFlowData() {
+  /** Load all data from API — replaces POZOS_DATA */
+  private loadData() {
     this.telemetryService.getSites().subscribe({
       next: (sites) => {
-        // Build devEui → slug lookup
-        const devEuiToSlug = new Map<string, string>();
-        Object.entries(POZOS_DATA).forEach(([slug, p]) => {
-          if (p.devEui) devEuiToSlug.set(p.devEui.trim().toLowerCase(), slug);
-        });
+        // Filter by municipio_id from API
+        const filtered = sites.filter(s => s.municipio_id === this.municipioId);
 
-        const devEuis = new Set(
-          this.pozosMunicipio
-            .filter((p: any) => (p.estatus || '').toLowerCase() === 'activo')
-            .map((p: any) => (p.devEui || '').trim().toLowerCase())
-            .filter((d: string) => d.length > 0)
+        this.pozosMunicipio = filtered.map(s => ({
+          devEui: s.dev_eui,
+          nombre: s.site_name,
+          estatus: s.estatus || 'activo',
+          lat: s.latitude || 0,
+          lng: s.longitude || 0,
+        }));
+        this.totalPozos = this.pozosMunicipio.length;
+        this.pozosActivos = this.pozosMunicipio.filter(
+          (p: any) => (p.estatus || '').toLowerCase() === 'activo'
+        ).length;
+
+        const active = this.pozosMunicipio.find(
+          (p: any) => (p.estatus || '').toLowerCase() === 'activo' && p.devEui
         );
+        this.activeDevEui = active?.devEui || '';
 
+        // Build sitios list from API data
+        this.sitios.set(filtered.map(s => ({
+          slug: s.dev_eui,
+          nombre: s.site_name || s.dev_eui,
+          estatus: s.estatus || 'Desconocido',
+          caudal: 0,
+          presion: 0,
+          lat: s.latitude || 0,
+          lng: s.longitude || 0,
+        })));
+
+        // Live flow aggregation from same response
         let totalFlow = 0;
         const liveMap = new Map<string, { caudal: number; presion: number }>();
 
-        sites.forEach(site => {
-          const siteDevEui = (site.dev_eui || '').trim().toLowerCase();
-          if (devEuis.has(siteDevEui)) {
-            const flow = Number(site.last_flow_value) || 0;
-            const pressure = Number(site.last_pressure_value) || 0;
-            if (flow > 0.01) totalFlow += flow;
-
-            const slug = devEuiToSlug.get(siteDevEui);
-            if (slug) liveMap.set(slug, { caudal: Math.round(flow * 100) / 100, presion: Math.round(pressure * 100) / 100 });
-          }
+        filtered.forEach(site => {
+          const flow = Number(site.last_flow_value) || 0;
+          const pressure = Number(site.last_pressure_value) || 0;
+          if (flow > 0.01) totalFlow += flow;
+          liveMap.set(site.dev_eui, {
+            caudal: Math.round(flow * 100) / 100,
+            presion: Math.round(pressure * 100) / 100,
+          });
         });
 
         this.gastoTotal = Math.round(totalFlow * 100) / 100;
@@ -217,8 +210,12 @@ export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
         }));
 
         this.cdr.detectChanges();
+        // Add map markers now that sitios have lat/lng from API
+        if (this.detalleMap) this.addPozoMarkers();
+        // Load charts now that activeDevEui is set
+        this.loadCharts();
       },
-      error: (err) => console.error('Error fetching live flow data:', err)
+      error: (err) => console.error('Error fetching sites data:', err)
     });
   }
 
@@ -235,7 +232,7 @@ export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
       : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
     this.tileLayer = L.tileLayer(tileUrl, { subdomains: 'abcd', maxZoom: 19 }).addTo(this.detalleMap);
     this.loadMunicipioDetalle(this.municipioId);
-    this.addPozoMarkers();
+    // Markers added after data loads from API (see loadData callback)
   }
 
   private addPozoMarkers() {

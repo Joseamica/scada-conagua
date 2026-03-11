@@ -18,10 +18,8 @@ import {
   heroXMark
 } from '@ng-icons/heroicons/outline';
 import { TelemetryService } from '../../../core/services/telemetry';
-import { AuthService } from '../../../core/services/auth.service';
 import { ThemeService } from '../../../core/services/theme.service';
 import { getEChartsColors } from '../../../core/utils/echarts-theme';
-import { POZOS_DATA } from '../../pozos/pozos-data';
 import { TIME_RANGES, TimeRange } from '../../../shared/time-ranges';
 import { DateRangePickerComponent, DateRangeOutput } from '../../../shared/date-range-picker/date-range-picker';
 
@@ -81,7 +79,7 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
   chart!: echarts.ECharts;
   radarChart!: echarts.ECharts;
 
-  private authService = inject(AuthService);
+  // authService removed — API already scopes sites by municipality
   private themeService = inject(ThemeService);
   private resizeHandler = () => { this.chart?.resize(); this.radarChart?.resize(); };
 
@@ -257,25 +255,8 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
   private loadSites(): void {
     this.telemetryService.getSites().subscribe({
       next: (sites) => {
-        const user = this.authService.currentUser();
-        const scope = user?.scope;
-        const scopeId = user?.scope_id;
-
-        let allowedDevEuis: Set<string> | null = null;
-        if (scope === 'Municipal' && scopeId) {
-          allowedDevEuis = new Set(
-            Object.values(POZOS_DATA)
-              .filter((p: any) => Number(p.municipioId) === scopeId)
-              .map((p: any) => (p.devEui || '').trim().toLowerCase())
-              .filter((d: string) => d.length > 0)
-          );
-        }
-
+        // API already scopes by municipality for municipal users
         const mapped = sites
-          .filter(s => {
-            if (!allowedDevEuis) return true;
-            return allowedDevEuis.has((s.dev_eui || '').trim().toLowerCase());
-          })
           .map(s => ({ devEUI: s.dev_eui, name: s.site_name }));
 
         this.sitesDisponibles.set(mapped);

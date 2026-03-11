@@ -833,7 +833,7 @@
                                 <option [value]="'col:' + col.id">{{ col.alias || col.measurement }}</option>
                               }
                             </optgroup>
-                            @if (detail.formulas?.length) {
+                            @if (detail.formulas.length) {
                               <optgroup label="Formulas">
                                 @for (f of detail.formulas; track f.id) {
                                   <option [value]="'formula:' + f.id">{{ f.alias }}</option>
