@@ -214,17 +214,21 @@ export class ModuloGis implements OnInit, OnDestroy {
       .trim();
   }
 
-  /** Cache ALL sites from API — needed for dynamic popup lookup */
-  private loadApiSitesCache() {
-    this.telemetryService.getSites().subscribe({
-      next: (sites) => {
-        this.apiSitesByName.clear();
-        sites.forEach(site => {
-          const key = this.normalizeKey(site.site_name || '');
-          if (key) this.apiSitesByName.set(key, site);
-        });
-      },
-      error: () => {}
+  /** Cache ALL sites from API — needed for dynamic popup lookup.
+   *  Returns a Promise so callers can wait for the cache to be ready. */
+  private loadApiSitesCache(): Promise<void> {
+    return new Promise((resolve) => {
+      this.telemetryService.getSites().subscribe({
+        next: (sites) => {
+          this.apiSitesByName.clear();
+          sites.forEach(site => {
+            const key = this.normalizeKey(site.site_name || '');
+            if (key) this.apiSitesByName.set(key, site);
+          });
+          resolve();
+        },
+        error: () => resolve(), // proceed even on error
+      });
     });
   }
 
@@ -281,10 +285,92 @@ export class ModuloGis implements OnInit, OnDestroy {
   }
 
   /**
+   * Deep-clean a normalized name for fuzzy comparison:
+   * - Remove dashes, quotes, parentheses
+   * - Strip leading zeros from numbers ("001" → "1", "05" → "5")
+   * - Convert trailing Roman numerals to Arabic (II → 2, III → 3)
+   * - Collapse whitespace
+   */
+  private cleanForMatch(s: string): string {
+    return s
+      .replace(/[-"'()&]/g, ' ')       // remove dashes, quotes, parens, ampersand
+      .replace(/&quot;/g, ' ')          // HTML entities in KML
+      .replace(/\b0+(\d)/g, '$1')       // strip leading zeros: "001" → "1"
+      .replace(/\bIV\b/g, '4')          // Roman → Arabic (before III/II/I to avoid partial)
+      .replace(/\bIII\b/g, '3')
+      .replace(/\bII\b/g, '2')
+      .replace(/\s+I$/g, ' 1')          // trailing " I" → " 1" (only at end to avoid IXTAPALUCA)
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
+   * Extract the site type+number prefix: "POZO 13 CHIMALPA 2" → "POZO 13"
+   */
+  private extractSiteNumberKey(cleaned: string): string | null {
+    const m = cleaned.match(/^(POZO|TANQUE|CARCAMO|CAUDAL|PRESION|PLUVIOMETRO)\s+(\d+)\b/);
+    return m ? m[1] + ' ' + m[2] : null;
+  }
+
+  /**
+   * Lookup an API site by name — exact first, then fuzzy prefix/dash match,
+   * then site-number fallback.
+   * Caches fuzzy hits in apiSitesByName for O(1) on subsequent lookups.
+   */
+  private lookupApiSite(name: string): any | undefined {
+    const key = this.normalizeKey(name);
+    let site = this.apiSitesByName.get(key);
+    if (site) return site;
+
+    const cleanKml = this.cleanForMatch(key);
+    let bestMatch: any | undefined;
+    let bestLen = 0;
+
+    for (const [dbKey, dbSite] of this.apiSitesByName.entries()) {
+      const cleanDb = this.cleanForMatch(dbKey);
+      // Exact after cleaning (handles dashes, leading zeros, quotes, roman numerals)
+      if (cleanKml === cleanDb) {
+        bestMatch = dbSite;
+        break;
+      }
+      // DB name is word-boundary prefix of KML name (e.g. "POZO 24" in "POZO 24 IXTAPALUCA")
+      if (cleanKml.startsWith(cleanDb + ' ') && cleanDb.length > bestLen) {
+        bestMatch = dbSite;
+        bestLen = cleanDb.length;
+      }
+      // KML name is word-boundary prefix of DB name
+      if (cleanDb.startsWith(cleanKml + ' ') && cleanKml.length > bestLen) {
+        bestMatch = dbSite;
+        bestLen = cleanKml.length;
+      }
+    }
+
+    // Fallback: match by site type+number (e.g. "POZO 13" from "POZO 13 IXTAPALUCA" matches "POZO 13 CHIMALPA 2")
+    if (!bestMatch) {
+      const kmlNumKey = this.extractSiteNumberKey(cleanKml);
+      if (kmlNumKey) {
+        for (const [dbKey, dbSite] of this.apiSitesByName.entries()) {
+          const dbNumKey = this.extractSiteNumberKey(this.cleanForMatch(dbKey));
+          if (dbNumKey === kmlNumKey) {
+            bestMatch = dbSite;
+            break;
+          }
+        }
+      }
+    }
+
+    // Cache fuzzy result for future lookups
+    if (bestMatch) {
+      this.apiSitesByName.set(key, bestMatch);
+    }
+    return bestMatch;
+  }
+
+  /**
    * Resolve estatus from API cache (DB is the single source of truth).
    */
   private resolveEstatus(name: string): string {
-    const apiSite = this.apiSitesByName.get(this.normalizeKey(name));
+    const apiSite = this.lookupApiSite(name);
     if (apiSite?.estatus) {
       return apiSite.estatus.toLowerCase().trim();
     }
@@ -406,8 +492,7 @@ export class ModuloGis implements OnInit, OnDestroy {
   // ─────────────────────────────
 
   private buildPozoPopup(name: string): string {
-    const nameKey = this.normalizeKey(name);
-    const apiSite = this.apiSitesByName.get(nameKey);
+    const apiSite = this.lookupApiSite(name);
     const devEui = (apiSite?.dev_eui || '').trim();
     // Navigate to isometric view using devEUI as slug
     const detailUrl = devEui ? `${DETAIL_BASE_URL}/${devEui}` : '';
@@ -538,7 +623,7 @@ export class ModuloGis implements OnInit, OnDestroy {
 
 
           // Decide qué URL usar (gris o color) — prefer API site_type if cached
-            const cachedSite = this.apiSitesByName.get(this.normalizeKey(name));
+            const cachedSite = this.lookupApiSite(name);
             const iconUrl = this.resolveSiteIconUrl(name, cachedSite?.site_type);
 
           // ✅ meta primero, luego scale
@@ -571,7 +656,7 @@ export class ModuloGis implements OnInit, OnDestroy {
               }
 
               // Render mini chart for this well
-              const devEui = (this.apiSitesByName.get(this.normalizeKey(name))?.dev_eui || '').trim();
+              const devEui = (this.lookupApiSite(name)?.dev_eui || '').trim();
               if (devEui) {
                 this.renderPozoPopupChart(devEui, this.slugify(name));
               }
@@ -1141,7 +1226,6 @@ export class ModuloGis implements OnInit, OnDestroy {
 
     // 4) GeoJSON / overlays — conditional loading based on scope
     this.loadMunicipios();
-    this.loadApiSitesCache(); // Always cache API sites for dynamic popups
     this.loadGeoServerLayers(); // Load WMS layers from GeoServer
     if (!isMunicipal) {
       // State-level overlays: skip for Municipal users (saves ~4MB + 60s)
@@ -1171,14 +1255,14 @@ export class ModuloGis implements OnInit, OnDestroy {
       // NIVEL 1: Federal - Carga total de infraestructura
       console.log('[GIS] Access: FEDERAL. Loading all sources.');
       filteredSources = SITIOS_SOURCES;
-    } 
+    }
     else if (user.scope === 'Estatal') {
       // NIVEL 2: Estatal - Filtra todos los municipios del estado (ej. Edomex ID 15)
       // Default to 15 (Estado de Mexico) if estado_id is missing — OCAVM only operates in EdoMex
       const estadoId = user.estado_id || 15;
       console.log(`[GIS] Access: ESTATAL (ID: ${estadoId}). Filtering by State.`);
       filteredSources = SITIOS_SOURCES.filter(src => src.estadoId === estadoId);
-    } 
+    }
     else if (user.scope === 'Municipal') {
       // NIVEL 3: Municipal - Restricción total al scope_id (ej. Ecatepec ID 34)
       console.log(`[GIS] Access: MUNICIPAL (ID: ${user.scope_id}). Single municipality view.`);
@@ -1196,6 +1280,10 @@ export class ModuloGis implements OnInit, OnDestroy {
       this.map.setView([19.35, -99.05], 10);
     }
     // Federal keeps default view ([19.3, -99.6], 8)
+
+    // CRITICAL: Load API sites cache FIRST, then KMLs.
+    // resolveEstatus() needs apiSitesByName populated before KML markers are created.
+    this.loadApiSitesCache().then(() => {
 
     // Load KMLs and fitBounds once all are ready
     let loadedCount = 0;
@@ -1222,6 +1310,8 @@ export class ModuloGis implements OnInit, OnDestroy {
         });
       });
     }
+
+    }); // end loadApiSitesCache().then()
 
     // ─────────────────────────────
     // 🟦 KML DE CAPAS (skip for Municipal — state-level infrastructure)

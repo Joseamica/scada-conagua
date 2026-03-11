@@ -55,6 +55,44 @@ const CHART_TYPE_OPTIONS: { key: ChartType; label: string; icon: string }[] = [
   { key: 'radar', label: 'Radar',  icon: 'heroChartPie' },
 ];
 
+interface ScadaRadarAxis {
+  key: 'caudal' | 'presion' | 'comunicacion';
+  label: string;
+}
+
+interface ScadaRadarRawValues {
+  caudal: number | null;
+  presion: number | null;
+  rssiDbm: number | null;
+  snr: number | null;
+  syncedAt: number | null;
+}
+
+interface ScadaRadarSeriesDatum {
+  name: string;
+  value: [number, number, number];
+  raw: ScadaRadarRawValues;
+  lineStyle: { width: number; color: string };
+  itemStyle: { color: string };
+  areaStyle: { color: string };
+}
+
+const RADAR_SCADA_AXES: ScadaRadarAxis[] = [
+  { key: 'caudal', label: 'Caudal operativo' },
+  { key: 'presion', label: 'Presión operativa' },
+  { key: 'comunicacion', label: 'Comunicación' },
+];
+
+const RADAR_SCADA_REQUIRED_KEYS = ['caudal_lts', 'presion_kg', 'rssi', 'snr'] as const;
+const RADAR_CAUDAL_REFERENCE_LTS = 120;
+const RADAR_PRESSURE_OPT_LOW = 2.5;
+const RADAR_PRESSURE_OPT_HIGH = 6.5;
+const RADAR_PRESSURE_MAX = 10;
+const RADAR_RSSI_MIN_DBM = -120;
+const RADAR_RSSI_MAX_DBM = -30;
+const RADAR_SNR_MIN_DB = -20;
+const RADAR_SNR_MAX_DB = 20;
+
 @Component({
   selector: 'app-telemetria-avanzada',
   standalone: true,
@@ -312,6 +350,7 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
   }
 
   toggleVar(key: string) {
+    if (this.chartType() === 'radar') return;
     const current = new Set(this.selectedVars());
     if (current.has(key)) {
       if (current.size <= 1) return;
@@ -396,9 +435,9 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.loading.set(true);
-    // Radar always fetches ALL variables to form a proper polygon
+    // Radar SCADA uses fixed operational axes and requires these variables.
     const selected = this.chartType() === 'radar'
-      ? new Set(this.chartVariables.map(v => v.key))
+      ? new Set<string>(RADAR_SCADA_REQUIRED_KEYS)
       : this.selectedVars();
 
     const requests = activeSites.map(devEUI => {
@@ -729,24 +768,26 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
 
   private computeVariableStats() {
     const stats: Record<string, { min: number; max: number; avg: number; current: number }> = {};
-    const isRadar = this.chartType() === 'radar';
     for (const v of this.chartVariables) {
-      if (!isRadar && !this.selectedVars().has(v.key)) continue;
+      if (!this.selectedVars().has(v.key)) continue;
       const allValues: number[] = [];
-      let lastValue = 0;
+      const latestValues: number[] = [];
       for (const site of this.selectedSites()) {
         const data = this.lastChartData[site]?.[v.key];
         if (!data) continue;
         const vals = data.map(d => d[1]).filter((x): x is number => x !== null);
         allValues.push(...vals);
-        if (vals.length > 0) lastValue = vals[vals.length - 1];
+        if (vals.length > 0) latestValues.push(vals[vals.length - 1]);
       }
       if (allValues.length === 0) continue;
+      const latestAvg = latestValues.length > 0
+        ? latestValues.reduce((a, b) => a + b, 0) / latestValues.length
+        : 0;
       stats[v.key] = {
         min: Math.round(Math.min(...allValues) * 1000) / 1000,
         max: Math.round(Math.max(...allValues) * 1000) / 1000,
         avg: Math.round((allValues.reduce((a, b) => a + b, 0) / allValues.length) * 1000) / 1000,
-        current: Math.round(lastValue * 1000) / 1000
+        current: Math.round(latestAvg * 1000) / 1000
       };
     }
     this.variableStats.set(stats);
@@ -764,71 +805,54 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
     // Ensure correct dimensions after toggling from chart-hidden (0x0)
     this.radarChart.resize();
 
-    const stats = this.variableStats();
-    // Radar always uses ALL variables that have data
-    const activeVars = this.chartVariables.filter(v => stats[v.key]);
     const activeSites = this.selectedSites();
     const themeColors = getEChartsColors(this.themeService.resolved());
 
-    if (activeVars.length < 3 || activeSites.length === 0) {
+    if (activeSites.length === 0) {
       this.radarChart.setOption({ radar: { indicator: [] }, series: [] }, true);
       return;
     }
 
-    // Per-site current values for multi-site mode
-    const perSite: Record<string, Record<string, number>> = {};
-    for (const site of activeSites) {
-      perSite[site] = {};
-      for (const v of activeVars) {
-        const data = this.lastChartData[site]?.[v.key];
-        if (!data) continue;
-        const vals = data.map(d => d[1]).filter((x): x is number => x !== null);
-        if (vals.length > 0) perSite[site][v.key] = vals[vals.length - 1];
-      }
+    const seriesData = this.buildScadaRadarSeries(activeSites);
+    if (seriesData.length === 0) {
+      this.radarChart.setOption({ radar: { indicator: [] }, series: [] }, true);
+      return;
     }
 
-    const indicator = activeVars.map(v => ({
-      name: `${v.label}\n(${v.unit})`,
-      max: Math.round((stats[v.key].max * 1.2 || 1) * 100) / 100
+    const indicator = RADAR_SCADA_AXES.map(a => ({
+      name: `${a.label}\n(0-100)`,
+      min: 0,
+      max: 100
     }));
-
-    let seriesData: any[];
-    if (activeSites.length === 1) {
-      seriesData = [
-        {
-          name: 'Actual',
-          value: activeVars.map(v => Math.round((stats[v.key]?.current ?? 0) * 100) / 100),
-          lineStyle: { width: 2 },
-          itemStyle: { color: '#007bff' },
-          areaStyle: { color: 'rgba(0, 123, 255, 0.15)' }
-        },
-        {
-          name: 'Promedio',
-          value: activeVars.map(v => Math.round((stats[v.key]?.avg ?? 0) * 100) / 100),
-          lineStyle: { width: 1.5, type: 'dashed' },
-          itemStyle: { color: '#28a745' },
-          areaStyle: { color: 'rgba(40, 167, 69, 0.08)' }
-        }
-      ];
-    } else {
-      seriesData = activeSites.map((site, i) => {
-        const color = SITE_COLORS[i % SITE_COLORS.length];
-        return {
-          name: this.getSiteName(site),
-          value: activeVars.map(v => Math.round((perSite[site]?.[v.key] ?? 0) * 100) / 100),
-          lineStyle: { width: 2, color },
-          itemStyle: { color },
-          areaStyle: { color: color + '20' }
-        };
-      });
-    }
 
     this.radarChart.setOption({
       tooltip: {
         trigger: 'item',
         backgroundColor: 'rgba(15,23,42,0.92)',
         borderColor: 'rgba(255,255,255,0.08)',
-        textStyle: { color: '#e2e8f0', fontSize: 12 }
+        textStyle: { color: '#e2e8f0', fontSize: 12 },
+        formatter: (params: any) => {
+          const d = params?.data as ScadaRadarSeriesDatum | undefined;
+          if (!d || !d.raw) return params?.name || '';
+          const [flowScore, pressureScore, commScore] = d.value;
+          const fmt = (n: number | null, digits = 2) => (n == null ? '—' : n.toFixed(digits));
+          const syncedAt = d.raw.syncedAt
+            ? new Date(d.raw.syncedAt).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+            : '—';
+          return `
+            <div style="margin-bottom:6px;font-weight:700;color:#f1f5f9">${d.name}</div>
+            <div style="margin-bottom:6px;color:#cbd5e1">Índice SCADA: ${Math.round((flowScore + pressureScore + commScore) / 3)}/100</div>
+            <div style="display:flex;justify-content:space-between;gap:14px"><span>Caudal:</span><b>${flowScore.toFixed(1)}</b></div>
+            <div style="display:flex;justify-content:space-between;gap:14px"><span>Presión:</span><b>${pressureScore.toFixed(1)}</b></div>
+            <div style="display:flex;justify-content:space-between;gap:14px"><span>Comunicación:</span><b>${commScore.toFixed(1)}</b></div>
+            <div style="height:1px;background:rgba(148,163,184,.25);margin:7px 0"></div>
+            <div style="display:flex;justify-content:space-between;gap:14px"><span>Caudal real:</span><b>${fmt(d.raw.caudal)} L/s</b></div>
+            <div style="display:flex;justify-content:space-between;gap:14px"><span>Presión real:</span><b>${fmt(d.raw.presion)} Kg/cm²</b></div>
+            <div style="display:flex;justify-content:space-between;gap:14px"><span>RSSI:</span><b>${fmt(d.raw.rssiDbm, 0)} dBm</b></div>
+            <div style="display:flex;justify-content:space-between;gap:14px"><span>SNR:</span><b>${fmt(d.raw.snr, 1)} dB</b></div>
+            <div style="margin-top:6px;color:#94a3b8;font-size:11px">Sincronizado: ${syncedAt}</div>
+          `;
+        }
       },
       legend: {
         bottom: 0,
@@ -846,6 +870,125 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
       },
       series: [{ type: 'radar', data: seriesData, symbol: 'circle', symbolSize: 5 }]
     }, true);
+  }
+
+  private buildScadaRadarSeries(activeSites: string[]): ScadaRadarSeriesDatum[] {
+    const result: ScadaRadarSeriesDatum[] = [];
+
+    for (let i = 0; i < activeSites.length; i++) {
+      const site = activeSites[i];
+      const color = SITE_COLORS[i % SITE_COLORS.length];
+
+      const caudalSeries = this.lastChartData[site]?.['caudal_lts'];
+      const pressureSeries = this.lastChartData[site]?.['presion_kg'];
+      const rssiSeries = this.lastChartData[site]?.['rssi'];
+      const snrSeries = this.lastChartData[site]?.['snr'];
+
+      const timestampCandidates = [
+        this.getLastTimestamp(caudalSeries),
+        this.getLastTimestamp(pressureSeries),
+        this.getLastTimestamp(rssiSeries),
+        this.getLastTimestamp(snrSeries)
+      ].filter((x): x is number => x != null);
+
+      if (timestampCandidates.length === 0) continue;
+
+      // Use the earliest "latest timestamp" to compare variables from the same operational instant.
+      const syncTs = Math.min(...timestampCandidates);
+      const caudalRaw = this.getValueAtOrBefore(caudalSeries, syncTs);
+      const pressureRaw = this.getValueAtOrBefore(pressureSeries, syncTs);
+      const rssiRaw = this.normalizeRssiDbm(this.getValueAtOrBefore(rssiSeries, syncTs));
+      const snrRaw = this.getValueAtOrBefore(snrSeries, syncTs);
+
+      if (caudalRaw == null && pressureRaw == null) continue;
+
+      const flowScore = this.scoreCaudal(caudalRaw);
+      const pressureScore = this.scorePresion(pressureRaw);
+      const communicationScore = this.scoreComunicacion(rssiRaw, snrRaw);
+
+      result.push({
+        name: this.getSiteName(site),
+        value: [flowScore, pressureScore, communicationScore],
+        raw: {
+          caudal: caudalRaw,
+          presion: pressureRaw,
+          rssiDbm: rssiRaw,
+          snr: snrRaw,
+          syncedAt: syncTs
+        },
+        lineStyle: { width: 2, color },
+        itemStyle: { color },
+        areaStyle: { color: color + '20' }
+      });
+    }
+
+    return result;
+  }
+
+  private getLastTimestamp(series?: [number, number | null][]): number | null {
+    if (!series || series.length === 0) return null;
+    for (let i = series.length - 1; i >= 0; i--) {
+      const [ts, value] = series[i];
+      if (value != null && Number.isFinite(value)) return ts;
+    }
+    return null;
+  }
+
+  private getValueAtOrBefore(series: [number, number | null][] | undefined, ts: number): number | null {
+    if (!series || series.length === 0) return null;
+    for (let i = series.length - 1; i >= 0; i--) {
+      if (series[i][0] <= ts && series[i][1] != null) {
+        return Number(series[i][1]);
+      }
+    }
+    return null;
+  }
+
+  private normalizeRssiDbm(raw: number | null): number | null {
+    if (raw == null) return null;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return null;
+    return n > 0 ? -n : n;
+  }
+
+  private clampScore(value: number): number {
+    return Math.max(0, Math.min(100, Math.round(value * 10) / 10));
+  }
+
+  private scoreFromRange(value: number, min: number, max: number): number {
+    if (max <= min) return 0;
+    return this.clampScore(((value - min) / (max - min)) * 100);
+  }
+
+  private scoreCaudal(value: number | null): number {
+    if (value == null || value <= 0) return 0;
+    return this.scoreFromRange(value, 0, RADAR_CAUDAL_REFERENCE_LTS);
+  }
+
+  private scorePresion(value: number | null): number {
+    if (value == null || value <= 0) return 0;
+    if (value <= RADAR_PRESSURE_OPT_LOW) {
+      return this.scoreFromRange(value, 0, RADAR_PRESSURE_OPT_LOW);
+    }
+    if (value <= RADAR_PRESSURE_OPT_HIGH) {
+      return 100;
+    }
+    if (value <= RADAR_PRESSURE_MAX) {
+      return this.scoreFromRange(RADAR_PRESSURE_MAX - value, 0, RADAR_PRESSURE_MAX - RADAR_PRESSURE_OPT_HIGH);
+    }
+    return 0;
+  }
+
+  private scoreComunicacion(rssiDbm: number | null, snr: number | null): number {
+    const scores: number[] = [];
+    if (rssiDbm != null) {
+      scores.push(this.scoreFromRange(rssiDbm, RADAR_RSSI_MIN_DBM, RADAR_RSSI_MAX_DBM));
+    }
+    if (snr != null) {
+      scores.push(this.scoreFromRange(snr, RADAR_SNR_MIN_DB, RADAR_SNR_MAX_DB));
+    }
+    if (scores.length === 0) return 0;
+    return this.clampScore(scores.reduce((a, b) => a + b, 0) / scores.length);
   }
 
   goBack(): void {

@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reporte Semanal — SCADA SOA · 10 Mar 2026</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      line-height: 1.6;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1a2332 0%, #0d1117 100%);
+      border-bottom: 1px solid #21262d;
+      padding: 40px 48px 32px;
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-dot {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: linear-gradient(135deg, #2f81f7, #388bfd);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 800; color: #fff;
+    }
+    .brand-name { font-size: 18px; font-weight: 700; color: #e6edf3; }
+    .brand-sub { font-size: 12px; color: #8b949e; margin-top: 2px; }
+    .period-badge {
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 13px;
+      color: #8b949e;
+    }
+    h1 {
+      margin-top: 24px;
+      font-size: 28px;
+      font-weight: 800;
+      color: #e6edf3;
+    }
+    h1 span { color: #2f81f7; }
+    .subtitle {
+      margin-top: 6px;
+      font-size: 15px;
+      color: #8b949e;
+    }
+
+    /* Stats */
+    .stats-row {
+      display: flex;
+      gap: 12px;
+      padding: 24px 48px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid #21262d;
+    }
+    .stat-card {
+      flex: 1 1 140px;
+      background: #161b22;
+      border: 1px solid #21262d;
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+    .stat-value { font-size: 30px; font-weight: 800; color: #2f81f7; }
+    .stat-label { font-size: 12px; color: #8b949e; margin-top: 4px; }
+    .stat-card.green .stat-value { color: #3fb950; }
+    .stat-card.purple .stat-value { color: #a371f7; }
+    .stat-card.orange .stat-value { color: #d29922; }
+    .stat-card.teal .stat-value { color: #39d353; }
+
+    /* Content */
+    .content { padding: 32px 48px; max-width: 1200px; }
+
+    /* Day section */
+    .day-section { margin-bottom: 40px; }
+    .day-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .day-label {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #8b949e;
+    }
+    .day-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: #e6edf3;
+    }
+    .day-line { flex: 1; height: 1px; background: #21262d; }
+
+    /* Commit card */
+    .commit-card {
+      background: #161b22;
+      border: 1px solid #21262d;
+      border-radius: 10px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .commit-card:hover { border-color: #30363d; }
+    .commit-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid #21262d;
+    }
+    .commit-type {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 12px;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    .type-feat { background: #1f4821; color: #3fb950; border: 1px solid #2ea043; }
+    .type-fix  { background: #3d1f1f; color: #f85149; border: 1px solid #da3633; }
+    .type-docs { background: #1f2d3d; color: #79c0ff; border: 1px solid #388bfd; }
+    .type-test { background: #2d2d1f; color: #d29922; border: 1px solid #bb8009; }
+    .type-chore { background: #2d1f3d; color: #a371f7; border: 1px solid #8957e5; }
+
+    .commit-title { font-size: 14px; font-weight: 600; color: #e6edf3; flex: 1; }
+    .commit-hash {
+      font-size: 11px;
+      color: #6e7681;
+      font-family: 'Consolas', monospace;
+    }
+    .commit-time { font-size: 11px; color: #6e7681; white-space: nowrap; }
+
+    .commit-body { padding: 14px 18px; }
+    .feature-list { list-style: none; padding: 0; }
+    .feature-list li {
+      display: flex;
+      gap: 10px;
+      padding: 5px 0;
+      font-size: 13.5px;
+      color: #c9d1d9;
+      border-bottom: 1px solid #21262d;
+    }
+    .feature-list li:last-child { border-bottom: none; }
+    .feat-icon { font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+    .feat-text strong { color: #e6edf3; }
+
+    /* Tags / scope badges */
+    .scope {
+      font-size: 11px;
+      background: #1f2d3d;
+      color: #79c0ff;
+      border: 1px solid #1f6feb;
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-family: monospace;
+    }
+
+    /* Files changed pills */
+    .files-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 10px 18px;
+      background: #0d1117;
+      border-top: 1px solid #21262d;
+    }
+    .file-pill {
+      font-size: 11px;
+      background: #21262d;
+      color: #8b949e;
+      border-radius: 10px;
+      padding: 3px 10px;
+      font-family: monospace;
+    }
+    .file-pill.key { background: #1f2d3d; color: #79c0ff; }
+
+    /* Sub-section: migrations */
+    .migrations-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 8px 18px 12px;
+      background: #0d1117;
+    }
+    .migration-badge {
+      font-size: 11px;
+      background: #2d2030;
+      color: #a371f7;
+      border: 1px solid #6e40c9;
+      border-radius: 10px;
+      padding: 3px 10px;
+      font-family: monospace;
+    }
+
+    /* Tests section */
+    .tests-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 8px 18px 12px;
+      background: #0d1117;
+    }
+    .test-badge {
+      font-size: 11px;
+      background: #2d2a10;
+      color: #d29922;
+      border: 1px solid #bb8009;
+      border-radius: 10px;
+      padding: 3px 10px;
+    }
+
+    /* Section divider label */
+    .section-divider {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #484f58;
+      padding: 8px 18px 4px;
+    }
+
+    /* Summary box */
+    .summary-box {
+      background: #161b22;
+      border: 1px solid #1f6feb;
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin-top: 32px;
+    }
+    .summary-box h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #79c0ff;
+      margin-bottom: 16px;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .summary-item {
+      display: flex;
+      gap: 10px;
+      font-size: 13.5px;
+      color: #c9d1d9;
+    }
+    .summary-item .icon { flex-shrink: 0; }
+    .summary-item strong { color: #e6edf3; }
+
+    /* Pending section */
+    .pending-box {
+      background: #161b22;
+      border: 1px solid #d29922;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-top: 20px;
+    }
+    .pending-box h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #d29922;
+      margin-bottom: 12px;
+    }
+    .pending-list { list-style: none; }
+    .pending-list li {
+      font-size: 13px;
+      color: #8b949e;
+      padding: 4px 0;
+      display: flex;
+      gap: 8px;
+    }
+    .pending-list li::before { content: '·'; color: #d29922; font-weight: 900; }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 12px;
+      color: #484f58;
+      border-top: 1px solid #21262d;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="brand">
+      <div class="brand-dot">S</div>
+      <div>
+        <div class="brand-name">SCADA SOA — Sistema de Operación del Agua</div>
+        <div class="brand-sub">CONAGUA / OCAVM · PlayTelecom</div>
+      </div>
+    </div>
+    <div class="period-badge">📅 Jue 5 Mar — Mar 10 Mar 2026</div>
+  </div>
+  <h1>Reporte de <span>Avances Semanales</span></h1>
+  <div class="subtitle">Resumen completo de desarrollo · 13 commits · 3 subproyectos</div>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-value">13</div>
+    <div class="stat-label">Commits entregados</div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-value">~9,000</div>
+    <div class="stat-label">Líneas de código nuevas</div>
+  </div>
+  <div class="stat-card purple">
+    <div class="stat-value">11</div>
+    <div class="stat-label">Migraciones SQL</div>
+  </div>
+  <div class="stat-card orange">
+    <div class="stat-value">62</div>
+    <div class="stat-label">Tests unitarios passing</div>
+  </div>
+  <div class="stat-card teal">
+    <div class="stat-value">29</div>
+    <div class="stat-label">Archivos de prueba</div>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- ─────────────────── MARTES 10 MARZO ─────────────────── -->
+  <div class="day-section">
+    <div class="day-header">
+      <div>
+        <div class="day-label">Martes</div>
+        <div class="day-name">10 de Marzo</div>
+      </div>
+      <div class="day-line"></div>
+    </div>
+
+    <!-- Commit: sharing + alarm widget + clock/variable -->
+    <div class="commit-card">
+      <div class="commit-header">
+        <span class="commit-type type-feat">feat</span>
+        <span class="commit-title">Compartir sinópticos, widget de alarmas, widgets de reloj y variable, soft-delete con papelera</span>
+        <span class="commit-hash">393e696</span>
+        <span class="commit-time">13:47</span>
+      </div>
+      <div class="commit-body">
+        <ul class="feature-list">
+          <li><span class="feat-icon">🔗</span><span class="feat-text"><strong>Compartir sinópticos:</strong> Diálogo de compartir desde la tarjeta de proyecto — buscar usuarios, asignar permisos <em>lectura / edición</em>. Sección "Compartidos conmigo" en el home de sinópticos con badges de permiso.</span></li>
+          <li><span class="feat-icon">🔒</span><span class="feat-text"><strong>Control de acceso en backend:</strong> Listado filtrado por propietario + compartidos, verificación de permisos en carga y guardado, corrección de orden de rutas.</span></li>
+          <li><span class="feat-icon">🚨</span><span class="feat-text"><strong>Widget de Alarmas:</strong> Muestra alarmas activas en tiempo real con color por severidad (aviso / alerta / crítico). Polling automático cada 15 s.</span></li>
+          <li><span class="feat-icon">🕐</span><span class="feat-text"><strong>Widget de Reloj:</strong> Formato 12 h / 24 h configurable, con switches para mostrar/ocultar fecha y segundos. Actualización en vivo.</span></li>
+          <li><span class="feat-icon">📊</span><span class="feat-text"><strong>Widget de Variable:</strong> Vincula el widget a una vista de variables y muestra el último valor con polling de 30 s.</span></li>
+          <li><span class="feat-icon">🗑️</span><span class="feat-text"><strong>Soft-delete con Papelera:</strong> Los sinópticos eliminados van a papelera; desde ahí se pueden restaurar. No hay borrado permanente accidental.</span></li>
+          <li><span class="feat-icon">🐛</span><span class="feat-text"><strong>Bugfixes:</strong> Panel de actividad con etiquetas de acciones traducidas (guardado, restaurado, compartido, eliminado). Guard contra devEUI undefined en widgets de tipo no-dispositivo.</span></li>
+        </ul>
+      </div>
+      <div class="section-divider">Archivos clave</div>
+      <div class="files-row">
+        <span class="file-pill key">alarm-widget.ts</span>
+        <span class="file-pill key">clock-widget.ts (nuevo)</span>
+        <span class="file-pill key">variable-widget.ts (nuevo)</span>
+        <span class="file-pill key">project-detail.ts/html</span>
+        <span class="file-pill key">sinopticos-home.ts</span>
+        <span class="file-pill">sinoptico-routes.ts</span>
+        <span class="file-pill">activity-panel.ts</span>
+      </div>
+    </div>
+
+    <!-- Commit: clock widget + variable widget + soft delete -->
+    <div class="commit-card">
+      <div class="commit-header">
+        <span class="commit-type type-feat">feat</span>
+        <span class="commit-title">Widget reloj, widget variable, soft-delete backend, gráfica de series, persistencia de incógnitas</span>
+        <span class="commit-hash">08099ba</span>
+        <span class="commit-time">11:32</span>
+      </div>
+      <div class="commit-body">
+        <ul class="feature-list">
+          <li><span class="feat-icon">📈</span><span class="feat-text"><strong>Gráfica de series de vistas de variables:</strong> Selector de rango temporal (1 h / 6 h / 24 h / 7 d / 30 d). Consultas reales a InfluxDB con agregación por bucket.</span></li>
+          <li><span class="feat-icon">💾</span><span class="feat-text"><strong>Backend soft-delete:</strong> Migración <code>025_sinoptico_soft_delete.sql</code>. Columnas <code>deleted_at</code> y <code>deleted_by</code>. Endpoint restore.</span></li>
+          <li><span class="feat-icon">🏷️</span><span class="feat-text"><strong>Persistencia de nombre de incógnitas:</strong> Migración <code>024_add_incognita_name.sql</code>. Los alias de fórmulas se guardan y recuperan correctamente.</span></li>
+          <li><span class="feat-icon">⚡</span><span class="feat-text"><strong>Agregación real InfluxDB:</strong> Los endpoints de variable views ya calculan AVG / MIN / MAX / SUM / BAL sobre los datos históricos reales en vez de devolver valores dummy.</span></li>
+        </ul>
+      </div>
+      <div class="section-divider">Migraciones</div>
+      <div class="migrations-row">
+        <span class="migration-badge">024_add_incognita_name.sql</span>
+        <span class="migration-badge">025_sinoptico_soft_delete.sql</span>
+      </div>
+      <div class="section-divider">Archivos clave</div>
+      <div class="files-row">
+        <span class="file-pill key">variable-view-editor.ts/html/css</span>
+        <span class="file-pill key">variable-routes.ts</span>
+        <span class="file-pill">sinoptico-routes.ts</span>
+        <span class="file-pill">sinoptico-editor.ts/html/css</span>
+        <span class="file-pill">sinoptico-viewer.ts</span>
+      </div>
+    </div>
+
+    <!-- Commit: fix SINOPTICO_RESTORED -->
+    <div class="commit-card">
+      <div class="commit-header">
+        <span class="commit-type type-fix">fix</span>
+        <span class="commit-title">Agregar SINOPTICO_RESTORED al tipo unión AuditAction</span>
+        <span class="commit-hash">617cd9a</span>
+        <span class="commit-time">11:37</span>
+      </div>
+      <div class="commit-body">
+        <ul class="feature-list">
+          <li><span class="feat-icon">🔧</span><span class="feat-text">Corrección de TypeScript: el tipo <code>AuditAction</code> en query-api no incluía <code>SINOPTICO_RESTORED</code>, causando error de compilación al registrar la acción de restaurar sinóptico desde papelera.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Commit: editor features -->
+    <div class="commit-card">
+      <div class="commit-header">
+        <span class="commit-type type-feat">feat</span>
+        <span class="commit-title">Editor de sinópticos — widgets texto/shape/link, duplicar, menú contextual, guías de snap, auto-promote estatus, audit logging</span>
+        <span class="commit-hash">6a99273</span>
+        <span class="commit-time">09:24</span>
+      </div>
+      <div class="commit-body">
+        <ul class="feature-list">
+          <li><span class="feat-icon">🔤</span><span class="feat-text"><strong>Widget de Texto:</strong> Bloque de texto libre con fuente configurable, tamaño, negrita, itálica, color.</span></li>
+          <li><span class="feat-icon">🔷</span><span class="feat-text"><strong>Widget de Forma (Shape):</strong> Rectángulo o círculo con relleno, borde y opacidad configurables. Útil para fondos y contenedores visuales.</span></li>
+          <li><span class="feat-icon">🔗</span><span class="feat-text"><strong>Widget de Enlace (Link):</strong> Botón/link navegable a otro sinóptico o URL externa.</span></li>
+          <li><span class="feat-icon">📋</span><span class="feat-text"><strong>Duplicar widget:</strong> Botón en la barra de herramientas para duplicar el widget seleccionado con offset de posición.</span></li>
+          <li><span class="feat-icon">🖱️</span><span class="feat-text"><strong>Menú contextual:</strong> Clic derecho sobre un widget muestra opciones: Duplicar, Propiedades, Eliminar, Traer al frente, Enviar al fondo.</span></li>
+          <li><span class="feat-icon">📐</span><span class="feat-text"><strong>Guías de snap:</strong> Líneas guía al arrastrar widgets que ayudan a alinear con otros widgets (snap to edges/centers).</span></li>
+          <li><span class="feat-icon">⚙️</span><span class="feat-text"><strong>Config de canvas/grid:</strong> Panel para configurar el fondo del canvas, mostrar/ocultar grid, tamaño de celdas.</span></li>
+          <li><span class="feat-icon">📍</span><span class="feat-text"><strong>Coordenadas en vivo:</strong> Muestra la posición X, Y del cursor y del widget seleccionado en la barra inferior del editor.</span></li>
+          <li><span class="feat-icon">🎯</span><span class="feat-text"><strong>"Match size" (igualar tamaño):</strong> Iguala ancho/alto de widgets seleccionados al del widget ancla.</span></li>
+          <li><span class="feat-icon">📏</span><span class="feat-text"><strong>Opacidad:</strong> Slider de opacidad por widget (0–100 %).</span></li>
+          <li><span class="feat-icon">🏗️</span><span class="feat-text"><strong>Auto-promote estatus:</strong> Si llega telemetría válida de un sitio en estatus "obra", se promueve automáticamente a "activo".</span></li>
+          <li><span class="feat-icon">📝</span><span class="feat-text"><strong>Audit logging ampliado:</strong> Registro de operaciones de sinópticos (create, save, delete, restore) y de vistas de variables (create, edit, delete, execute) en la tabla de auditoría.</span></li>
+          <li><span class="feat-icon">🐛</span><span class="feat-text"><strong>Fix tag-browser duplicados:</strong> El árbol de tags ya no muestra dispositivos duplicados al abrir varias veces.</span></li>
+          <li><span class="feat-icon">🐛</span><span class="feat-text"><strong>Fix execute con valores nulos:</strong> Las fórmulas de variable views que reciben null ya no lanzaban excepción.</span></li>
+          <li><span class="feat-icon">🐛</span><span class="feat-text"><strong>Fix GIS estatus dinámico:</strong> El mapa GIS ya calcula el estatus del pozo en tiempo real desde la API en vez de usar datos hardcodeados.</span></li>
+        </ul>
+      </div>
+      <div class="section-divider">Tests añadidos</div>
+      <div class="tests-row">
+        <span class="test-badge">editor-store.spec.ts — 19 tests (alineación, distribución, agrupación)</span>
+      </div>
+      <div class="section-divider">Archivos clave</div>
+      <div class="files-row">
+        <span class="file-pill key">sinoptico-editor.ts/html/css</span>
+        <span class="file-pill key">editor-store.ts</span>
+        <span class="file-pill key">shape-widget.ts, text-widget.ts, link-widget.ts</span>
+        <span class="file-pill key">influx-query-service.ts</span>
+        <span class="file-pill">audit-service.ts</span>
+        <span class="file-pill">activity-panel.ts</span>
+        <span class="file-pill">postgres-service.ts</span>
+        <span class="file-pill">variable-view-editor</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────── LUNES 9 MARZO ─────────────────── -->
+  <div class="day-section">
+    <div class="day-header">
+      <div>
+        <div class="day-label">Lunes</div>
+        <div class="day-name">9 de Marzo</div>
+      </div>
+      <div class="day-line"></div>
+    </div>
+
+    <!-- Commit: formula editor ICH -->
+    <div class="commit-card">
+      <div class="commit-header">
+        <span class="commit-type type-feat">feat</span>
+        <span class="scope">variables</span>
+        <span class="commit-title">Editor de fórmulas estilo ICH — tabla de incógnitas y botonera de operadores</span>
+        <span class="commit-hash">bb9a033</span>
+        <span class="commit-time">16:18</span>
+      </div>
+      <div class="commit-body">
+        <ul class="feature-list">
+          <li><span class="feat-icon">🧮</span><span class="feat-text"><strong>Layout dividido:</strong> Panel izquierdo con tabla de incógnitas (<code>i_1</code>, <code>i_2</code>…), panel derecho con editor de fórmula libre.</span></li>
+          <li><span class="feat-icon">🔢</span><span class="feat-text"><strong>Botonera OPERADORES:</strong> Botones para insertar operadores matemáticos (+, −, ×, ÷, ^, √, paréntesis, funciones estadísticas) directamente en el editor de fórmula.</span></li>
+          <li><span class="feat-icon">🏷️</span><span class="feat-text"><strong>Alias de incógnitas:</strong> Los nombres de columna se convierten automáticamente a alias de incógnita y viceversa antes de llamar a la API.</span></li>
+          <li><span class="feat-icon">🧩</span><span class="feat-text">Disponible tanto en el wizard del tag-browser como en la página de edición de vistas de variables (<code>variable-view-editor</code>).</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Commit: tag-browser wizard -->
+    <div class="commit-card">
+      <div class="commit-header">
+        <span class="commit-type type-feat">feat</span>
+        <span class="scope">tag-browser</span>
+        <span class="commit-title">Wizard inline para crear vistas de variables desde el dropdown del tag-browser</span>
+        <span class="commit-hash">c2bb97c</span>
+        <span class="commit-time">16:05</span>
+      </div>
+      <div class="commit-body">
+        <ul class="feature-list">
+          <li><span class="feat-icon">➕</span><span class="feat-text"><strong>Botón "+ Crear Vista de Variables"</strong> en la parte superior del dropdown del tag-browser, accesible desde el editor de sinópticos al vincular cualquier widget.</span></li>
+          <li><span class="feat-icon">🧙</span><span class="feat-text"><strong>Wizard de 3 pasos:</strong> (1) Nombre de la vista → (2) Seleccionar columnas con árbol de tags → (3) Agregar fórmula (opcional).</span></li>
+          <li><span class="feat-icon">✅</span><span class="feat-text">Indicadores visuales de tags ya agregados. La nueva vista aparece en "Mis Vistas" inmediatamente después de crearla.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Commit: sinopticos module + alarm foundation + COMM LOSS -->
+    <div class="commit-card">
+      <div class="commit-header">
+        <span class="commit-type type-feat">feat</span>
+        <span class="commit-title">Módulo Sinópticos, Vistas de Variables, Fundación de Alarmas, Detección COMM LOSS</span>
+        <span class="commit-hash">78fe001</span>
+        <span class="commit-time">15:51</span>
+      </div>
+      <div class="commit-body">
+        <ul class="feature-list">
+          <li><span class="feat-icon">🖼️</span><span class="feat-text"><strong>Editor de sinópticos completo:</strong> Canvas drag-drop con widgets (etiqueta, gráfico, tabla, mapa, header, imagen). Guardar/cargar desde backend.</span></li>
+          <li><span class="feat-icon">🌳</span><span class="feat-text"><strong>Vistas de Variables:</strong> Tag browser, motor de fórmulas (<em>expr-eval</em>), ejecución con batch de queries a InfluxDB. Vinculación de resultados de fórmulas a widgets.</span></li>
+          <li><span class="feat-icon">🚨</span><span class="feat-text"><strong>Fundación del módulo de Alarmas:</strong> Grupos, definiciones, máquina de estados (INACTIVE / PENDING_ACTIVATION / ACTIVE_UNACK / ACTIVE_ACK), destinatarios, historial — CRUD completo + migraciones.</span></li>
+          <li><span class="feat-icon">📡</span><span class="feat-text"><strong>Detección de COMM LOSS:</strong> Si la última transmisión tiene más de 15 minutos, el sitio muestra indicador "SIN COM." con timestamp relativo.</span></li>
+          <li><span class="feat-icon">🧭</span><span class="feat-text"><strong>Footer nav ampliado:</strong> 5 tabs principales + popup "Más" con 8 accesos secundarios en grid.</span></li>
+          <li><span class="feat-icon">🗄️</span><span class="feat-text"><strong>11 migraciones SQL</strong> para sinópticos, variables, alarmas, log de actividad y permisos (migraciones 013 – 023).</span></li>
+          <li><span class="feat-icon">🛡️</span><span class="feat-text"><strong>Guard <code>canEditSinopticos</code>:</strong> Permiso granular para acceder al editor (se puede asignar a cualquier rol sin ser Supervisor).</span></li>
+        </ul>
+      </div>
+      <div class="section-divider">Migraciones</div>
+      <div class="migrations-row">
+        <span class="migration-badge">013</span>
+        <span class="migration-badge">014</span>
+        <span class="migration-badge">015</span>
+        <span class="migration-badge">016</span>
+        <span class="migration-badge">017</span>
+        <span class="migration-badge">018 alarm_groups</span>
+        <span class="migration-badge">019 alarms</span>
+        <span class="migration-badge">020 alarm_state</span>
+        <span class="migration-badge">021 alarm_recipients</span>
+        <span class="migration-badge">022</span>
+        <span class="migration-badge">023</span>
+      </div>
+    </div>
+
+    <!-- Commit: GIS fix -->
+    <div class="commit-card">
+      <div class="commit-header">
+        <span class="commit-type type-fix">fix</span>
+        <span class="scope">gis</span>
+        <span class="commit-title">Centrar overlay de carga en el mapa con efecto frosted-glass</span>
+        <span class="commit-hash">10d50a1</span>
+        <span class="commit-time">08:33</span>
+      </div>
+      <div class="commit-body">
+        <ul class="feature-list">
+          <li><span class="feat-icon">🎨</span><span class="feat-text">Corrección de CSS: el overlay de "Cargando mapa..." ahora se centra correctamente sobre el canvas de Leaflet con efecto de vidrio esmerilado (backdrop-filter: blur).</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Commit: telemetria tree + sitio-form + spinners -->
+    <div class="commit-card">
+      <div class="commit-header">
+        <span class="commit-type type-feat">feat</span>
+        <span class="scope">frontend</span>
+        <span class="commit-title">Árbol de telemetría mejorado, validación UX en sitio-form, spinners de carga, eliminar sitios</span>
+        <span class="commit-hash">6bb72e6</span>
+        <span class="commit-time">08:29</span>
+      </div>
+      <div class="commit-body">
+        <ul class="feature-list">
+          <li><span class="feat-icon">🌲</span><span class="feat-text"><strong>Árbol de telemetría:</strong> Deriva estados y municipios dinámicamente desde los datos reales de la API (ya no muestra los 32 estados de México). Solo Estado de México aparece.</span></li>
+          <li><span class="feat-icon">🗺️</span><span class="feat-text"><strong>GIS actualizado:</strong> Soporte de capas WMS de GeoServer. Overlay de carga en el mapa.</span></li>
+          <li><span class="feat-icon">📝</span><span class="feat-text"><strong>Sitio-form:</strong> Muestra error claro en la sección de coordenadas cuando el usuario intenta guardar sin completar la detección de ubicación.</span></li>
+          <li><span class="feat-icon">⏳</span><span class="feat-text"><strong>Loading spinners:</strong> Componente <code>LoadingSpinner</code> reutilizable integrado en telemetría, pozo-detalle y GIS.</span></li>
+          <li><span class="feat-icon">🗑️</span><span class="feat-text"><strong>Eliminar sitio:</strong> Botón de borrar dispositivo en la lista de telemetría. Nuevo endpoint <code>DELETE /api/v1/sites/:devEUI</code>.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────── SÁBADO 7 MARZO ─────────────────── -->
+  <div class="day-section">
+    <div class="day-header">
+      <div>
+        <div class="day-label">Sábado</div>
+        <div class="day-name">7 de Marzo</div>
+      </div>
+      <div class="day-line"></div>
+    </div>
+
+    <!-- Commit: level + rainfall sensors -->
+    <div class="commit-card">
+      <div class="commit-header">
+        <span class="commit-type type-feat">feat</span>
+        <span class="commit-title">Soporte para sensores de nivel y pluviómetros en el procesamiento de telemetría</span>
+        <span class="commit-hash">5705d57</span>
+        <span class="commit-time">12:06</span>
+      </div>
+      <div class="commit-body">
+        <ul class="feature-list">
+          <li><span class="feat-icon">🌊</span><span class="feat-text"><strong>Sensores de nivel (<code>nivel_m</code>):</strong> Extracción y escalado desde <code>adc_3</code> (4-20 mA → metros). Inclusión condicional si el sensor está presente.</span></li>
+          <li><span class="feat-icon">🌧️</span><span class="feat-text"><strong>Pluviómetros (<code>lluvia_mm</code>):</strong> Extracción desde <code>adc_4</code>. Compatible con dispositivos sin estos sensores (backward compatible).</span></li>
+          <li><span class="feat-icon">🗄️</span><span class="feat-text"><strong>Migración <code>012_add_nivel_lluvia_columns.sql</code>:</strong> Columnas <code>last_nivel_value</code> y <code>last_lluvia_value</code> en <code>site_status</code>.</span></li>
+          <li><span class="feat-icon">📊</span><span class="feat-text">InfluxDB, PostgreSQL, telemetria-dashboard y pozo-detalle actualizados para mostrar los nuevos sensores cuando estén disponibles.</span></li>
+        </ul>
+      </div>
+      <div class="section-divider">Migraciones</div>
+      <div class="migrations-row">
+        <span class="migration-badge">012_add_nivel_lluvia_columns.sql</span>
+      </div>
+      <div class="section-divider">Tests añadidos</div>
+      <div class="tests-row">
+        <span class="test-badge">nivel-lluvia-transform.test.ts — casos de transformación con/sin sensores opcionales</span>
+      </div>
+    </div>
+
+    <!-- Commit: auth guards -->
+    <div class="commit-card">
+      <div class="commit-header">
+        <span class="commit-type type-feat">feat</span>
+        <span class="commit-title">Guards de autenticación, guestGuard y mejoras de gestión de sesión</span>
+        <span class="commit-hash">4ad80d8</span>
+        <span class="commit-time">12:06</span>
+      </div>
+      <div class="commit-body">
+        <ul class="feature-list">
+          <li><span class="feat-icon">🛡️</span><span class="feat-text"><strong><code>guestGuard</code>:</strong> Redirige a /dashboard si el usuario ya tiene sesión activa e intenta ir a /login. Evita que usuarios autenticados accedan a la pantalla de login.</span></li>
+          <li><span class="feat-icon">🔐</span><span class="feat-text"><strong><code>authGuard</code> mejorado:</strong> Maneja expiración de token y redirige con mensaje de sesión expirada.</span></li>
+          <li><span class="feat-icon">👤</span><span class="feat-text"><strong><code>AuthService</code>:</strong> Métodos <code>isTokenExpired()</code> y <code>clearSessionAndRedirect()</code>. Manejo de señal <code>currentUser</code>.</span></li>
+        </ul>
+      </div>
+      <div class="section-divider">Tests añadidos</div>
+      <div class="tests-row">
+        <span class="test-badge">auth.guard.spec.ts — 3 tests</span>
+        <span class="test-badge">guest.guard.spec.ts — 3 tests</span>
+        <span class="test-badge">auth.interceptor.spec.ts — 7 tests</span>
+        <span class="test-badge">auth.service.spec.ts — 6 tests</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────── JUEVES 5 MARZO ─────────────────── -->
+  <div class="day-section">
+    <div class="day-header">
+      <div>
+        <div class="day-label">Jueves</div>
+        <div class="day-name">5 de Marzo</div>
+      </div>
+      <div class="day-line"></div>
+    </div>
+
+    <!-- Commit: security fixes -->
+    <div class="commit-card">
+      <div class="commit-header">
+        <span class="commit-type type-fix">fix</span>
+        <span class="scope">security</span>
+        <span class="commit-title">Corrección de hallazgos críticos de auditoría de seguridad — APIs de ingesta y query</span>
+        <span class="commit-hash">54dfdac</span>
+        <span class="commit-time">17:37</span>
+      </div>
+      <div class="commit-body">
+        <ul class="feature-list">
+          <li><span class="feat-icon">🔒</span><span class="feat-text"><strong>Inyección Flux corregida:</strong> Escapado del parámetro <code>siteName</code> en queries InfluxDB para prevenir Flux injection. Variable separada para la respuesta.</span></li>
+          <li><span class="feat-icon">📡</span><span class="feat-text"><strong>MQTT hardening:</strong> Opciones de reconexión (<code>reconnectPeriod</code>), keepalive, <code>clientId</code> único por proceso, manejadores de eventos para error/desconexión.</span></li>
+          <li><span class="feat-icon">🔄</span><span class="feat-text"><strong>Buffer de Ignition con reintentos:</strong> Reintentos hasta 3 veces en fallo de escritura a InfluxDB con snapshot del buffer para evitar race conditions y pérdida de datos.</span></li>
+          <li><span class="feat-icon">⏱️</span><span class="feat-text"><strong>Rate limiting <code>/resend-2fa</code>:</strong> Límite de 3 intentos cada 15 minutos (igual que <code>/forgot-password</code>) para prevenir abuso.</span></li>
+        </ul>
+      </div>
+      <div class="section-divider">Tests añadidos</div>
+      <div class="tests-row">
+        <span class="test-badge">buffer-retry.test.ts — reintentos de buffer Ignition</span>
+        <span class="test-badge">security-fixes.test.ts — Flux escape, rate limit</span>
+        <span class="test-badge">16 tests nuevos en total</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────── RESUMEN FINAL ─────────────────── -->
+  <div class="summary-box">
+    <h3>📦 Resumen de lo entregado esta semana</h3>
+    <div class="summary-grid">
+      <div class="summary-item"><span class="icon">🖼️</span><span><strong>Módulo Sinópticos completo:</strong> Editor WYSIWYG con 8 tipos de widgets, visor, gestión de proyectos, compartir con permisos, papelera</span></div>
+      <div class="summary-item"><span class="icon">🌳</span><span><strong>Vistas de Variables:</strong> Tag browser, fórmulas estilo ICH (incógnitas + operadores), ejecución con InfluxDB real, gráficas de series</span></div>
+      <div class="summary-item"><span class="icon">🚨</span><span><strong>Módulo de Alarmas (configuración):</strong> Grupos, definiciones con umbrales, destinatarios, colecciones, historial, ACK — CRUD completo</span></div>
+      <div class="summary-item"><span class="icon">📡</span><span><strong>COMM LOSS:</strong> Detección de pérdida de comunicación (&gt;15 min sin datos) con indicador visual y timestamp relativo</span></div>
+      <div class="summary-item"><span class="icon">🌊</span><span><strong>Sensores nivel/pluviómetros:</strong> Soporte completo para <code>adc_3</code> (nivel) y <code>adc_4</code> (lluvia) en toda la cadena de ingesta</span></div>
+      <div class="summary-item"><span class="icon">🔒</span><span><strong>Seguridad:</strong> Flux injection fix, MQTT hardening, buffer retry para Ignition, rate limiting en 2FA</span></div>
+      <div class="summary-item"><span class="icon">🛡️</span><span><strong>Auth &amp; Guards:</strong> guestGuard, authGuard mejorado, interceptor 401/403, clearSessionAndRedirect</span></div>
+      <div class="summary-item"><span class="icon">🗺️</span><span><strong>GIS:</strong> Estatus dinámico desde API, WMS GeoServer, overlay de carga, árbol de telemetría filtrado</span></div>
+      <div class="summary-item"><span class="icon">✅</span><span><strong>62 tests unitarios passing</strong> (antes: 0). Setup completo de Vitest + Angular 21 con workaround de doble instancia Angular.</span></div>
+      <div class="summary-item"><span class="icon">🗄️</span><span><strong>14 migraciones SQL</strong> aplicadas (012 – 025): sensores, sinópticos, variables, alarmas, log de actividad, soft-delete, incógnitas</span></div>
+      <div class="summary-item"><span class="icon">🔄</span><span><strong>Auto-promote estatus:</strong> Sitios en "obra" pasan automáticamente a "activo" cuando llega su primera telemetría válida</span></div>
+      <div class="summary-item"><span class="icon">📋</span><span><strong>Audit log:</strong> Registro de operaciones de sinópticos y variables. Panel de actividad por sinóptico con historial de quién hizo qué.</span></div>
+    </div>
+  </div>
+
+  <!-- Pending -->
+  <div class="pending-box">
+    <h4>🔜 Próximo en agenda (pendiente de implementar)</h4>
+    <ul class="pending-list">
+      <li>Motor de evaluación de alarmas en igestion-api (check de umbrales en tiempo real sobre telemetría MQTT)</li>
+      <li>Notificaciones: email (SMTP) y Telegram al disparar una alarma. WhatsApp pendiente de proveedor.</li>
+      <li>Estatus "pendiente" (4to estatus confirmado por Anibal: sitio no atendido / gris)</li>
+      <li>Renders 3D para los 108 sitios (fotos en Google Drive, necesita levantamiento)</li>
+      <li>COMM LOSS banner persistente en el header (no solo indicador en lista)</li>
+      <li>Reglas de dos hombres (two-man rule) para control de bombas por Supervisores</li>
+    </ul>
+  </div>
+
+</div>
+
+<footer>
+  Generado el 10 de marzo 2026 · SCADA SOA · PlayTelecom para CONAGUA / OCAVM
+</footer>
+
+</body>
+</html>

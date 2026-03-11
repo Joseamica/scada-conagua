@@ -60,7 +60,7 @@
       aria-haspopup="true"
       [attr.aria-expanded]="inboxOpen">
       <ng-icon name="heroEnvelopeSolid" size="16"></ng-icon>
-      <span>2 Mensajes</span>
+      <span>Mensajes</span>
     </button>
 
     <!-- TEMA -->
@@ -130,47 +130,17 @@
   </div>
 
   <!-- ========= PANEL DE MENSAJES ========= -->
+  <!-- TODO: Implementar mensajes del sistema (bitácora/notificaciones) -->
   <div class="dropdown inbox-dropdown" *ngIf="inboxOpen" role="menu">
     <div class="dropdown-header">
       <span class="dropdown-title">Mensajes del sistema</span>
-      <span class="dropdown-count">2</span>
     </div>
-
     <div class="dropdown-body">
-      <div class="message-item message-item--unread" role="menuitem">
-        <div class="message-dot" aria-hidden="true"></div>
-        <div class="message-content">
-          <div class="message-title">Mantenimiento programado</div>
-          <div class="message-text">
-            El Pozo 3 entrará en mantenimiento el día de mañana a las 08:00 hrs.
-          </div>
-          <div class="message-time">Hoy · 11:05</div>
+      <div class="alert-item" role="menuitem">
+        <div class="alert-content">
+          <div class="alert-text">Próximamente — módulo de mensajería en desarrollo.</div>
         </div>
       </div>
-
-      <div class="message-item" role="menuitem">
-        <div class="message-content">
-          <div class="message-title">Actualización de parámetros</div>
-          <div class="message-text">
-            Se actualizaron los límites de presión en Red Primaria 1.
-          </div>
-          <div class="message-time">Ayer · 18:42</div>
-        </div>
-      </div>
-
-      <div class="message-item" role="menuitem">
-        <div class="message-content">
-          <div class="message-title">Cambio de turno</div>
-          <div class="message-text">
-            Operador nocturno asignado correctamente.
-          </div>
-          <div class="message-time">Ayer · 07:15</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="dropdown-footer">
-      <button class="dropdown-footer-btn">Ver bitácora completa</button>
     </div>
   </div>
 

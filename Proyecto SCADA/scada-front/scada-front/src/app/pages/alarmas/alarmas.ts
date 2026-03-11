@@ -13,11 +13,13 @@ import {
   heroClockSolid,
 } from '@ng-icons/heroicons/solid';
 import { AlarmService, ActiveAlarm } from '../../core/services/alarm.service';
+import { HeaderBarComponent } from '../../layout/header-bar/header-bar';
+import { FooterTabsComponent } from '../../layout/footer-tabs/footer-tabs';
 
 @Component({
   selector: 'app-alarmas',
   standalone: true,
-  imports: [CommonModule, NgIconComponent],
+  imports: [CommonModule, NgIconComponent, HeaderBarComponent, FooterTabsComponent],
   templateUrl: './alarmas.html',
   styleUrl: './alarmas.css',
   providers: [

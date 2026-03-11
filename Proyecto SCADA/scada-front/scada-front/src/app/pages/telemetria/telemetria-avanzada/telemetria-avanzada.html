@@ -78,7 +78,9 @@
             <div class="var-chips">
               @for (v of chartVariables; track v.key) {
                 <button class="var-chip" [class.active]="isVarSelected(v.key)"
+                        [class.var-chip--disabled]="chartType() === 'radar'"
                         [style.--vc]="v.color"
+                        [attr.title]="chartType() === 'radar' ? 'El radar usa un índice SCADA fijo (0-100)' : null"
                         (click)="toggleVar(v.key)">
                   <span class="var-dot"></span>
                   {{ v.label }}
@@ -140,6 +142,13 @@
           </div>
         </div>
 
+        <div class="radar-info-strip" *ngIf="chartType() === 'radar'">
+          <span class="radar-info-title">Radar SCADA · Índice Operativo (0–100)</span>
+          <span class="radar-info-item">Caudal: referencia 120 L/s</span>
+          <span class="radar-info-item">Presión óptima: 2.5–6.5 Kg/cm²</span>
+          <span class="radar-info-item">Comunicación: RSSI + SNR normalizados</span>
+        </div>
+
         <!-- Y-AXIS RANGE -->
         <div class="y-range-strip" *ngIf="chartType() !== 'radar'">
           @for (v of chartVariables; track v.key) {
@@ -171,7 +180,7 @@
         </div>
 
         <!-- STATS STRIP -->
-        <div class="stats-strip" *ngIf="(variableStats() | keyvalue).length > 0">
+        <div class="stats-strip" *ngIf="chartType() !== 'radar' && (variableStats() | keyvalue).length > 0">
           @for (v of chartVariables; track v.key) {
             @if (variableStats()[v.key]; as st) {
               <div class="stat-item">

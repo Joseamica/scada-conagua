@@ -4,6 +4,14 @@ Todos los cambios notables del proyecto se documentan aquí.
 
 ## [Unreleased]
 
+### scada-front (Telemetria avanzada — Radar SCADA profesional)
+- **refactor:** Modo radar migrado de valores crudos con unidades mixtas a **Índice Operativo SCADA (0–100)** con tres ejes: Caudal operativo, Presión operativa y Comunicación
+- **feat:** Comparación multi-pozo sincronizada por timestamp operativo (usa el último instante común por pozo para evitar mezclar lecturas desfasadas)
+- **fix:** Normalización robusta de comunicación: RSSI se interpreta en dBm (incluye corrección de signo cuando llega en magnitud positiva) y se combina con SNR en un score único
+- **fix:** Eliminada distorsión por escalas dinámicas del radar (ejes fijos 0–100 con umbrales explícitos en UI)
+- **fix:** En modo radar se deshabilita la edición de chips de variables para evitar ambigüedad visual; se añade banda informativa con criterios de normalización
+- **fix:** Estadísticos inferiores ya no se muestran en radar; permanecen para modos de serie temporal
+
 ### scada-igestion-api (Motor de Evaluación de Alarmas)
 - **feat:** New `alarm-evaluator.ts` — evaluates telemetry values against configured alarm thresholds on every ChirpStack uplink
 - **feat:** State transitions: INACTIVE → ACTIVE_UNACK (condition met), ACTIVE_UNACK/ACK → INACTIVE (condition cleared)
@@ -36,6 +44,12 @@ Todos los cambios notables del proyecto se documentan aquí.
 - **feat:** Migration 028 adds `play_sound` and `show_banner` BOOLEAN columns to `scada.alarms` table
 - **feat:** POST/PUT /alarms endpoints accept `play_sound` and `show_banner` fields
 - **feat:** GET /alarms/active returns `play_sound` and `show_banner` for frontend consumption
+
+### scada-front (GIS: fuzzy name matching para estatus correcto)
+- **fix:** GIS map now correctly shows yellow (obra), gray (inactivo/pendiente) markers — was showing all blue/activo due to name mismatch between DB and KML
+- **fix:** Race condition: `loadApiSitesCache()` now returns Promise, KML loading waits for API cache before resolving estatus
+- **feat:** New `lookupApiSite()` with 3-level fuzzy matching: exact → deep-clean (strips dashes, quotes, parens, leading zeros, converts Roman numerals) → site-number fallback
+- **feat:** Tested against all 49 KML/DB name pairs — 100% match rate on sites that exist in DB (handles "POZO 24" → "POZO 24 IXTAPALUCA", "Pozo 013 - Chimalpa 2" → "POZO 13 (CHIMALPA II)", etc.)
 
 ### scada-front (Estatus 'pendiente' en mapa GIS)
 - **feat:** New `pozosPendienteLayer` in GIS map — gray icons with dashed border legend dot

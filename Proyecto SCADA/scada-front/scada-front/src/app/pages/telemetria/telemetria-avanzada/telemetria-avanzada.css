@@ -203,6 +203,11 @@
   transform: scale(1.2);
 }
 
+.var-chip--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* Toolbar vertical separator */
 .toolbar-sep {
   width: 1px;
@@ -570,6 +575,32 @@
 .tool-disabled {
   opacity: 0.3;
   pointer-events: none;
+}
+
+/* ===== RADAR SCADA INFO ===== */
+.radar-info-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 5px 0 8px;
+  border-bottom: 1px solid var(--border-default);
+  margin-bottom: 8px;
+}
+
+.radar-info-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.radar-info-item {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--table-header-bg);
+  border: 1px solid var(--border-default);
 }
 
 /* ===== Y-AXIS RANGE STRIP ===== */
