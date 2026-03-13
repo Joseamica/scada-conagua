@@ -68,6 +68,10 @@ export class SinopticoViewer implements OnInit, OnDestroy {
 
   canvasWidth = computed(() => this.sinoptico()?.canvas_width ?? 1920);
   canvasHeight = computed(() => this.sinoptico()?.canvas_height ?? 1080);
+  canEdit = computed(() => {
+    const perm = this.sinoptico()?.share_permission;
+    return perm === 'owner' || perm === 'edit';
+  });
   showActivityPanel = signal(false);
   widgets = computed(() => this.canvas().widgets);
   widgetCount = computed(() => this.canvas().widgets.length);

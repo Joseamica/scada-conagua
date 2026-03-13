@@ -318,18 +318,36 @@ router.get('/sinopticos/:id', isAuth, async (req: Request, res: Response) => {
         const isOwner = sinoptico.owner_id === user.id;
         const isPublic = sinoptico.project_public;
 
-        if (!isAdmin && !isOwner && !isPublic) {
-            // Check if user has a share for this sinoptico
-            const shareCheck = await pool.query(
-                'SELECT id FROM scada.sinoptico_shares WHERE sinoptico_id = $1 AND user_id = $2',
-                [req.params.id, user.id]
-            );
-            if (shareCheck.rows.length === 0) {
-                return res.status(403).json({ error: 'Sin permisos para ver este sinoptico.' });
-            }
+        // Determine effective permission for this user
+        let share_permission: 'owner' | 'edit' | 'read' = 'read';
+        if (isAdmin || isOwner) {
+            share_permission = 'owner';
         }
 
-        res.json(sinoptico);
+        // Check share (needed for access control AND permission level)
+        const shareCheck = await pool.query(
+            'SELECT permission FROM scada.sinoptico_shares WHERE sinoptico_id = $1 AND user_id = $2',
+            [req.params.id, user.id]
+        );
+
+        if (!isAdmin && !isOwner && !isPublic && shareCheck.rows.length === 0) {
+            return res.status(403).json({ error: 'Sin permisos para ver este sinoptico.' });
+        }
+
+        if (share_permission === 'read' && shareCheck.rows.length > 0 && shareCheck.rows[0].permission === 'edit') {
+            share_permission = 'edit';
+        }
+
+        // Check can_edit_sinopticos granular permission
+        if (share_permission === 'read') {
+            const permCheck = await pool.query(
+                'SELECT 1 FROM scada.permissions WHERE user_id = $1 AND permission_key = $2',
+                [user.id, 'can_edit_sinopticos']
+            );
+            if (permCheck.rows.length > 0) share_permission = 'edit';
+        }
+
+        res.json({ ...sinoptico, share_permission });
     } catch (e: any) {
         console.error('Error loading sinoptico:', e.message);
         res.status(500).json({ error: 'Error al cargar sinoptico.' });

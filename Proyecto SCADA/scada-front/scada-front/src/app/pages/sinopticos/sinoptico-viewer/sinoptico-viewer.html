@@ -19,10 +19,12 @@
         <button class="toolbar-btn" (click)="showActivityPanel.set(!showActivityPanel())" title="Historial">
           <ng-icon name="heroClock" size="16" />
         </button>
-        <button class="toolbar-btn edit-btn" (click)="openEditor()" title="Abrir editor">
-          <ng-icon name="heroPencilSquare" size="16" />
-          Editar
-        </button>
+        @if (canEdit()) {
+          <button class="toolbar-btn edit-btn" (click)="openEditor()" title="Abrir editor">
+            <ng-icon name="heroPencilSquare" size="16" />
+            Editar
+          </button>
+        }
       </div>
     </header>
 

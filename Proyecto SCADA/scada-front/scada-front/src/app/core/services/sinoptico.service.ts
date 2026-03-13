@@ -32,6 +32,7 @@ export interface Sinoptico {
   version: number;
   owner_id: number;
   owner_name: string;
+  share_permission?: 'owner' | 'edit' | 'read';
   widget_count?: number;
   widget_layout?: { type: string; x: number; y: number; width: number; height: number }[];
   created_at: string;
