@@ -743,7 +743,7 @@ router.post('/sinopticos/:id/query', isAuth, async (req: Request, res: Response)
                 await Promise.all(colPromises);
 
                 // Evaluate all formulas in topological order
-                const evaluated = evaluateFormulasBatch(
+                const { values: evaluated } = evaluateFormulasBatch(
                     fResult.rows.map((f: any) => ({
                         alias: f.alias,
                         expression: f.expression,

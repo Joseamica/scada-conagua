@@ -28,6 +28,7 @@ export interface VariableView {
   owner_id: number;
   owner_name: string;
   is_shared: boolean;
+  null_policy: 'zero' | 'null';
   column_count: number;
   formula_count: number;
   created_at: string;
@@ -63,6 +64,12 @@ export interface FormulaSeriesResult {
   formulaId: number;
   alias: string;
   data: [number, number][];
+  partialTimestamps?: number[];
+}
+
+export interface FormulaQuality {
+  partial: boolean;
+  nullInputs: string[];
 }
 
 export interface ViewShare {
@@ -91,6 +98,7 @@ export interface ViewExecutionResult {
   columns: ViewColumn[];
   formulas: ViewFormula[];
   values: Record<string, number | null>;
+  quality?: Record<string, FormulaQuality>;
   timestamp: string;
 }
 

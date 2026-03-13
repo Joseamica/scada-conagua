@@ -78,6 +78,16 @@
 
     <div id="map" class="gis-map"></div>
 
+    <!-- Alarm overlay badge -->
+    @if (alarmCount() > 0) {
+      <div class="alarm-badge">
+        <span class="alarm-badge-dot"></span>
+        <span class="alarm-badge-text">
+          {{ alarmCount() }} {{ alarmCount() === 1 ? 'sitio' : 'sitios' }} sin comunicacion
+        </span>
+      </div>
+    }
+
     <!-- Custom Layer Control Panel -->
     <div class="lc" [class.lc-open]="layerPanelOpen()">
       <!-- Toggle button -->

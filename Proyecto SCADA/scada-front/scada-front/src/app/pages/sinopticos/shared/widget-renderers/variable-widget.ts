@@ -23,6 +23,9 @@ import { VariableService } from '../../../../core/services/variable.service';
           @if (config().unit) {
             <span class="var-unit">{{ config().unit }}</span>
           }
+          @if (partialQuality()) {
+            <span class="var-partial" title="Valor parcial — datos incompletos">*</span>
+          }
         } @else if (!config().viewId) {
           <span class="var-empty">Sin fuente</span>
         } @else {
@@ -84,6 +87,13 @@ import { VariableService } from '../../../../core/services/variable.service';
         font-family: 'Inter', system-ui, sans-serif;
         font-size: 0.5em;
       }
+      .var-partial {
+        color: #f59e0b;
+        font-weight: 700;
+        font-size: 0.6em;
+        margin-left: 1px;
+        cursor: help;
+      }
       @keyframes pulse {
         0%,
         100% {
@@ -100,6 +110,8 @@ export class VariableWidget implements OnInit, OnDestroy {
   config = input.required<VariableConfig>();
   /** Optional externally-provided live value (from SinopticoDataStore). */
   liveValue = input<number | null>(null);
+  /** Whether this value was computed with partial (null-substituted) inputs. */
+  partialQuality = input<boolean>(false);
 
   private variableService = inject(VariableService);
 

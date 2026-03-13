@@ -21,6 +21,15 @@
           <ng-icon name="heroShare" size="16" />
           Compartir
         </button>
+        <select
+          class="null-policy-select"
+          [value]="nullPolicy()"
+          (change)="updateNullPolicy($event)"
+          title="Como manejar valores nulos en formulas"
+        >
+          <option value="zero">Nulos = 0</option>
+          <option value="null">Nulos = estricto</option>
+        </select>
         <select class="range-select" [(ngModel)]="execRange">
           <option value="1h">1 hora</option>
           <option value="6h">6 horas</option>
@@ -369,13 +378,19 @@
                   </tr>
                 }
                 @for (f of executionResult()!.formulas; track f.id) {
-                  <tr class="formula-result-row">
+                  <tr class="formula-result-row" [class.partial-row]="getResultQuality(f.alias)?.partial">
                     <td>
                       <span class="var-alias formula-alias">{{ f.alias }}</span>
                       <code class="var-tag">{{ f.expression }}</code>
                     </td>
                     <td class="var-value formula-value">
                       {{ getResultValue(f.alias) }}
+                      @if (getResultQuality(f.alias)?.partial) {
+                        <span
+                          class="quality-badge"
+                          [title]="'Valor parcial — sin datos de: ' + getResultQuality(f.alias)!.nullInputs.join(', ')"
+                        >parcial</span>
+                      }
                     </td>
                   </tr>
                 }

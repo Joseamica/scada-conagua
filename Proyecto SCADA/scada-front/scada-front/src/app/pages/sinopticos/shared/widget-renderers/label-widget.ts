@@ -28,6 +28,9 @@ interface LabelConfig {
         } @else {
           {{ displayValue() }}
           <span class="label-unit" *ngIf="cfg().unit">{{ cfg().unit }}</span>
+          @if (partialQuality()) {
+            <span class="label-partial" title="Valor parcial — datos incompletos">*</span>
+          }
         }
       </div>
       @if (relativeTime()) {
@@ -121,6 +124,13 @@ interface LabelConfig {
         color: #f59e0b;
         font-weight: 600;
       }
+      .label-partial {
+        color: #f59e0b;
+        font-weight: 700;
+        font-size: 0.5em;
+        margin-left: 2px;
+        cursor: help;
+      }
       @keyframes blink {
         0%,
         100% {
@@ -141,6 +151,7 @@ export class LabelWidget {
   liveValue = input<number | null>(null);
   lastUpdatedAt = input<string | null>(null);
   isStale = input<boolean>(false);
+  partialQuality = input<boolean>(false);
 
   displayValue = signal('--');
   valueColor = signal('var(--text-primary)');

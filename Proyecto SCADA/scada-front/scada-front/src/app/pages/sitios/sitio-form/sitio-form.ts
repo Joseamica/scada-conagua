@@ -193,9 +193,12 @@ export class SitioForm implements OnInit {
           this.renderFileName = site.render_url.split('/').pop() || '';
         }
 
-        // Trigger location detection from lat/lng to populate estado + municipio
+        // Always set municipio from API data first as baseline
+        if (site.municipality) {
+          this.setMunicipioFromName(site.municipality);
+        }
+        // Then try geo-detection to refine (override with exact match)
         if (site.latitude && site.longitude) {
-          // Wait for geoFeatures to load, then detect
           const tryDetect = () => {
             if (this.geoFeatures.length > 0) {
               this.detectLocation(site.latitude!, site.longitude!);
@@ -204,9 +207,6 @@ export class SitioForm implements OnInit {
             }
           };
           tryDetect();
-        } else if (site.municipality) {
-          // No coords — try to find municipality in estados data manually
-          this.setMunicipioFromName(site.municipality);
         }
       },
       error: () => {
@@ -240,6 +240,16 @@ export class SitioForm implements OnInit {
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+
+      // Build a list of invalid field names for user feedback
+      const invalidFields: string[] = [];
+      if (this.form.get('nombre')?.invalid) invalidFields.push('Nombre');
+      if (this.form.get('devEUI')?.invalid) invalidFields.push('DevEUI');
+      if (this.form.get('proveedor')?.invalid) invalidFields.push('Proveedor');
+      if (this.form.get('estado')?.invalid) invalidFields.push('Estado');
+      if (this.form.get('municipio')?.invalid) invalidFields.push('Municipio');
+
+      this.errorMsg.set(`Campos requeridos sin completar: ${invalidFields.join(', ')}`);
 
       // If estado/municipio are invalid AND location section is hidden,
       // the user can't see those errors. Show a clear message at the coordinates.
@@ -328,10 +338,11 @@ export class SitioForm implements OnInit {
                 this.saving.set(false);
                 this.router.navigate(['/telemetria']);
               },
-              error: () => {
-                // Site updated but render upload failed — still navigate
+              error: (err: HttpErrorResponse) => {
                 this.saving.set(false);
-                this.router.navigate(['/telemetria']);
+                this.errorMsg.set(
+                  `Sitio actualizado, pero el render no se pudo subir: ${err.error?.error || err.message || 'Error desconocido'}`,
+                );
               },
             });
           } else {

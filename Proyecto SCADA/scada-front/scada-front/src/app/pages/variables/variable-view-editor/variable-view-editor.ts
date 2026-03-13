@@ -25,6 +25,7 @@ import {
   ViewShare,
   ShareCandidate,
   FormulaSeriesResult,
+  FormulaQuality,
 } from '../../../core/services/variable.service';
 import {
   TagBrowser,
@@ -101,7 +102,7 @@ export class VariableViewEditor implements OnInit {
     { label: ')', value: ')', title: 'Cerrar parentesis' },
   ];
 
-  functionButtons = ['IF', 'ABS', 'ROUND', 'MIN', 'MAX', 'SQRT', 'POW', 'ISNULL'];
+  functionButtons = ['IF', 'ABS', 'ROUND', 'MIN', 'MAX', 'SQRT', 'POW', 'ISNULL', 'COALESCE'];
 
   // Formula helper
   showFormulaHelper = signal(false);
@@ -123,6 +124,9 @@ export class VariableViewEditor implements OnInit {
   seriesAlias = signal('');
   private chartInstance: any = null;
 
+  // Null policy
+  nullPolicy = signal<'zero' | 'null'>('zero');
+
   // Execution range (for aggregation)
   execRange = '24h';
 
@@ -138,6 +142,7 @@ export class VariableViewEditor implements OnInit {
         this.view.set(data);
         this.columns.set(data.columns || []);
         this.formulas.set(data.formulas || []);
+        this.nullPolicy.set(data.null_policy || 'zero');
         // Restore persisted incognita names
         (data.columns || []).forEach((col, idx) => {
           if (col.incognita_name) {
@@ -355,10 +360,20 @@ export class VariableViewEditor implements OnInit {
     this.newFormulaExpr += value;
   }
 
+  updateNullPolicy(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value as 'zero' | 'null';
+    this.nullPolicy.set(value);
+    this.variableService.updateView(this.viewId, { null_policy: value } as any).subscribe();
+  }
+
   getResultValue(alias: string): string {
     const val = this.executionResult()?.values?.[alias];
     if (val == null) return '--';
     return typeof val === 'number' ? val.toFixed(2) : String(val);
+  }
+
+  getResultQuality(alias: string): FormulaQuality | null {
+    return this.executionResult()?.quality?.[alias] ?? null;
   }
 
   // ---- Smart Error Detection ----
@@ -714,6 +729,12 @@ export class VariableViewEditor implements OnInit {
         name: 'Si es nulo',
         desc: 'Reemplazar nulo con 0',
         formula: `IF(ISNULL(${i1}); 0; ${i1})`,
+      },
+      {
+        icon: '\u21c4',
+        name: 'COALESCE',
+        desc: 'Usar valor alterno si es nulo',
+        formula: `COALESCE(${i1}; 0) + ${i2}`,
       },
     ];
   }

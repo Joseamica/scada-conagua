@@ -635,9 +635,25 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: rgba(59, 130, 246, 0.18);
   animation: mk-pulse 3s ease-in-out infinite;
   z-index: 1;
+}
+
+/* Green pulse — operating OK */
+.mk-ring-green {
+  background: rgba(34, 197, 94, 0.22);
+}
+.mk-op-ok img {
+  filter: hue-rotate(90deg) saturate(1.3) brightness(1.05) drop-shadow(0 0 6px rgba(34, 197, 94, 0.5)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.25));
+}
+
+/* Red pulse — pump stopped */
+.mk-ring-red {
+  background: rgba(239, 68, 68, 0.22);
+  animation: mk-pulse-red 2s ease-in-out infinite;
+}
+.mk-op-stopped img {
+  filter: hue-rotate(-170deg) saturate(1.5) brightness(0.95) drop-shadow(0 0 6px rgba(239, 68, 68, 0.5)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.25));
 }
 
 @keyframes mk-pulse {
@@ -645,6 +661,48 @@
   50% { transform: scale(1); opacity: 1; }
 }
 
+@keyframes mk-pulse-red {
+  0%, 100% { transform: scale(0.6); opacity: 0.3; }
+  50% { transform: scale(1); opacity: 1; }
+}
+
+/* No signal — COMM LOSS */
+.mk-op-nosignal {
+  position: relative;
+}
+.mk-op-nosignal img {
+  filter: grayscale(0.7) drop-shadow(0 0 4px rgba(239, 68, 68, 0.4)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+  animation: mk-nosignal-fade 2.5s ease-in-out infinite;
+}
+.mk-nosignal {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  z-index: 5;
+  font-size: 10px;
+  line-height: 1;
+  background: #ef4444;
+  color: #fff;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6), 0 1px 3px rgba(0, 0, 0, 0.3);
+  animation: mk-blink 1.8s ease-in-out infinite;
+}
+@keyframes mk-blink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+@keyframes mk-nosignal-fade {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 0.35; }
+}
+
+/* Dead — obra/pendiente */
 .mk-dead {
   display: flex;
   align-items: center;
@@ -654,6 +712,55 @@
 
 .mk-dead img {
   filter: grayscale(0.3) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
+}
+
+/* =========================
+   ALARM OVERLAY BADGE
+========================= */
+.alarm-badge {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: rgba(127, 29, 29, 0.92);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35), 0 0 0 1px rgba(239, 68, 68, 0.2);
+  animation: alarmBadgeIn 0.4s ease;
+}
+
+.alarm-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+  animation: alarmDotPulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.alarm-badge-text {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fecaca;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+@keyframes alarmBadgeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes alarmDotPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px #ef4444; }
+  50% { opacity: 0.4; box-shadow: 0 0 2px #ef4444; }
 }
 
 /* =========================

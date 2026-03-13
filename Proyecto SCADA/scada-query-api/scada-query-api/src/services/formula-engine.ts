@@ -29,6 +29,10 @@ parser.functions.SQRT = Math.sqrt;
 parser.functions.POW = Math.pow;
 parser.functions.LOG = Math.log10;
 parser.functions.LN = Math.log;
+parser.functions.COALESCE = (val: number, fallback: number) =>
+    (val === null || val === undefined || isNaN(val)) ? fallback : val;
+
+export type NullPolicy = 'zero' | 'null';
 
 export interface FormulaValidationResult {
     valid: boolean;
@@ -38,6 +42,7 @@ export interface FormulaValidationResult {
 
 export interface FormulaEvalResult {
     value: number | null;
+    nullInputs?: string[];
     error?: string;
 }
 
@@ -57,40 +62,55 @@ export function validateFormula(expression: string): FormulaValidationResult {
 
 /**
  * Evaluate a formula with the given variable bindings.
- * Null values in bindings are treated as NaN (formulas can use ISNULL to handle).
+ * nullPolicy controls how null values are handled:
+ *   'zero' — substitute with 0 (professional SCADA default)
+ *   'null' — propagate as NaN → result becomes null
  */
 export function evaluateFormula(
     expression: string,
-    bindings: Record<string, number | null>
+    bindings: Record<string, number | null>,
+    nullPolicy: NullPolicy = 'zero'
 ): FormulaEvalResult {
     try {
         const parsed = parser.parse(expression);
-
-        // Replace null with NaN for expr-eval
+        const nullInputs: string[] = [];
         const safeBindings: Record<string, number> = {};
+
         for (const [key, val] of Object.entries(bindings)) {
-            safeBindings[key] = val === null || val === undefined ? NaN : val;
+            if (val === null || val === undefined) {
+                nullInputs.push(key);
+                safeBindings[key] = nullPolicy === 'zero' ? 0 : NaN;
+            } else {
+                safeBindings[key] = val;
+            }
         }
 
         const value = parsed.evaluate(safeBindings);
         if (typeof value !== 'number' || !isFinite(value)) {
-            return { value: null };
+            return { value: null, nullInputs: nullInputs.length > 0 ? nullInputs : undefined };
         }
-        return { value };
+        return { value, nullInputs: nullInputs.length > 0 ? nullInputs : undefined };
     } catch (err: any) {
         return { value: null, error: err.message };
     }
 }
 
+export interface BatchQuality {
+    [alias: string]: { partial: boolean; nullInputs: string[] };
+}
+
 /**
  * Evaluate multiple formulas in topological order (by depends_on).
  * Each formula's result is available to subsequent formulas.
+ * Returns values + quality metadata tracking which formulas had null inputs.
  */
 export function evaluateFormulasBatch(
     formulas: Array<{ alias: string; expression: string; depends_on: number[] }>,
-    columnValues: Record<string, number | null>
-): Record<string, number | null> {
+    columnValues: Record<string, number | null>,
+    nullPolicy: NullPolicy = 'zero'
+): { values: Record<string, number | null>; quality: BatchQuality } {
     const results: Record<string, number | null> = { ...columnValues };
+    const quality: BatchQuality = {};
 
     // Topological sort by depends_on (simple — assumes no cycles, validated on save)
     const sorted = [...formulas].sort((a, b) => {
@@ -100,11 +120,14 @@ export function evaluateFormulasBatch(
     });
 
     for (const formula of sorted) {
-        const { value } = evaluateFormula(formula.expression, results);
+        const { value, nullInputs } = evaluateFormula(formula.expression, results, nullPolicy);
         results[formula.alias] = value;
+        if (nullInputs && nullInputs.length > 0) {
+            quality[formula.alias] = { partial: true, nullInputs };
+        }
     }
 
-    return results;
+    return { values: results, quality };
 }
 
 /**

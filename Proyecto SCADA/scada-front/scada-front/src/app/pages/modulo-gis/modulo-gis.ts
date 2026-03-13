@@ -88,14 +88,25 @@ const MUNICIPIOS_CON_POZO = new Set<number>(
     .map(s => s.municipioId)
 );
 
-/** Create a MarkerClusterGroup via the global L (patched by angular.json scripts).
- *  Falls back to a plain LayerGroup if the plugin isn't loaded. */
+/** Load markercluster plugin dynamically via script tag (needs window.L to exist first). */
+function loadMarkerClusterPlugin(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const gL = (window as any).L;
+    if (!gL) { resolve(false); return; }
+    if (gL.markerClusterGroup) { resolve(true); return; } // already loaded
+    const script = document.createElement('script');
+    script.src = 'assets/js/leaflet.markercluster.js';
+    script.onload = () => {
+      resolve(typeof gL.markerClusterGroup === 'function');
+    };
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+}
+
+/** Create a MarkerClusterGroup via the global L (patched by plugin). */
 function createClusterGroup(color: string): L.LayerGroup {
   const gL = (window as any).L;
-  if (!gL?.markerClusterGroup) {
-    console.warn('[GIS] leaflet.markercluster not available — using plain LayerGroup');
-    return L.layerGroup();
-  }
   return gL.markerClusterGroup({
     maxClusterRadius: 55,
     spiderfyOnMaxZoom: true,
@@ -147,10 +158,10 @@ export class ModuloGis implements OnInit, OnDestroy {
   redSecundariaLayer = L.layerGroup();
   zonasLayer = L.layerGroup();
 
-  pozosActivosLayer = createClusterGroup('#3b82f6');
-  pozosObraLayer = createClusterGroup('#f59e0b');
-  pozosInactivosLayer = createClusterGroup('#ef4444');
-  pozosPendienteLayer = createClusterGroup('#94a3b8');
+  pozosActivosLayer: L.LayerGroup = L.layerGroup();
+  pozosObraLayer: L.LayerGroup = L.layerGroup();
+  pozosInactivosLayer: L.LayerGroup = L.layerGroup();
+  pozosPendienteLayer: L.LayerGroup = L.layerGroup();
 
   // Custom layer control state
   layerPanelOpen = signal(true);
@@ -169,6 +180,7 @@ export class ModuloGis implements OnInit, OnDestroy {
     redPrimaria: 0, redSecundaria: 0, zonas: 0,
   });
   totalSites = signal(0);
+  alarmCount = signal(0);
 
 
   // Municipios
@@ -265,6 +277,19 @@ export class ModuloGis implements OnInit, OnDestroy {
     });
     const c = this.layerCounts();
     this.totalSites.set(c.activos + c.obra + c.inactivos + c.pendientes);
+    this.refreshAlarmCount();
+  }
+
+  private refreshAlarmCount() {
+    let count = 0;
+    [this.pozosActivosLayer, this.pozosObraLayer, this.pozosInactivosLayer].forEach(group => {
+      group.eachLayer((l: any) => {
+        if (l instanceof L.Marker && (l as any).__scadaOpState === 'no-signal') {
+          count++;
+        }
+      });
+    });
+    this.alarmCount.set(count);
   }
 
   // ─────────────────────────────
@@ -499,6 +524,37 @@ export class ModuloGis implements OnInit, OnDestroy {
     if (estatus) (marker as any).__scadaEstatus = estatus;
   }
 
+  /** Determine operational state for marker visuals */
+  private setMarkerOpState(marker: L.Marker, apiSite: any) {
+    if (!apiSite) return;
+    const estatus = (apiSite.estatus || 'activo').toLowerCase();
+    const flow = Number(apiSite.last_flow_value) || 0;
+    const pressure = Number(apiSite.last_pressure_value) || 0;
+
+    let opState: 'operating' | 'stopped' | 'no-signal' | 'inactive';
+    if (estatus === 'inactivo') {
+      opState = 'no-signal';
+    } else if (estatus === 'obra' || estatus === 'pendiente') {
+      opState = 'inactive';
+    } else if (this.isSiteStale(apiSite)) {
+      // Activo site that hasn't reported recently → COMM LOSS
+      opState = 'no-signal';
+    } else if (flow > 0.01 || pressure > 0) {
+      opState = 'operating';
+    } else {
+      opState = 'stopped';
+    }
+    (marker as any).__scadaOpState = opState;
+  }
+
+  /** Returns true if an activo site hasn't reported in over 15 minutes */
+  private isSiteStale(apiSite: any): boolean {
+    const lastUpdate = apiSite.last_updated_at;
+    if (!lastUpdate) return false;
+    const ageMs = Date.now() - new Date(lastUpdate).getTime();
+    return ageMs > 15 * 60 * 1000; // 15 minutes
+  }
+
   /** Attach live KPI value to a marker for the mini badge overlay */
   private setMarkerKpi(marker: L.Marker, apiSite: any) {
     if (!apiSite) return;
@@ -551,8 +607,7 @@ export class ModuloGis implements OnInit, OnDestroy {
       size = Math.max(size, 22);
     }
 
-    const estatus = ((marker as any).__scadaEstatus as string) || 'activo';
-    const isLive = estatus === 'activo';
+    const opState = ((marker as any).__scadaOpState as string) || 'inactive';
     const pulseSize = Math.round(size * 1.8);
 
     // Mini KPI badge (only show when zoomed in enough)
@@ -562,16 +617,40 @@ export class ModuloGis implements OnInit, OnDestroy {
       ? `<span class="mk-kpi">${kpi}</span>`
       : '';
 
-    const html = isLive
-      ? `<div class="mk-live" style="width:${pulseSize}px;height:${pulseSize}px">
-           <span class="mk-ring" style="width:${pulseSize}px;height:${pulseSize}px"></span>
-           <img src="${iconUrl}" width="${size}" height="${size}" />
-           ${kpiBadge}
-         </div>`
-      : `<div class="mk-dead" style="width:${size}px;height:${size}px">
+    // Sin-señal overlay icon (only when zoomed in enough to see it)
+    const noSignalOverlay = opState === 'no-signal' && zoom >= 11
+      ? `<span class="mk-nosignal" title="Sin señal">⚠</span>`
+      : '';
+
+    let html: string;
+    if (opState === 'operating') {
+      // Green pulse — everything OK
+      html = `<div class="mk-live mk-op-ok" style="width:${pulseSize}px;height:${pulseSize}px">
+           <span class="mk-ring mk-ring-green" style="width:${pulseSize}px;height:${pulseSize}px"></span>
            <img src="${iconUrl}" width="${size}" height="${size}" />
            ${kpiBadge}
          </div>`;
+    } else if (opState === 'stopped') {
+      // Red/white — pump stopped but communicating
+      html = `<div class="mk-live mk-op-stopped" style="width:${pulseSize}px;height:${pulseSize}px">
+           <span class="mk-ring mk-ring-red" style="width:${pulseSize}px;height:${pulseSize}px"></span>
+           <img src="${iconUrl}" width="${size}" height="${size}" />
+           ${kpiBadge}
+         </div>`;
+    } else if (opState === 'no-signal') {
+      // No signal — COMM LOSS
+      html = `<div class="mk-dead mk-op-nosignal" style="width:${size}px;height:${size}px">
+           <img src="${iconUrl}" width="${size}" height="${size}" />
+           ${noSignalOverlay}
+           ${kpiBadge}
+         </div>`;
+    } else {
+      // Inactive (obra/pendiente)
+      html = `<div class="mk-dead" style="width:${size}px;height:${size}px">
+           <img src="${iconUrl}" width="${size}" height="${size}" />
+           ${kpiBadge}
+         </div>`;
+    }
 
     marker.setIcon(
       L.divIcon({
@@ -759,9 +838,10 @@ export class ModuloGis implements OnInit, OnDestroy {
             const iconUrl = this.resolveSiteIconUrl(name, cachedSite?.site_type);
             const estatus = this.resolveEstatus(name);
 
-          // ✅ meta + KPI primero, luego scale
+          // ✅ meta + KPI + opState primero, luego scale
           this.setMarkerIconMeta(marker, iconUrl, estatus);
           this.setMarkerKpi(marker, cachedSite);
+          this.setMarkerOpState(marker, cachedSite);
           this.applyIconScaleToMarker(marker);
 
           if ((marker as any).bringToFront) (marker as any).bringToFront();
@@ -874,6 +954,7 @@ export class ModuloGis implements OnInit, OnDestroy {
           const iconUrl = this.resolveSiteIconUrl(name, site.site_type);
           this.setMarkerIconMeta(marker, iconUrl, siteEstatus);
           this.setMarkerKpi(marker, site);
+          this.setMarkerOpState(marker, site);
           this.applyIconScaleToMarker(marker);
 
           this.markersIndex.set(key, marker);
@@ -1261,14 +1342,26 @@ export class ModuloGis implements OnInit, OnDestroy {
   // ─────────────────────────────
   // Init
   // ─────────────────────────────
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
 
-    // Fix Leaflet default icon path (prevents 404 on marker-shadow.png)
+    // Fix Leaflet default icon path — both ES module L and global window.L
+    const iconFix = { iconUrl: 'assets/icons/map/well.svg', iconRetinaUrl: 'assets/icons/map/well.svg', shadowUrl: '', shadowRetinaUrl: '' };
     delete (L.Icon.Default.prototype as any)._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconUrl: 'assets/icons/map/well.svg',
-      shadowUrl: '',
-    });
+    L.Icon.Default.mergeOptions(iconFix);
+    const gL = (window as any).L;
+    if (gL?.Icon?.Default) {
+      delete gL.Icon.Default.prototype._getIconUrl;
+      gL.Icon.Default.mergeOptions(iconFix);
+    }
+
+    // Load MarkerCluster plugin — must happen before creating layers
+    const clusterOk = await loadMarkerClusterPlugin();
+    if (clusterOk) {
+      this.pozosActivosLayer = createClusterGroup('#3b82f6');
+      this.pozosObraLayer = createClusterGroup('#f59e0b');
+      this.pozosInactivosLayer = createClusterGroup('#ef4444');
+      this.pozosPendienteLayer = createClusterGroup('#94a3b8');
+    }
 
     // 1) Mapa base
     this.map = L.map('map').setView([19.3, -99.6], 8);

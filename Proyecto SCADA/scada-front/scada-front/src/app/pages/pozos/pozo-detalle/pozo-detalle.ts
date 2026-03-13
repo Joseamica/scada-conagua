@@ -323,6 +323,8 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   layout = signal<any>(null);
+  /** Uploaded render URL from API (used when no hardcoded layout exists) */
+  renderUrl = signal<string | null>(null);
   datos = signal<any>({
     caudal: 0,
     presion: 0,
@@ -539,6 +541,10 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
           const layoutKey = this.slugify(site.site_name || '');
           if (POZOS_LAYOUT[layoutKey]) {
             this.layout.set(POZOS_LAYOUT[layoutKey]);
+          }
+          // Store uploaded render URL for sites without hardcoded layout
+          if (site.render_url) {
+            this.renderUrl.set(site.render_url);
           }
           this.startAutoRefresh(site.dev_eui);
         } else {

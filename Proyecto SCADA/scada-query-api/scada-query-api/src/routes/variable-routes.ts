@@ -4,7 +4,7 @@ import { FluxTableMetaData } from '@influxdata/influxdb-client';
 import { pool } from '../services/db-service';
 import { influxDB, org, queryApi } from '../services/influx-query-service';
 import { isAuth, canEditSinopticos } from '../middlewares/auth-middleware';
-import { validateFormula, evaluateFormulasBatch } from '../services/formula-engine';
+import { validateFormula, evaluateFormulasBatch, NullPolicy } from '../services/formula-engine';
 import { auditLog } from '../services/audit-service';
 
 const router = Router();
@@ -224,7 +224,10 @@ router.get('/views/:id', isAuth, async (req: Request, res: Response) => {
 });
 
 router.put('/views/:id', canEditSinopticos, async (req: Request, res: Response) => {
-    const { name, description, folder_id, is_shared } = req.body;
+    const { name, description, folder_id, is_shared, null_policy } = req.body;
+    if (null_policy && !['zero', 'null'].includes(null_policy)) {
+        return res.status(400).json({ error: 'null_policy debe ser "zero" o "null".' });
+    }
     try {
         if (folder_id) {
             const folderCheck = await pool.query(
@@ -236,9 +239,10 @@ router.put('/views/:id', canEditSinopticos, async (req: Request, res: Response) 
         const result = await pool.query(
             `UPDATE scada.variable_views
              SET name = COALESCE($1, name), description = $2, folder_id = $3,
-                 is_shared = COALESCE($4, is_shared), updated_at = NOW()
-             WHERE id = $5 AND owner_id = $6 RETURNING *`,
-            [name?.trim(), description, folder_id, is_shared, req.params.id, req.user!.id]
+                 is_shared = COALESCE($4, is_shared), null_policy = COALESCE($5, null_policy),
+                 updated_at = NOW()
+             WHERE id = $6 AND owner_id = $7 RETURNING *`,
+            [name?.trim(), description, folder_id, is_shared, null_policy, req.params.id, req.user!.id]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Vista no encontrada.' });
         await auditLog(req.user!.id, 'VARIABLE_VIEW_UPDATED', { view_id: req.params.id, name: result.rows[0].name }, req.ip!);
@@ -552,14 +556,18 @@ router.post('/views/:id/execute', isAuth, async (req: Request, res: Response) =>
             indexedValues[`i_${idx + 1}`] = columnValues[col.alias];
         });
 
+        // Read null_policy from view (default: 'zero')
+        const nullPolicy: NullPolicy = view.rows[0].null_policy || 'zero';
+
         // Evaluate formulas in order
-        const allValues = evaluateFormulasBatch(
+        const { values: allValues, quality: qualityMap } = evaluateFormulasBatch(
             formulas.rows.map((f: any) => ({
                 alias: f.alias,
                 expression: f.expression,
                 depends_on: f.depends_on || [],
             })),
-            indexedValues
+            indexedValues,
+            nullPolicy
         );
 
         // Strip i_N index keys from output — only return alias-keyed values
@@ -573,6 +581,7 @@ router.post('/views/:id/execute', isAuth, async (req: Request, res: Response) =>
             columns: columns.rows,
             formulas: formulas.rows,
             values: cleanValues,
+            quality: qualityMap,
             timestamp: new Date().toISOString(),
         });
     } catch (e: any) {
@@ -740,6 +749,10 @@ router.post('/views/:id/execute-series', isAuth, async (req: Request, res: Respo
             columnSeries[`i_${i + 1}`] = tsMap;
         }
 
+        // Read null_policy from view
+        const viewRow = await pool.query('SELECT null_policy FROM scada.variable_views WHERE id = $1', [viewId]);
+        const nullPolicy: NullPolicy = viewRow.rows[0]?.null_policy || 'zero';
+
         // Collect all unique timestamps
         const allTimestamps = new Set<number>();
         for (const tsMap of Object.values(columnSeries)) {
@@ -751,24 +764,29 @@ router.post('/views/:id/execute-series', isAuth, async (req: Request, res: Respo
 
         // Evaluate formula at each timestamp
         const seriesData: [number, number][] = [];
+        const partialTimestamps: number[] = [];
         for (const ts of sortedTimestamps) {
             const bindings: Record<string, number | null> = {};
             for (const [alias, tsMap] of Object.entries(columnSeries)) {
                 bindings[alias] = tsMap.get(ts) ?? null;
             }
 
-            const evaluated = evaluateFormulasBatch(
+            const { values: evaluated, quality } = evaluateFormulasBatch(
                 allFormulasResult.rows.map((f: any) => ({
                     alias: f.alias,
                     expression: f.expression,
                     depends_on: f.depends_on || [],
                 })),
-                bindings
+                bindings,
+                nullPolicy
             );
 
             const val = evaluated[formula.alias];
             if (val !== null && val !== undefined && !isNaN(val)) {
                 seriesData.push([ts, val]);
+                if (quality[formula.alias]?.partial) {
+                    partialTimestamps.push(ts);
+                }
             }
         }
 
@@ -776,6 +794,7 @@ router.post('/views/:id/execute-series', isAuth, async (req: Request, res: Respo
             formulaId: formula.id,
             alias: formula.alias,
             data: seriesData,
+            partialTimestamps: partialTimestamps.length > 0 ? partialTimestamps : undefined,
         });
     } catch (err) {
         console.error('Error executing formula series:', err);

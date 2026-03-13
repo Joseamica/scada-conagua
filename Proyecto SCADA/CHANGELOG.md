@@ -4,6 +4,24 @@ Todos los cambios notables del proyecto se documentan aquí.
 
 ## [Unreleased]
 
+### scada-query-api (Formula null handling — professional SCADA behavior)
+- **feat:** Migration `033_view_null_policy.sql` — adds `null_policy` column to `variable_views` (default: `'zero'`)
+- **feat:** Formula engine now supports `nullPolicy` parameter: `'zero'` substitutes null with 0 (Ignition/AVEVA behavior), `'null'` propagates null (strict mode)
+- **feat:** Formula engine returns quality metadata: `nullInputs` array tracks which bindings were null per formula
+- **feat:** `COALESCE(val, fallback)` function added to formula engine for explicit null substitution
+- **feat:** `POST /views/:id/execute` returns `quality` object with partial quality flags per formula
+- **feat:** `POST /views/:id/execute-series` returns `partialTimestamps` array + stops filtering out partial results
+- **feat:** `PUT /views/:id` accepts `null_policy` field to toggle between zero/null modes
+
+### scada-front (Render display fix)
+- **fix:** Pozo detail page now displays uploaded render images from the API (`render_url`). Previously only sites with hardcoded entries in `POZOS_LAYOUT` showed renders — uploaded renders via "Editar sitio" were ignored.
+
+### scada-front (Formula null handling — quality indicators)
+- **feat:** Variable view editor — null policy toggle select in header ("Nulos = 0" / "Nulos = estricto")
+- **feat:** Results table shows amber "parcial" badge on formula values computed with incomplete inputs
+- **feat:** COALESCE function button added to formula editor function bar + formula templates
+- **feat:** `LabelWidget` and `VariableWidget` accept `partialQuality` input — show amber asterisk on partial values
+
 ### scada-query-api (Variables — authorization + validation audit)
 - **fix:** Added `assertViewAccess()` ownership/share check to all view endpoints — `GET /views/:id`, column/formula CRUD, execute, execute-series, shares. Prevents unauthorized access by guessing sequential IDs (#1)
 - **fix:** Validate `folder_id` ownership in `POST /views` and `PUT /views/:id` — users can no longer move views into another user's folder (#2)

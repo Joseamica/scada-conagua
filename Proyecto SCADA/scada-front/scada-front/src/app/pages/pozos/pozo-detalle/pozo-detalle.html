@@ -147,6 +147,13 @@
                 </div>
                 <!-- Overlay para cerrar -->
                 <div class="overlay-click" *ngIf="overlayVisible()" (click)="cerrarOverlay()"></div>
+              } @else if (renderUrl()) {
+                <!-- Sitio con render subido (sin hotspots) -->
+                <img
+                  class="iso-render"
+                  [src]="renderUrl()"
+                  alt="Render del sitio"
+                />
               } @else {
                 <!-- Sitio sin render — mostrar métricas directas -->
                 <div class="no-render-placeholder">
