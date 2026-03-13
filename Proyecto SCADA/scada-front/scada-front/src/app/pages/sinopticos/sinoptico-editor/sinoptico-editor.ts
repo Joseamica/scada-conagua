@@ -242,12 +242,18 @@ export class SinopticoEditor implements OnInit, OnDestroy {
         this.dataStore.startPolling(data.id, this.store.widgets());
         // Load available views for variable widget
         this.variableService.getViews().subscribe((views) => this.availableViews.set(views));
-        // Load available sinopticos for link widget
-        if (data.project_id) {
-          this.sinopticoService.getProjectSinopticos(data.project_id).subscribe((list) => {
-            this.availableSinopticos.set(list.filter((s) => s.id !== data.id).map((s) => ({ id: s.id, name: s.name })));
-          });
-        }
+        // Load all accessible sinopticos for link widget dropdown
+        this.sinopticoService.getAllSinopticos().subscribe({
+          next: (list) => {
+            this.availableSinopticos.set(
+              list.filter((s) => s.id !== data.id).map((s) => ({
+                id: s.id,
+                name: s.project_name ? `${s.project_name} / ${s.name}` : s.name,
+              })),
+            );
+          },
+          error: () => {},
+        });
       },
       error: () => {
         this.loading.set(false);

@@ -58,6 +58,7 @@ export class SitioForm implements OnInit {
 
   modo: 'create' | 'edit' = 'create';
   sitioId: string | null = null;
+  originalDevEUI = '';
   renderFileName = '';
   selectedRenderFile: File | null = null;
 
@@ -72,6 +73,7 @@ export class SitioForm implements OnInit {
   estatusSitio = [
     { value: 'activo', label: 'Activo' },
     { value: 'obra', label: 'En obra' },
+    { value: 'pendiente', label: 'Pendiente' },
     { value: 'inactivo', label: 'Inactivo' },
   ];
 
@@ -171,8 +173,8 @@ export class SitioForm implements OnInit {
           lat: site.latitude || 0,
           lng: site.longitude || 0,
         });
-        // Disable devEUI in edit mode — it's the primary key
-        this.form.get('devEUI')?.disable();
+        // Store original devEUI to detect changes
+        this.originalDevEUI = site.dev_eui || '';
 
         // Patch proveedor from API if available
         if (site.proveedor) {
@@ -303,6 +305,8 @@ export class SitioForm implements OnInit {
       });
     } else {
       const v = this.form.getRawValue();
+      const newDevEUI = v.devEUI?.trim() || '';
+      const devEUIChanged = newDevEUI && newDevEUI !== this.originalDevEUI;
       const payload = {
         site_name: v.nombre?.trim() || '',
         site_type: v.tipo || 'pozo',
@@ -312,6 +316,7 @@ export class SitioForm implements OnInit {
         longitude: v.lng || undefined,
         proveedor: this.proveedores.find((p) => p.id === v.proveedor)?.nombre || undefined,
         estatus: v.estatus || 'activo',
+        new_dev_eui: devEUIChanged ? newDevEUI : undefined,
       };
 
       this.saving.set(true);

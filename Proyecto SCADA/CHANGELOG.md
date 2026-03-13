@@ -4,6 +4,39 @@ Todos los cambios notables del proyecto se documentan aquí.
 
 ## [Unreleased]
 
+### scada-query-api (RBAC — Bitacora municipal scope enforcement)
+- **fix:** `GET /audit/logs` and `GET /audit/logs/export` now enforce municipal data isolation — Municipal users only see logs from users in their municipality, Estatal users see their state, Federal/Admin see all
+- **fix:** Count query for pagination now joins `users` table to support scope filtering
+
+### scada-igestion-api (Fixes críticos — cross-contamination + timestamps)
+- **fix:** Removed dangerous ILIKE last-resort fallback in `updateIgnitionSiteStatus` — was causing ICH data (e.g., "POZO 01") to overwrite unrelated 4PT sites (e.g., "Pozo 011 - Chalco") via partial name matching
+- **fix:** ChirpStack path now uses `new Date()` instead of `data.timestamp` for `last_updated_at` — prevents stale timestamps when device sends old epoch values
+- **feat:** Added `case 'arrancador'` to Ignition variable switch — maps to `fallo_arrancador` column in site_status
+- **fix:** Cleaned contaminated site_status for "Pozo 011 - Chalco" (4PT) which had ICH values from "POZO 01"
+
+### scada-front (Sitio form — edicion de DevEUI + estatus pendiente)
+- **feat:** DevEUI field is now editable in edit mode (was disabled as primary key) — allows field device replacement without DB access
+- **feat:** When DevEUI is changed, cascades update to both `inventory` and `site_status` tables
+- **feat:** Added 'Pendiente' option to site status dropdown
+
+### scada-query-api (PUT /sites — DevEUI update support)
+- **feat:** PUT `/api/v1/sites/:devEUI` now accepts optional `new_dev_eui` in body to change a site's DevEUI
+- **feat:** Validates new DevEUI format, checks for uniqueness conflicts, cascades to `site_status`
+- **feat:** Audit log records old and new DevEUI when changed
+
+### scada-igestion-api (Modbus caudal + totalizado — ChirpStack)
+- **feat:** `transformer-service.ts` now reads `modbus_chn_1` as direct Caudal (Lt/s) when present, bypassing 4-20mA scaling
+- **feat:** `modbus_chn_2` mapped to `caudal_totalizado_m3` — direct engineering unit from Modbus meter
+- **feat:** `influx-service.ts` writes `caudal_totalizado_m3` to InfluxDB when present
+- **feat:** `postgres-service.ts` upserts `last_total_flow` in ChirpStack path (was Ignition-only)
+
+### scada-query-api (InfluxDB query — ChirpStack totalizado mapping)
+- **fix:** `influx-query-service.ts` maps `last_total_flow` → `caudal_totalizado_m3` for ChirpStack devices (was only mapped for Ignition)
+
+### scada-query-api (Migration 029 — inventory population)
+- **feat:** Migration `029_populate_inventory_from_excel.sql` — populated 206 new sites from Anibal's Excel, total 255 inventory rows
+- **feat:** All new sites inserted as `pendiente` with placeholder dev_eui/gw_eui (auto-promote to activo on first telemetry)
+
 ### scada-front (Telemetria avanzada — Radar SCADA profesional)
 - **refactor:** Modo radar migrado de valores crudos con unidades mixtas a **Índice Operativo SCADA (0–100)** con tres ejes: Caudal operativo, Presión operativa y Comunicación
 - **feat:** Comparación multi-pozo sincronizada por timestamp operativo (usa el último instante común por pozo para evitar mezclar lecturas desfasadas)

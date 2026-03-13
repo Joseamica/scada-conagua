@@ -374,9 +374,14 @@ app.put('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
         return res.status(400).json({ error: 'Invalid devEUI format.' });
     }
 
-    const { site_name, site_type, municipality, latitude, longitude, gw_eui, proveedor, estatus } = req.body;
+    const { site_name, site_type, municipality, latitude, longitude, gw_eui, proveedor, estatus, new_dev_eui } = req.body;
     if (!site_name || !municipality) {
         return res.status(400).json({ error: 'site_name y municipality son obligatorios.' });
+    }
+
+    // Validate new_dev_eui format if provided
+    if (new_dev_eui && !RE_DEV_EUI.test(new_dev_eui)) {
+        return res.status(400).json({ error: 'Formato de nuevo DevEUI invalido.' });
     }
 
     try {
@@ -386,6 +391,17 @@ app.put('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
         );
         if (existing.rows.length === 0) {
             return res.status(404).json({ error: 'Sitio no encontrado.' });
+        }
+
+        // If changing devEUI, check the new one doesn't already exist
+        if (new_dev_eui && new_dev_eui.trim().toLowerCase() !== devEUI.trim().toLowerCase()) {
+            const conflict = await pool.query(
+                'SELECT dev_eui FROM scada.inventory WHERE TRIM(dev_eui) = $1',
+                [new_dev_eui.trim()]
+            );
+            if (conflict.rows.length > 0) {
+                return res.status(409).json({ error: 'Ya existe un sitio con ese DevEUI.' });
+            }
         }
 
         const setClauses: string[] = [];
@@ -417,13 +433,34 @@ app.put('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
         setClauses.push(`estatus = $${values.length + 1}`);
         values.push(estatus || 'activo');
 
+        // Update dev_eui itself if a new one was provided
+        const effectiveNewEui = (new_dev_eui && new_dev_eui.trim().toLowerCase() !== devEUI.trim().toLowerCase())
+            ? new_dev_eui.trim()
+            : null;
+        if (effectiveNewEui) {
+            setClauses.push(`dev_eui = $${values.length + 1}`);
+            values.push(effectiveNewEui.substring(0, 16));
+        }
+
         values.push(devEUI.trim());
         await pool.query(
             `UPDATE scada.inventory SET ${setClauses.join(', ')} WHERE TRIM(dev_eui) = $${values.length}`,
             values
         );
 
-        await auditLog(req.user!.id, 'SITE_UPDATED', { dev_eui: devEUI, site_name, municipality }, req.ip!);
+        // Cascade: update site_status dev_eui if it changed
+        if (effectiveNewEui) {
+            await pool.query(
+                'UPDATE scada.site_status SET dev_eui = $1 WHERE TRIM(dev_eui) = $2',
+                [effectiveNewEui.substring(0, 16), devEUI.trim()]
+            );
+        }
+
+        await auditLog(req.user!.id, 'SITE_UPDATED', {
+            dev_eui: devEUI,
+            ...(effectiveNewEui ? { new_dev_eui: effectiveNewEui } : {}),
+            site_name, municipality
+        }, req.ip!);
 
         res.json({ message: 'Sitio actualizado correctamente.' });
     } catch (e: any) {

@@ -111,7 +111,6 @@ export class ModuloGis implements OnInit, OnDestroy {
 
   // LayerGroups
   pozosLayer = L.layerGroup();
-  // (opcional) si quieres mantener "capas operativas" como antes
   capasLayer = L.layerGroup();
   redPrimariaLayer = L.layerGroup();
   redSecundariaLayer = L.layerGroup();
@@ -122,11 +121,28 @@ export class ModuloGis implements OnInit, OnDestroy {
   pozosInactivosLayer = L.layerGroup();
   pozosPendienteLayer = L.layerGroup();
 
+  // Custom layer control state
+  layerPanelOpen = signal(true);
+  activeBase = signal<'mapa' | 'satelite' | 'terreno'>('mapa');
+  layerVisible = signal({
+    activos: true,
+    obra: true,
+    inactivos: true,
+    pendientes: true,
+    redPrimaria: false,
+    redSecundaria: false,
+    zonas: false,
+  });
+  layerCounts = signal({
+    activos: 0, obra: 0, inactivos: 0, pendientes: 0,
+    redPrimaria: 0, redSecundaria: 0, zonas: 0,
+  });
+  totalSites = signal(0);
+
 
   // Municipios
   municipiosLayer!: L.GeoJSON;
-  // Control de capas (para poder agregar overlays async)
-  layersControl!: L.Control.Layers;
+  // (layersControl removed — custom panel replaces native Leaflet control)
 
   // Buscador
   municipiosIndex = new Map<string, L.Polygon>();
@@ -169,6 +185,55 @@ export class ModuloGis implements OnInit, OnDestroy {
 
   get highlightWells() {
     return this.pozosStore.highlightWells;
+  }
+
+  // ─────────────────────────────
+  // Custom Layer Control
+  // ─────────────────────────────
+  switchBase(key: 'mapa' | 'satelite' | 'terreno') {
+    if (!this.map) return;
+    Object.values(this.baseLayers).forEach(l => this.map.removeLayer(l));
+    this.baseLayers[key]?.addTo(this.map);
+    this.activeBase.set(key);
+    this.activeBaseKey = key;
+    this.tileLayer = this.baseLayers[key];
+  }
+
+  toggleLayer(key: 'activos' | 'obra' | 'inactivos' | 'pendientes' | 'redPrimaria' | 'redSecundaria' | 'zonas') {
+    const vis = { ...this.layerVisible() };
+    vis[key] = !vis[key];
+    this.layerVisible.set(vis);
+
+    const layerMap = {
+      activos: this.pozosActivosLayer,
+      obra: this.pozosObraLayer,
+      inactivos: this.pozosInactivosLayer,
+      pendientes: this.pozosPendienteLayer,
+      redPrimaria: this.redPrimariaLayer,
+      redSecundaria: this.redSecundariaLayer,
+      zonas: this.zonasLayer,
+    };
+    const layer = layerMap[key];
+    if (!layer) return;
+    if (vis[key]) {
+      layer.addTo(this.map);
+    } else {
+      this.map.removeLayer(layer);
+    }
+  }
+
+  refreshLayerCounts() {
+    this.layerCounts.set({
+      activos: this.pozosActivosLayer.getLayers().length,
+      obra: this.pozosObraLayer.getLayers().length,
+      inactivos: this.pozosInactivosLayer.getLayers().length,
+      pendientes: this.pozosPendienteLayer.getLayers().length,
+      redPrimaria: this.redPrimariaLayer.getLayers().length,
+      redSecundaria: this.redSecundariaLayer.getLayers().length,
+      zonas: this.zonasLayer.getLayers().length,
+    });
+    const c = this.layerCounts();
+    this.totalSites.set(c.activos + c.obra + c.inactivos + c.pendientes);
   }
 
   // ─────────────────────────────
@@ -244,8 +309,8 @@ export class ModuloGis implements OnInit, OnDestroy {
             version: '1.1.1',
           } as any);
           this.geoserverWmsLayers.set(layer.name, wms);
-          const label = `<span class="layer-label"><span class="legend-dot" style="background:#10b981"></span> ${layer.name}</span>`;
-          this.layersControl.addOverlay(wms, label);
+          // GeoServer WMS layers are added to map directly (no native layers control)
+          // Users can toggle these via future GeoServer panel if needed
         });
       },
       error: () => {} // GeoServer offline — silently skip
@@ -1178,37 +1243,9 @@ export class ModuloGis implements OnInit, OnDestroy {
     this.pozosInactivosLayer.addTo(this.map);
     this.pozosPendienteLayer.addTo(this.map);
 
-    // 3) Control de capas
-    this.layersControl = L.control.layers(
-  {
-    'Mapa': cartoLayer,
-    'Satélite': satelliteLayer,
-    'Terreno': terrainLayer,
-  },
-  {
-    '<span class="layer-label"><span class="legend-dot blue"></span> Sitios activos</span>':
-      this.pozosActivosLayer,
-
-    '<span class="layer-label"><span class="legend-dot yellow"></span> Sitios en obra</span>':
-      this.pozosObraLayer,
-
-    '<span class="layer-label"><span class="legend-dot gray"></span> Sitios inactivos</span>':
-      this.pozosInactivosLayer,
-
-    '<span class="layer-label"><span class="legend-dot gray" style="border:1px dashed #888"></span> Sitios pendientes</span>':
-      this.pozosPendienteLayer,
-
-    '<span class="layer-label"><img src="assets/icons/red-primaria.svg" width="20 "> Red primaria</span>':
-      this.redPrimariaLayer,
-
-    '<span class="layer-label"><img src="assets/icons/red-secundaria.svg" width="20 "> Red secundaria</span>':
-      this.redSecundariaLayer,
-
-    '<span class="layer-label"><img src="assets/icons/zonas.svg" width="20 "> Zonas</span>':
-      this.zonasLayer
-  },
-  { collapsed: false }
-).addTo(this.map);
+    // 3) Custom layer control — no native L.control.layers
+    // (layers already added above; red/zonas start hidden)
+    this.refreshLayerCounts();
 
     // ─────────────────────────────────────────────────────────────────────────
     // 1) OBTENER IDENTIDAD Y ALCANCE (GEOGRAPHIC SCOPE) — before loading assets
@@ -1293,6 +1330,7 @@ export class ModuloGis implements OnInit, OnDestroy {
     if (totalSources === 0) {
       // No KML sources — still load dynamic markers from API
       this.addDynamicSiteMarkers();
+      this.refreshLayerCounts();
       this.mapLoading.set(false);
     } else {
       filteredSources.forEach(src => {
@@ -1305,6 +1343,7 @@ export class ModuloGis implements OnInit, OnDestroy {
             }
             // Add markers for inventory sites not already placed by KML
             this.addDynamicSiteMarkers();
+            this.refreshLayerCounts();
             this.mapLoading.set(false);
           }
         });

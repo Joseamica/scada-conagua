@@ -40,6 +40,7 @@ export interface TelemetryProcessed {
     snr: number;              // Relación señal-ruido
     nivel_m?: number;         // Nivel de agua (metros) - sensor adc_3
     lluvia_mm?: number;       // Precipitacion (mm) - sensor adc_4
+    caudal_totalizado_m3?: number; // Caudal totalizado (m³) - modbus_chn_2
 }
 
 export interface IgnitionPayload {

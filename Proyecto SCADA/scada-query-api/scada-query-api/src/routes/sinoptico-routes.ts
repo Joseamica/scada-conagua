@@ -271,6 +271,31 @@ router.get('/sinopticos-shared', isAuth, async (req: Request, res: Response) => 
     }
 });
 
+// GET /sinopticos-all — lightweight list of all accessible sinopticos (for link widget dropdown)
+router.get('/sinopticos-all', isAuth, async (req: Request, res: Response) => {
+    try {
+        const user = req.user!;
+        const isAdmin = user.role_id === 1;
+        const accessFilter = isAdmin
+            ? ''
+            : `AND (s.owner_id = $1 OR p.is_public = true
+                OR EXISTS (SELECT 1 FROM scada.sinoptico_shares sh WHERE sh.sinoptico_id = s.id AND sh.user_id = $1))`;
+        const params = isAdmin ? [] : [user.id];
+        const result = await pool.query(
+            `SELECT s.id, s.name, p.name AS project_name
+             FROM scada.sinopticos s
+             JOIN scada.sinoptico_projects p ON p.id = s.project_id
+             WHERE s.deleted_at IS NULL ${accessFilter}
+             ORDER BY p.name, s.name`,
+            params
+        );
+        res.json(result.rows);
+    } catch (e: any) {
+        console.error('Error listing all sinopticos:', e.message);
+        res.status(500).json({ error: 'Error al listar sinopticos.' });
+    }
+});
+
 // GET /sinopticos/:id — load canvas (full JSONB) — checks access
 router.get('/sinopticos/:id', isAuth, async (req: Request, res: Response) => {
     try {

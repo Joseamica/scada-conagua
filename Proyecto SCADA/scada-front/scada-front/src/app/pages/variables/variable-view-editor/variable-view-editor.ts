@@ -778,7 +778,8 @@ export class VariableViewEditor implements OnInit {
       next: (result) => {
         this.seriesData.set(result.data || []);
         this.seriesLoading.set(false);
-        this.renderChart();
+        // Wait for Angular to render the chart container before initializing ECharts
+        setTimeout(() => this.renderChart());
       },
       error: () => {
         this.seriesLoading.set(false);

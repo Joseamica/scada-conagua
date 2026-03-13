@@ -39,12 +39,15 @@ export const writeTelemetryToInflux = async (data: TelemetryProcessed): Promise<
 
             .timestamp(data.timestamp);
 
-        // --- Nivel y lluvia: solo se escriben si existen ---
+        // --- Nivel, lluvia y totalizado: solo se escriben si existen ---
         if (data.nivel_m != null) {
             point.floatField('nivel_m', data.nivel_m);
         }
         if (data.lluvia_mm != null) {
             point.floatField('lluvia_mm', data.lluvia_mm);
+        }
+        if (data.caudal_totalizado_m3 != null) {
+            point.floatField('caudal_totalizado_m3', data.caudal_totalizado_m3);
         }
 
         writeApi.writePoint(point);

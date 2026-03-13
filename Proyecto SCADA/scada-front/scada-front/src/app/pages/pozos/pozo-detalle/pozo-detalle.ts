@@ -657,7 +657,15 @@ export class PozoDetalleComponent implements OnInit, AfterViewInit, OnDestroy {
         this.pozoNombre.set(data.site_name || this.pozoNombre());
         // PostgreSQL puede devolver 't'/'f' strings — no usar truthiness directa
         const cfeOn = data.is_cfe_on === true || data.is_cfe_on === 't';
-        this.isOnline.set(cfeOn);
+        // Ignition (ICH) sites don't have CFE sensor — use last_updated_at freshness instead
+        const isIgnition = this.pozoId().toLowerCase().startsWith('dev');
+        if (isIgnition) {
+          const lastUpdate = data.last_updated_at ? new Date(data.last_updated_at).getTime() : 0;
+          const staleMinutes = (Date.now() - lastUpdate) / 60000;
+          this.isOnline.set(staleMinutes < 15);
+        } else {
+          this.isOnline.set(cfeOn);
+        }
         this.batteryLevel.set(batteryVal);
         this.liveTotalFlow.set(Number(data.last_total_flow) || 0);
         this.estadoBomba.set(

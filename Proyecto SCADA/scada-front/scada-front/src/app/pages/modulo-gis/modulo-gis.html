@@ -78,6 +78,101 @@
 
     <div id="map" class="gis-map"></div>
 
+    <!-- Custom Layer Control Panel -->
+    <div class="lc" [class.lc-open]="layerPanelOpen()">
+      <!-- Toggle button -->
+      <button class="lc-toggle" (click)="layerPanelOpen.set(!layerPanelOpen())" title="Capas del mapa">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </button>
+
+      <!-- Panel body -->
+      @if (layerPanelOpen()) {
+        <div class="lc-body">
+          <!-- Header -->
+          <div class="lc-header">
+            <span class="lc-title">Capas</span>
+            <span class="lc-total">{{ totalSites() }} sitios</span>
+          </div>
+
+          <!-- Base map -->
+          <div class="lc-section">
+            <span class="lc-section-title">Mapa base</span>
+            <div class="lc-base-group">
+              @for (opt of [
+                { key: 'mapa', label: 'Mapa' },
+                { key: 'satelite', label: 'Satelite' },
+                { key: 'terreno', label: 'Terreno' }
+              ]; track opt.key) {
+                <button
+                  class="lc-base-btn"
+                  [class.lc-base-active]="activeBase() === opt.key"
+                  (click)="switchBase($any(opt.key))"
+                >{{ opt.label }}</button>
+              }
+            </div>
+          </div>
+
+          <!-- Status layers -->
+          <div class="lc-section">
+            <span class="lc-section-title">Estado operativo</span>
+            <div class="lc-layers">
+              <label class="lc-layer" [class.lc-layer-empty]="layerCounts().activos === 0">
+                <input type="checkbox" [checked]="layerVisible().activos" (change)="toggleLayer('activos')" />
+                <span class="lc-dot lc-dot-blue"></span>
+                <span class="lc-layer-name">Activos</span>
+                <span class="lc-count">{{ layerCounts().activos }}</span>
+              </label>
+              <label class="lc-layer" [class.lc-layer-empty]="layerCounts().obra === 0">
+                <input type="checkbox" [checked]="layerVisible().obra" (change)="toggleLayer('obra')" />
+                <span class="lc-dot lc-dot-yellow"></span>
+                <span class="lc-layer-name">En obra</span>
+                <span class="lc-count">{{ layerCounts().obra }}</span>
+              </label>
+              <label class="lc-layer" [class.lc-layer-empty]="layerCounts().inactivos === 0">
+                <input type="checkbox" [checked]="layerVisible().inactivos" (change)="toggleLayer('inactivos')" />
+                <span class="lc-dot lc-dot-red"></span>
+                <span class="lc-layer-name">Inactivos</span>
+                <span class="lc-count">{{ layerCounts().inactivos }}</span>
+              </label>
+              <label class="lc-layer" [class.lc-layer-empty]="layerCounts().pendientes === 0">
+                <input type="checkbox" [checked]="layerVisible().pendientes" (change)="toggleLayer('pendientes')" />
+                <span class="lc-dot lc-dot-gray"></span>
+                <span class="lc-layer-name">Pendientes</span>
+                <span class="lc-count">{{ layerCounts().pendientes }}</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Infrastructure layers -->
+          <div class="lc-section">
+            <span class="lc-section-title">Infraestructura</span>
+            <div class="lc-layers">
+              <label class="lc-layer" [class.lc-layer-empty]="layerCounts().redPrimaria === 0">
+                <input type="checkbox" [checked]="layerVisible().redPrimaria" (change)="toggleLayer('redPrimaria')" />
+                <img src="assets/icons/red-primaria.svg" class="lc-icon" alt="" />
+                <span class="lc-layer-name">Red primaria</span>
+                <span class="lc-count">{{ layerCounts().redPrimaria }}</span>
+              </label>
+              <label class="lc-layer" [class.lc-layer-empty]="layerCounts().redSecundaria === 0">
+                <input type="checkbox" [checked]="layerVisible().redSecundaria" (change)="toggleLayer('redSecundaria')" />
+                <img src="assets/icons/red-secundaria.svg" class="lc-icon" alt="" />
+                <span class="lc-layer-name">Red secundaria</span>
+                <span class="lc-count">{{ layerCounts().redSecundaria }}</span>
+              </label>
+              <label class="lc-layer" [class.lc-layer-empty]="layerCounts().zonas === 0">
+                <input type="checkbox" [checked]="layerVisible().zonas" (change)="toggleLayer('zonas')" />
+                <img src="assets/icons/zonas.svg" class="lc-icon" alt="" />
+                <span class="lc-layer-name">Zonas</span>
+                <span class="lc-count">{{ layerCounts().zonas }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
     @if (mapLoading()) {
       <div class="gis-map-loading-overlay">
         <app-loading-spinner label="Cargando sitios..." mode="inline"></app-loading-spinner>

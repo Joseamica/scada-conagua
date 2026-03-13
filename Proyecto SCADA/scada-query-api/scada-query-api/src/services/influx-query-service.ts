@@ -47,6 +47,11 @@ export async function getTelemetryData(
                 'lluvia_mm': 'value_lluvia'
             };
             influxField = mapping[measurementField] || measurementField;
+        } else {
+            // ChirpStack: campo totalizado se guarda como caudal_totalizado_m3
+            if (measurementField === 'last_total_flow') {
+                influxField = 'caudal_totalizado_m3';
+            }
         }
 
         // 4. Buscar el nombre del sitio en PostgreSQL
@@ -143,6 +148,10 @@ export async function getLatestValue(
                 'lluvia_mm': 'value_lluvia'
             };
             influxField = mapping[measurementField] || measurementField;
+        } else {
+            if (measurementField === 'last_total_flow') {
+                influxField = 'caudal_totalizado_m3';
+            }
         }
 
         // For Ignition, we need the site name to filter by 'pozo' tag

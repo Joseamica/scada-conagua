@@ -87,8 +87,8 @@ interface WizardColumn {
             class="tag-search"
             type="text"
             placeholder="Buscar sitio o variable..."
-            [(ngModel)]="searchTerm"
-            (input)="onSearch()"
+            [ngModel]="searchTerm()"
+            (ngModelChange)="searchTerm.set($event)"
             #searchInput
           />
 
@@ -150,8 +150,8 @@ interface WizardColumn {
 
               @if (filteredTree().length === 0 && !loading() && views().length === 0) {
                 <div class="tag-empty">
-                  @if (searchTerm) {
-                    Sin resultados para "{{ searchTerm }}"
+                  @if (searchTerm()) {
+                    Sin resultados para "{{ searchTerm() }}"
                   } @else {
                     No hay tags disponibles
                   }
@@ -1404,7 +1404,8 @@ export class TagBrowser implements OnInit {
 
   isOpen = signal(false);
   loading = signal(false);
-  searchTerm = '';
+  searchTerm = signal('');
+  private savedScrollTop = 0;
 
   private allTags = signal<TagEntry[]>([]);
   private tree = signal<MunicipalityNode[]>([]);
@@ -1452,7 +1453,7 @@ export class TagBrowser implements OnInit {
   });
 
   filteredTree = computed(() => {
-    const search = this.searchTerm.toLowerCase().trim();
+    const search = this.searchTerm().toLowerCase().trim();
     const base = this.tree();
     if (!search) return base;
 
@@ -1519,9 +1520,21 @@ export class TagBrowser implements OnInit {
   }
 
   toggle(): void {
+    // Save scroll before closing
+    if (this.isOpen()) {
+      const tree = this.elRef.nativeElement.querySelector('.tag-tree');
+      if (tree) this.savedScrollTop = tree.scrollTop;
+    }
     this.isOpen.update((v) => !v);
     if (this.isOpen() && this.allTags().length === 0) {
       this.loadTags();
+    }
+    // Restore scroll after opening
+    if (this.isOpen()) {
+      setTimeout(() => {
+        const tree = this.elRef.nativeElement.querySelector('.tag-tree');
+        if (tree) tree.scrollTop = this.savedScrollTop;
+      });
     }
   }
 
@@ -1536,6 +1549,9 @@ export class TagBrowser implements OnInit {
   }
 
   selectTag(site: SiteNode, measurement: string, municipality: string): void {
+    // Save scroll before closing
+    const tree = this.elRef.nativeElement.querySelector('.tag-tree');
+    if (tree) this.savedScrollTop = tree.scrollTop;
     this.tagSelect.emit({
       devEUI: site.devEUI,
       measurement,

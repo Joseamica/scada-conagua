@@ -45,16 +45,28 @@ export const updateIgnitionSiteStatus = async (data: any): Promise<void> => {
     }
 
     // 1. Buscamos el dev_eui en la tabla inventory usando el nombre del pozo
-    // Usamos ILIKE y % para que "POZO 34" coincida con "Pozo 034 - Ixtapaluca"
+    // Primero match exacto, luego match exacto + municipio, luego ILIKE con municipio
     const findEuiQuery = `
         SELECT dev_eui FROM scada.inventory
+        WHERE UPPER(TRIM(site_name)) = UPPER(TRIM($1))
+        LIMIT 1
+    `;
+    const findEuiByMunicipioQuery = `
+        SELECT dev_eui FROM scada.inventory
         WHERE site_name ILIKE $1
+          AND UPPER(TRIM(municipality)) = UPPER(TRIM($2))
         LIMIT 1
     `;
     const searchTerm = `%${data.pozo_name}%`;
 
     try {
-        const res = await pool.query(findEuiQuery, [searchTerm]);
+        // Try exact name match first (handles "POZO 50" == "POZO 50")
+        let res = await pool.query(findEuiQuery, [data.pozo_name]);
+
+        // Fallback: ILIKE + municipio filter (avoids "POZO 01" matching "Pozo 011 - Chalco")
+        if (res.rows.length === 0 && data.municipio) {
+            res = await pool.query(findEuiByMunicipioQuery, [searchTerm, data.municipio]);
+        }
 
         if (res.rows.length === 0) {
             console.warn(`⚠️ [Postgres] No se encontró inventario para el sitio: ${data.pozo_name}`);
@@ -75,6 +87,7 @@ export const updateIgnitionSiteStatus = async (data: any): Promise<void> => {
                 break;
             case 'nivel': column = 'last_nivel_value'; break;
             case 'lluvia': column = 'last_lluvia_value'; break;
+            case 'arrancador': column = 'fallo_arrancador'; break;
         }
 
         if (column) {
@@ -94,8 +107,8 @@ export const updateIgnitionSiteStatus = async (data: any): Promise<void> => {
 
             const finalValue = (data.variable === 'bomba') ? (data.valor === true) : Number(data.valor);
 
-            // Usamos data.timestamp para mantener la sincronía con el origen
-            await pool.query(upsertQuery, [devEui, finalValue, data.timestamp]);
+            // Usamos NOW() para last_updated_at — refleja cuándo recibimos el dato, no cuándo ICH lo generó
+            await pool.query(upsertQuery, [devEui, finalValue, new Date()]);
 
             // Auto-promote obra → activo for meaningful measurements
             const isValidMeasurement =
@@ -133,9 +146,10 @@ export const updateSiteStatus = async (devEUI: string, data: TelemetryProcessed)
             fallo_arrancador,
             last_nivel_value,
             last_lluvia_value,
+            last_total_flow,
             last_updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         ON CONFLICT (dev_eui)
         DO UPDATE SET
             last_flow_value = EXCLUDED.last_flow_value,
@@ -148,6 +162,7 @@ export const updateSiteStatus = async (devEUI: string, data: TelemetryProcessed)
             fallo_arrancador = EXCLUDED.fallo_arrancador,
             last_nivel_value = COALESCE(EXCLUDED.last_nivel_value, scada.site_status.last_nivel_value),
             last_lluvia_value = COALESCE(EXCLUDED.last_lluvia_value, scada.site_status.last_lluvia_value),
+            last_total_flow = COALESCE(EXCLUDED.last_total_flow, scada.site_status.last_total_flow),
             last_updated_at = EXCLUDED.last_updated_at;
     `;
 
@@ -163,7 +178,8 @@ export const updateSiteStatus = async (devEUI: string, data: TelemetryProcessed)
         data.fallo_arrancador,
         data.nivel_m ?? null,
         data.lluvia_mm ?? null,
-        data.timestamp
+        data.caudal_totalizado_m3 ?? null,
+        new Date()
     ];
 
     try {

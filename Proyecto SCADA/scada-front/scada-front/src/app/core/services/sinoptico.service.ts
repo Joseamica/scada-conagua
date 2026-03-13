@@ -296,6 +296,10 @@ export class SinopticoService {
     return this.http.get<Sinoptico[]>(`${this.base}/projects/${projectId}/sinopticos`);
   }
 
+  getAllSinopticos(): Observable<{ id: number; name: string; project_name: string }[]> {
+    return this.http.get<{ id: number; name: string; project_name: string }[]>(`${this.base}/sinopticos-all`);
+  }
+
   createSinoptico(projectId: number, data: { name: string; description?: string; canvas_width?: number; canvas_height?: number }): Observable<Sinoptico> {
     return this.http.post<Sinoptico>(`${this.base}/projects/${projectId}/sinopticos`, data);
   }

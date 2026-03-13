@@ -107,7 +107,7 @@ export class TelemetryService {
   updateSite(devEUI: string, payload: {
     site_name: string; site_type: string; municipality: string;
     gw_eui?: string; latitude?: number; longitude?: number;
-    proveedor?: string; estatus?: string;
+    proveedor?: string; estatus?: string; new_dev_eui?: string;
   }): Observable<{ message: string }> {
     return this.http.put<{ message: string }>(`${this.BASE_URL}/sites/${devEUI.trim()}`, payload);
   }

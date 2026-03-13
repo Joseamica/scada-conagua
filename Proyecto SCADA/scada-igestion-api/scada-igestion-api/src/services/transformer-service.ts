@@ -82,7 +82,9 @@ export const transformTelemetry = ( payload: ChirpstackUplinkPayload, siteMetada
 
 	// Scala dinamica
         presion_kg: scale(data.adc_1, 10.1972), // Presión fija (ej. 10 kg/cm2)
-        caudal_lts: scale(data.adc_2, dynamicMaxFlow), // <--- CAUDAL DINÁMICO
+        caudal_lts: (typeof data.modbus_chn_1 === 'number' && data.modbus_chn_1 > 0)
+            ? parseFloat(data.modbus_chn_1.toFixed(3))  // Modbus: valor directo en Lt/s
+            : scale(data.adc_2, dynamicMaxFlow),         // Analógico: 4-20mA escalado
         presion_ma: (typeof data.adc_1 === 'number') ? data.adc_1 : 4.0,
         caudal_ma: (typeof data.adc_2 === 'number') ? data.adc_2 : 4.0,
 
@@ -101,6 +103,10 @@ export const transformTelemetry = ( payload: ChirpstackUplinkPayload, siteMetada
             : {}),
         ...(typeof data.adc_4 === 'number' && data.adc_4 > 4.05
             ? { lluvia_mm: scale(data.adc_4, siteMetadata?.lluvia_max ? parseFloat(siteMetadata.lluvia_max) : LLUVIA_MAX_MM) }
+            : {}),
+        // Modbus: caudal totalizado (m³) — valor directo del medidor, sin escalamiento
+        ...(typeof data.modbus_chn_2 === 'number' && data.modbus_chn_2 > 0
+            ? { caudal_totalizado_m3: parseFloat(data.modbus_chn_2.toFixed(3)) }
             : {}),
     };
 };

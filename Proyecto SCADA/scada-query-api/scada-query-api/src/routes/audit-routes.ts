@@ -55,11 +55,27 @@ router.get('/logs', isSupervisor, async (req: Request, res: Response) => {
             conditions.push(`a.user_id = $${values.length}`);
         }
 
+        // Scope filtering (municipal data isolation)
+        const user = req.user!;
+        if (user.scope === 'Municipal' && user.scope_id) {
+            values.push(user.scope_id);
+            conditions.push(`(u.entity_id IN (
+                SELECT id FROM scada.entities WHERE municipio_id = $${values.length}
+            ) OR a.user_id IS NULL)`);
+        } else if (user.scope === 'Estatal' && user.estado_id) {
+            values.push(user.estado_id);
+            conditions.push(`(u.entity_id IN (
+                SELECT id FROM scada.entities WHERE estado_id = $${values.length}
+            ) OR a.user_id IS NULL)`);
+        }
+
         const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
         // Count total for pagination
         const countResult = await pool.query(
-            `SELECT COUNT(*) FROM scada.audit_logs a ${whereClause}`,
+            `SELECT COUNT(*) FROM scada.audit_logs a
+             LEFT JOIN scada.users u ON a.user_id = u.id
+             ${whereClause}`,
             values
         );
         const total = parseInt(countResult.rows[0].count);
@@ -112,6 +128,20 @@ router.get('/logs/export', isSupervisor, async (req: Request, res: Response) => 
         if (userId) {
             values.push(userId);
             conditions.push(`a.user_id = $${values.length}`);
+        }
+
+        // Scope filtering (municipal data isolation)
+        const user = req.user!;
+        if (user.scope === 'Municipal' && user.scope_id) {
+            values.push(user.scope_id);
+            conditions.push(`(u.entity_id IN (
+                SELECT id FROM scada.entities WHERE municipio_id = $${values.length}
+            ) OR a.user_id IS NULL)`);
+        } else if (user.scope === 'Estatal' && user.estado_id) {
+            values.push(user.estado_id);
+            conditions.push(`(u.entity_id IN (
+                SELECT id FROM scada.entities WHERE estado_id = $${values.length}
+            ) OR a.user_id IS NULL)`);
         }
 
         const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
