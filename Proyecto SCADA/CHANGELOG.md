@@ -4,6 +4,22 @@ Todos los cambios notables del proyecto se documentan aquí.
 
 ## [Unreleased]
 
+### scada-query-api (Variables — authorization + validation audit)
+- **fix:** Added `assertViewAccess()` ownership/share check to all view endpoints — `GET /views/:id`, column/formula CRUD, execute, execute-series, shares. Prevents unauthorized access by guessing sequential IDs (#1)
+- **fix:** Validate `folder_id` ownership in `POST /views` and `PUT /views/:id` — users can no longer move views into another user's folder (#2)
+- **fix:** Shares management (GET/POST/DELETE) now restricted to view owner (or admin) (#1)
+- **fix:** Trim `dev_eui` and `measurement` inputs in `POST /views/:id/columns` — whitespace-only strings no longer pass validation (#11)
+- **feat:** Validate `aggregation` enum in column creation/update — rejects invalid values before they reach InfluxDB (#12)
+- **feat:** Return 409 on duplicate column (same `dev_eui + measurement` in view) for defense in depth (#5)
+- **feat:** Migration `032_view_columns_unique_constraint.sql` — UNIQUE constraint on `(view_id, dev_eui, measurement)` (#5)
+
+### scada-front (Variables — UX bugs)
+- **fix:** Duplicate column prevention in editor — `onColumnTagSelected()` now checks existing columns before adding (#5)
+- **fix:** Double-click prevention on "Agregar Formula" button — `addingFormula`/`addingColumn` loading signals disable buttons during API calls (#6)
+- **fix:** Wizard now tracks failed columns and shows alert with count/names on completion (#8)
+- **fix:** Wizard formula failure now shows error message instead of silently succeeding (#8)
+- **fix:** Explorer `createFolder()` and `createView()` now show error alerts on API failure (#9)
+
 ### scada-query-api (RBAC — Bitacora municipal scope enforcement)
 - **fix:** `GET /audit/logs` and `GET /audit/logs/export` now enforce municipal data isolation — Municipal users only see logs from users in their municipality, Estatal users see their state, Federal/Admin see all
 - **fix:** Count query for pagination now joins `users` table to support scope filtering

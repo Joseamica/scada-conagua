@@ -9,6 +9,34 @@ import { auditLog } from '../services/audit-service';
 
 const router = Router();
 
+const VALID_AGGREGATIONS = ['AVG', 'MIN', 'MAX', 'SUM', 'LAST_VALUE', 'BAL'];
+
+/** Check if user has read/edit/owner access to a variable view */
+async function assertViewAccess(
+    viewId: number | string,
+    userId: number,
+    roleId: number,
+    level: 'read' | 'edit' | 'owner' = 'read'
+): Promise<boolean> {
+    if (roleId === 1) {
+        const r = await pool.query('SELECT 1 FROM scada.variable_views WHERE id = $1', [viewId]);
+        return r.rows.length > 0;
+    }
+    const view = await pool.query('SELECT owner_id, is_shared FROM scada.variable_views WHERE id = $1', [viewId]);
+    if (view.rows.length === 0) return false;
+    const row = view.rows[0];
+    if (row.owner_id === userId) return true;
+    if (level === 'owner') return false;
+    if (level === 'read' && row.is_shared) return true;
+    const share = await pool.query(
+        'SELECT permission FROM scada.view_shares WHERE view_id = $1 AND user_id = $2',
+        [viewId, userId]
+    );
+    if (share.rows.length === 0) return false;
+    if (level === 'edit') return share.rows[0].permission === 'edit';
+    return true;
+}
+
 // ═══════════════════════════════════════════
 // TAG BROWSER — devEUI → measurements tree
 // ═══════════════════════════════════════════
@@ -148,6 +176,13 @@ router.post('/views', canEditSinopticos, async (req: Request, res: Response) => 
     const { name, description, folder_id } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'Nombre obligatorio.' });
     try {
+        if (folder_id) {
+            const folderCheck = await pool.query(
+                'SELECT id FROM scada.variable_folders WHERE id = $1 AND owner_id = $2',
+                [folder_id, req.user!.id]
+            );
+            if (folderCheck.rows.length === 0) return res.status(403).json({ error: 'Carpeta no pertenece al usuario.' });
+        }
         const result = await pool.query(
             `INSERT INTO scada.variable_views (name, description, folder_id, owner_id)
              VALUES ($1, $2, $3, $4) RETURNING *`,
@@ -162,6 +197,10 @@ router.post('/views', canEditSinopticos, async (req: Request, res: Response) => 
 
 router.get('/views/:id', isAuth, async (req: Request, res: Response) => {
     try {
+        const user = req.user!;
+        if (!(await assertViewAccess(req.params.id, user.id, user.role_id, 'read'))) {
+            return res.status(403).json({ error: 'Sin acceso a esta vista.' });
+        }
         const view = await pool.query('SELECT * FROM scada.variable_views WHERE id = $1', [req.params.id]);
         if (view.rows.length === 0) return res.status(404).json({ error: 'Vista no encontrada.' });
 
@@ -187,6 +226,13 @@ router.get('/views/:id', isAuth, async (req: Request, res: Response) => {
 router.put('/views/:id', canEditSinopticos, async (req: Request, res: Response) => {
     const { name, description, folder_id, is_shared } = req.body;
     try {
+        if (folder_id) {
+            const folderCheck = await pool.query(
+                'SELECT id FROM scada.variable_folders WHERE id = $1 AND owner_id = $2',
+                [folder_id, req.user!.id]
+            );
+            if (folderCheck.rows.length === 0) return res.status(403).json({ error: 'Carpeta no pertenece al usuario.' });
+        }
         const result = await pool.query(
             `UPDATE scada.variable_views
              SET name = COALESCE($1, name), description = $2, folder_id = $3,
@@ -222,26 +268,41 @@ router.delete('/views/:id', canEditSinopticos, async (req: Request, res: Respons
 
 router.post('/views/:id/columns', canEditSinopticos, async (req: Request, res: Response) => {
     const { alias, dev_eui, measurement, aggregation, sort_order, incognita_name } = req.body;
-    if (!alias?.trim() || !dev_eui || !measurement) {
+    if (!alias?.trim() || !dev_eui?.trim() || !measurement?.trim()) {
         return res.status(400).json({ error: 'alias, dev_eui y measurement son obligatorios.' });
     }
+    if (aggregation && !VALID_AGGREGATIONS.includes(aggregation)) {
+        return res.status(400).json({ error: 'Agregación no válida.' });
+    }
     try {
+        const user = req.user!;
+        if (!(await assertViewAccess(req.params.id, user.id, user.role_id, 'edit'))) {
+            return res.status(403).json({ error: 'Sin acceso de edición a esta vista.' });
+        }
         const result = await pool.query(
             `INSERT INTO scada.view_columns (view_id, alias, dev_eui, measurement, aggregation, sort_order, incognita_name)
              VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-            [req.params.id, alias.trim(), dev_eui, measurement, aggregation || 'AVG', sort_order || 0, incognita_name || null]
+            [req.params.id, alias.trim(), dev_eui.trim(), measurement.trim(), aggregation || 'AVG', sort_order || 0, incognita_name || null]
         );
         await pool.query('UPDATE scada.variable_views SET updated_at = NOW() WHERE id = $1', [req.params.id]);
         await auditLog(req.user!.id, 'VARIABLE_COLUMN_ADDED', { view_id: req.params.id, column_id: result.rows[0].id, alias, dev_eui, measurement }, req.ip!);
         res.status(201).json(result.rows[0]);
     } catch (e: any) {
+        if (e.code === '23505') return res.status(409).json({ error: 'Esta columna ya existe en la vista.' });
         res.status(500).json({ error: 'Error al agregar columna.' });
     }
 });
 
 router.put('/views/:viewId/columns/:colId', canEditSinopticos, async (req: Request, res: Response) => {
     const { alias, dev_eui, measurement, aggregation, sort_order, incognita_name } = req.body;
+    if (aggregation && !VALID_AGGREGATIONS.includes(aggregation)) {
+        return res.status(400).json({ error: 'Agregación no válida.' });
+    }
     try {
+        const user = req.user!;
+        if (!(await assertViewAccess(req.params.viewId, user.id, user.role_id, 'edit'))) {
+            return res.status(403).json({ error: 'Sin acceso de edición a esta vista.' });
+        }
         const result = await pool.query(
             `UPDATE scada.view_columns
              SET alias = COALESCE($1, alias), dev_eui = COALESCE($2, dev_eui),
@@ -260,6 +321,10 @@ router.put('/views/:viewId/columns/:colId', canEditSinopticos, async (req: Reque
 
 router.delete('/views/:viewId/columns/:colId', canEditSinopticos, async (req: Request, res: Response) => {
     try {
+        const user = req.user!;
+        if (!(await assertViewAccess(req.params.viewId, user.id, user.role_id, 'edit'))) {
+            return res.status(403).json({ error: 'Sin acceso de edición a esta vista.' });
+        }
         await pool.query('DELETE FROM scada.view_columns WHERE id = $1 AND view_id = $2', [req.params.colId, req.params.viewId]);
         await auditLog(req.user!.id, 'VARIABLE_COLUMN_DELETED', { view_id: req.params.viewId, column_id: req.params.colId }, req.ip!);
         res.json({ message: 'Columna eliminada.' });
@@ -276,6 +341,11 @@ router.post('/views/:id/formulas', canEditSinopticos, async (req: Request, res: 
     const { alias, expression, depends_on, sort_order } = req.body;
     if (!alias?.trim() || !expression?.trim()) {
         return res.status(400).json({ error: 'alias y expression son obligatorios.' });
+    }
+
+    const user = req.user!;
+    if (!(await assertViewAccess(req.params.id, user.id, user.role_id, 'edit'))) {
+        return res.status(403).json({ error: 'Sin acceso de edición a esta vista.' });
     }
 
     // Validate formula syntax
@@ -300,6 +370,11 @@ router.post('/views/:id/formulas', canEditSinopticos, async (req: Request, res: 
 
 router.put('/views/:viewId/formulas/:formulaId', canEditSinopticos, async (req: Request, res: Response) => {
     const { alias, expression, depends_on, sort_order } = req.body;
+
+    const user = req.user!;
+    if (!(await assertViewAccess(req.params.viewId, user.id, user.role_id, 'edit'))) {
+        return res.status(403).json({ error: 'Sin acceso de edición a esta vista.' });
+    }
 
     if (expression) {
         const validation = validateFormula(expression);
@@ -326,6 +401,10 @@ router.put('/views/:viewId/formulas/:formulaId', canEditSinopticos, async (req: 
 
 router.delete('/views/:viewId/formulas/:formulaId', canEditSinopticos, async (req: Request, res: Response) => {
     try {
+        const user = req.user!;
+        if (!(await assertViewAccess(req.params.viewId, user.id, user.role_id, 'edit'))) {
+            return res.status(403).json({ error: 'Sin acceso de edición a esta vista.' });
+        }
         await pool.query('DELETE FROM scada.view_formulas WHERE id = $1 AND view_id = $2', [req.params.formulaId, req.params.viewId]);
         await auditLog(req.user!.id, 'VARIABLE_FORMULA_DELETED', { view_id: req.params.viewId, formula_id: req.params.formulaId }, req.ip!);
         res.json({ message: 'Formula eliminada.' });
@@ -339,6 +418,11 @@ router.post('/views/:id/formulas/validate', isAuth, async (req: Request, res: Re
     const { expression } = req.body;
     if (!expression) return res.status(400).json({ error: 'expression es obligatorio.' });
 
+    const user = req.user!;
+    if (!(await assertViewAccess(req.params.id, user.id, user.role_id, 'read'))) {
+        return res.status(403).json({ error: 'Sin acceso a esta vista.' });
+    }
+
     const result = validateFormula(expression);
     res.json(result);
 });
@@ -351,6 +435,11 @@ router.post('/views/:id/execute', isAuth, async (req: Request, res: Response) =>
     const { range } = req.body;
 
     try {
+        const user = req.user!;
+        if (!(await assertViewAccess(req.params.id, user.id, user.role_id, 'read'))) {
+            return res.status(403).json({ error: 'Sin acceso a esta vista.' });
+        }
+
         // Load view with columns and formulas
         const view = await pool.query('SELECT * FROM scada.variable_views WHERE id = $1', [req.params.id]);
         if (view.rows.length === 0) return res.status(404).json({ error: 'Vista no encontrada.' });
@@ -555,6 +644,11 @@ router.post('/views/:id/execute-series', isAuth, async (req: Request, res: Respo
     const { formulaId, range = '24h' } = req.body;
 
     try {
+        const user = req.user!;
+        if (!(await assertViewAccess(viewId, user.id, user.role_id, 'read'))) {
+            return res.status(403).json({ error: 'Sin acceso a esta vista.' });
+        }
+
         // Load columns
         const colResult = await pool.query(
             'SELECT * FROM scada.view_columns WHERE view_id = $1 ORDER BY sort_order',
@@ -696,6 +790,10 @@ router.post('/views/:id/execute-series', isAuth, async (req: Request, res: Respo
 // GET /views/:id/shares — list shares for a view
 router.get('/views/:id/shares', isAuth, async (req: Request, res: Response) => {
     try {
+        const user = req.user!;
+        if (!(await assertViewAccess(req.params.id, user.id, user.role_id, 'owner'))) {
+            return res.status(403).json({ error: 'Solo el propietario puede ver los permisos.' });
+        }
         const result = await pool.query(
             `SELECT vs.id, vs.user_id, vs.permission, vs.created_at,
                     u.full_name, u.email
@@ -715,6 +813,10 @@ router.get('/views/:id/shares', isAuth, async (req: Request, res: Response) => {
 // POST /views/:id/shares — add or update a share
 router.post('/views/:id/shares', canEditSinopticos, async (req: Request, res: Response) => {
     try {
+        const user = req.user!;
+        if (!(await assertViewAccess(req.params.id, user.id, user.role_id, 'owner'))) {
+            return res.status(403).json({ error: 'Solo el propietario puede compartir la vista.' });
+        }
         const { user_id, permission } = req.body;
         if (!user_id) {
             res.status(400).json({ error: 'user_id is required' });
@@ -738,6 +840,10 @@ router.post('/views/:id/shares', canEditSinopticos, async (req: Request, res: Re
 // DELETE /views/:viewId/shares/:shareId — remove a share
 router.delete('/views/:viewId/shares/:shareId', canEditSinopticos, async (req: Request, res: Response) => {
     try {
+        const user = req.user!;
+        if (!(await assertViewAccess(req.params.viewId, user.id, user.role_id, 'owner'))) {
+            return res.status(403).json({ error: 'Solo el propietario puede modificar permisos.' });
+        }
         await pool.query(
             'DELETE FROM scada.view_shares WHERE id = $1 AND view_id = $2',
             [req.params.shareId, req.params.viewId]

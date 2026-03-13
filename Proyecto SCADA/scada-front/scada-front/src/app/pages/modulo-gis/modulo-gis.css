@@ -548,6 +548,115 @@
 }
 
 /* =========================
+   CLUSTER ICONS
+========================= */
+.scada-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2.5px solid var(--c, #3b82f6);
+  background: color-mix(in srgb, var(--c, #3b82f6) 14%, var(--bg-card, #fff) 86%);
+  backdrop-filter: blur(4px);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.18),
+    0 0 0 3px color-mix(in srgb, var(--c, #3b82f6) 10%, transparent);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.scada-cluster:hover {
+  transform: scale(1.1);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.25),
+    0 0 0 5px color-mix(in srgb, var(--c, #3b82f6) 18%, transparent);
+}
+
+.scada-cluster-count {
+  font-family: 'Inter', ui-monospace, system-ui, sans-serif;
+  font-weight: 800;
+  color: var(--c, #3b82f6);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+/* Spiderfy legs */
+.leaflet-cluster-anim .leaflet-marker-icon,
+.leaflet-cluster-anim .leaflet-marker-shadow {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* =========================
+   MINI KPI BADGE
+========================= */
+.mk-kpi {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #f1f5f9;
+  font-family: ui-monospace, 'SF Mono', 'Inter', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  z-index: 3;
+  pointer-events: none;
+  animation: mkKpiFadeIn 0.3s ease;
+}
+
+@keyframes mkKpiFadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* =========================
+   MARKER PULSE (live heartbeat)
+========================= */
+.mk-live {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mk-live img {
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.25));
+}
+
+.mk-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.18);
+  animation: mk-pulse 3s ease-in-out infinite;
+  z-index: 1;
+}
+
+@keyframes mk-pulse {
+  0%, 100% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1); opacity: 1; }
+}
+
+.mk-dead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.55;
+}
+
+.mk-dead img {
+  filter: grayscale(0.3) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
+}
+
+/* =========================
    LEAFLET OVERRIDES
 ========================= */
 .leaflet-popup-content-wrapper {

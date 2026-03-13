@@ -276,6 +276,7 @@ export class VariableExplorer implements OnInit {
     if (!this.newFolderName.trim()) return;
     this.variableService.createFolder(this.newFolderName.trim()).subscribe({
       next: (f) => { this.folders.update((list) => [...list, f]); this.newFolderName = ''; },
+      error: (err) => alert(err.error?.error || 'Error al crear carpeta.'),
     });
   }
 
@@ -283,6 +284,7 @@ export class VariableExplorer implements OnInit {
     if (!this.newViewName.trim()) return;
     this.variableService.createView({ name: this.newViewName.trim() }).subscribe({
       next: (v) => { this.views.update((list) => [v, ...list]); this.showCreateView = false; this.newViewName = ''; },
+      error: (err) => alert(err.error?.error || 'Error al crear vista.'),
     });
   }
 

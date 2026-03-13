@@ -1,4 +1,5 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
@@ -58,6 +59,7 @@ export class SinopticoViewer implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private sinopticoService = inject(SinopticoService);
+  private destroyRef = inject(DestroyRef);
   dataStore = inject(SinopticoDataStore);
 
   sinoptico = signal<Sinoptico | null>(null);
@@ -71,7 +73,16 @@ export class SinopticoViewer implements OnInit, OnDestroy {
   widgetCount = computed(() => this.canvas().widgets.length);
 
   ngOnInit(): void {
-    const id = Number(this.route.snapshot.paramMap.get('id'));
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const id = Number(params.get('id'));
+      if (!id) return;
+      this.loadSinoptico(id);
+    });
+  }
+
+  private loadSinoptico(id: number): void {
+    this.loading.set(true);
+    this.dataStore.stopPolling();
     this.sinopticoService.getSinoptico(id).subscribe({
       next: (data) => {
         this.sinoptico.set(data);
@@ -79,7 +90,6 @@ export class SinopticoViewer implements OnInit, OnDestroy {
           data.canvas || { widgets: [], grid: { snap: true, size: 10 }, zoom: 1 },
         );
         this.loading.set(false);
-        // Start data polling for live values
         const widgets = data.canvas?.widgets || [];
         if (widgets.length > 0) {
           this.dataStore.startPolling(data.id, widgets);
@@ -152,6 +162,8 @@ export class SinopticoViewer implements OnInit, OnDestroy {
   }
 
   onLinkNavigate(targetId: number | null): void {
-    if (targetId) this.router.navigate(['/sinopticos/ver', targetId]);
+    if (targetId && targetId !== this.sinoptico()?.id) {
+      this.router.navigate(['/sinopticos/viewer', targetId]);
+    }
   }
 }

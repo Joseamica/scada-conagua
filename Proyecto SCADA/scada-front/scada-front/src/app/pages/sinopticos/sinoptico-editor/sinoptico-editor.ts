@@ -246,7 +246,7 @@ export class SinopticoEditor implements OnInit, OnDestroy {
         this.sinopticoService.getAllSinopticos().subscribe({
           next: (list) => {
             this.availableSinopticos.set(
-              list.filter((s) => s.id !== data.id).map((s) => ({
+              list.filter((s) => +s.id !== +data.id).map((s) => ({
                 id: s.id,
                 name: s.project_name ? `${s.project_name} / ${s.name}` : s.name,
               })),

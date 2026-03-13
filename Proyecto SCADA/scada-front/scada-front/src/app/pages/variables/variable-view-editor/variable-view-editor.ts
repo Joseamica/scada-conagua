@@ -84,6 +84,8 @@ export class VariableViewEditor implements OnInit {
   formulaErrorExpr = signal<string | null>(null);
   formulaSuggestedFix = signal<string | null>(null);
   formulaVars = signal<string[]>([]);
+  addingFormula = signal(false);
+  addingColumn = signal(false);
   private incognitaNames = new Map<number, string>();
 
   operatorButtons = [
@@ -158,6 +160,9 @@ export class VariableViewEditor implements OnInit {
   // ---- Columns ----
 
   onColumnTagSelected(tag: TagSelection): void {
+    if (this.addingColumn()) return;
+    if (this.columns().some(c => c.dev_eui === tag.devEUI && c.measurement === tag.measurement)) return;
+    this.addingColumn.set(true);
     const alias = `${tag.siteName} / ${tag.measurement}`;
     this.variableService
       .addColumn(this.viewId, {
@@ -167,7 +172,8 @@ export class VariableViewEditor implements OnInit {
         aggregation: 'LAST_VALUE',
       })
       .subscribe({
-        next: (col) => this.columns.update((list) => [...list, col]),
+        next: (col) => { this.columns.update((list) => [...list, col]); this.addingColumn.set(false); },
+        error: () => this.addingColumn.set(false),
       });
   }
 
@@ -248,7 +254,8 @@ export class VariableViewEditor implements OnInit {
   }
 
   addFormula(): void {
-    if (!this.newFormulaAlias.trim() || !this.newFormulaExpr.trim()) return;
+    if (!this.newFormulaAlias.trim() || !this.newFormulaExpr.trim() || this.addingFormula()) return;
+    this.addingFormula.set(true);
 
     // Translate custom incognita names → i_N for backend
     let expr = this.newFormulaExpr.trim();
@@ -281,8 +288,9 @@ export class VariableViewEditor implements OnInit {
           this.formulaErrorExpr.set(null);
           this.formulaSuggestedFix.set(null);
           this.formulaVars.set([]);
+          this.addingFormula.set(false);
         },
-        error: (err) => this.formulaError.set(err.error?.error || 'Error al crear formula'),
+        error: (err) => { this.formulaError.set(err.error?.error || 'Error al crear formula'); this.addingFormula.set(false); },
       });
   }
 

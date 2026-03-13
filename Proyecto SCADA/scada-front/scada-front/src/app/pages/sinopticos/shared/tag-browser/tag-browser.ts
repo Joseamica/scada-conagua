@@ -1763,8 +1763,12 @@ export class TagBrowser implements OnInit {
           // Step 2: Add all columns sequentially
           const cols = this.wizardColumns();
 
+          const failedColumns: string[] = [];
           const addColumnsSequentially = (idx: number): void => {
             if (idx >= cols.length) {
+              if (failedColumns.length > 0) {
+                alert(`Se crearon ${cols.length - failedColumns.length} de ${cols.length} columnas. Fallaron: ${failedColumns.join(', ')}`);
+              }
               // Step 3: Add formula if provided (translate custom incognita names → i_N)
               if (this.wizardFormulaAlias.trim() && this.wizardFormulaExpr.trim()) {
                 let expr = this.wizardFormulaExpr.trim();
@@ -1789,7 +1793,10 @@ export class TagBrowser implements OnInit {
                   })
                   .subscribe({
                     next: () => this.finishWizard(view),
-                    error: () => this.finishWizard(view), // still finish even if formula fails
+                    error: (err) => {
+                      alert(`La vista se creó pero la fórmula falló: ${err.error?.error || err.message || 'Error desconocido'}`);
+                      this.finishWizard(view);
+                    },
                   });
               } else {
                 this.finishWizard(view);
@@ -1806,7 +1813,7 @@ export class TagBrowser implements OnInit {
               })
               .subscribe({
                 next: () => addColumnsSequentially(idx + 1),
-                error: () => addColumnsSequentially(idx + 1),
+                error: () => { failedColumns.push(col.alias); addColumnsSequentially(idx + 1); },
               });
           };
 

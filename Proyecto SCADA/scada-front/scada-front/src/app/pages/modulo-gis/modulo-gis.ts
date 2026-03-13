@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, effect, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, effect, signal, ViewEncapsulation } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import * as L from 'leaflet';
@@ -88,10 +88,41 @@ const MUNICIPIOS_CON_POZO = new Set<number>(
     .map(s => s.municipioId)
 );
 
+/** Create a MarkerClusterGroup via the global L (patched by angular.json scripts).
+ *  Falls back to a plain LayerGroup if the plugin isn't loaded. */
+function createClusterGroup(color: string): L.LayerGroup {
+  const gL = (window as any).L;
+  if (!gL?.markerClusterGroup) {
+    console.warn('[GIS] leaflet.markercluster not available — using plain LayerGroup');
+    return L.layerGroup();
+  }
+  return gL.markerClusterGroup({
+    maxClusterRadius: 55,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    disableClusteringAtZoom: 15,
+    animate: true,
+    iconCreateFunction: (cluster: any) => {
+      const count = cluster.getChildCount();
+      const size = count > 50 ? 54 : count > 20 ? 46 : 38;
+      const fontSize = count > 99 ? 12 : 14;
+      return L.divIcon({
+        html: `<div class="scada-cluster" style="--c:${color};width:${size}px;height:${size}px">
+                 <span class="scada-cluster-count" style="font-size:${fontSize}px">${count}</span>
+               </div>`,
+        className: '',
+        iconSize: L.point(size, size),
+      });
+    },
+  });
+}
+
 @Component({
   selector: 'app-modulo-gis',
   templateUrl: './modulo-gis.html',
   styleUrls: ['./modulo-gis.css'],
+  encapsulation: ViewEncapsulation.None,
   standalone: true,
   imports: [HeaderBarComponent, FooterTabsComponent, NgIconComponent, LoadingSpinnerComponent],
   providers: [
@@ -116,10 +147,10 @@ export class ModuloGis implements OnInit, OnDestroy {
   redSecundariaLayer = L.layerGroup();
   zonasLayer = L.layerGroup();
 
-  pozosActivosLayer = L.layerGroup();
-  pozosObraLayer = L.layerGroup();
-  pozosInactivosLayer = L.layerGroup();
-  pozosPendienteLayer = L.layerGroup();
+  pozosActivosLayer = createClusterGroup('#3b82f6');
+  pozosObraLayer = createClusterGroup('#f59e0b');
+  pozosInactivosLayer = createClusterGroup('#ef4444');
+  pozosPendienteLayer = createClusterGroup('#94a3b8');
 
   // Custom layer control state
   layerPanelOpen = signal(true);
@@ -463,8 +494,28 @@ export class ModuloGis implements OnInit, OnDestroy {
 // ─────────────────────────────
 
 // Guarda meta por marker para reconstruir el icono al cambiar zoom
-  private setMarkerIconMeta(marker: L.Marker, iconUrl: string) {
+  private setMarkerIconMeta(marker: L.Marker, iconUrl: string, estatus?: string) {
     (marker as any).__scadaIconUrl = iconUrl;
+    if (estatus) (marker as any).__scadaEstatus = estatus;
+  }
+
+  /** Attach live KPI value to a marker for the mini badge overlay */
+  private setMarkerKpi(marker: L.Marker, apiSite: any) {
+    if (!apiSite) return;
+    const flow = apiSite.last_flow_value;
+    const pressure = apiSite.last_pressure_value;
+    const level = apiSite.last_nivel_value;
+    const rain = apiSite.last_lluvia_value;
+
+    if (flow != null && Number(flow) > 0.01) {
+      (marker as any).__scadaKpi = `${Number(flow).toFixed(1)} L/s`;
+    } else if (pressure != null && Number(pressure) > 0) {
+      (marker as any).__scadaKpi = `${Number(pressure).toFixed(1)} kg`;
+    } else if (level != null && Number(level) > 0) {
+      (marker as any).__scadaKpi = `${Number(level).toFixed(1)} m`;
+    } else if (rain != null && Number(rain) > 0) {
+      (marker as any).__scadaKpi = `${Number(rain).toFixed(0)} mm`;
+    }
   }
 
 // Calcula tamaño según zoom (ajústalo a tu gusto)
@@ -492,26 +543,42 @@ export class ModuloGis implements OnInit, OnDestroy {
     const zoom = this.map.getZoom();
     const alwaysVisible = (marker as any).__alwaysVisible === true;
 
-    // 🚫 Ocultar en zoom bajo SOLO si no es alwaysVisible
-    if (zoom < 10 && !alwaysVisible) {
-      marker.setOpacity(0);
-      return;
-    }
-
+    // Clusters handle visibility at low zoom — no manual hide needed
     marker.setOpacity(1);
 
-    // 🧠 Size especial para piloto
     let size = this.iconSizeForZoom(zoom);
-
     if (alwaysVisible) {
-      size = Math.max(size, 22); // 👈 nunca menor a esto
+      size = Math.max(size, 22);
     }
 
+    const estatus = ((marker as any).__scadaEstatus as string) || 'activo';
+    const isLive = estatus === 'activo';
+    const pulseSize = Math.round(size * 1.8);
+
+    // Mini KPI badge (only show when zoomed in enough)
+    const kpi = ((marker as any).__scadaKpi as string) || '';
+    const showKpi = kpi && zoom >= 13;
+    const kpiBadge = showKpi
+      ? `<span class="mk-kpi">${kpi}</span>`
+      : '';
+
+    const html = isLive
+      ? `<div class="mk-live" style="width:${pulseSize}px;height:${pulseSize}px">
+           <span class="mk-ring" style="width:${pulseSize}px;height:${pulseSize}px"></span>
+           <img src="${iconUrl}" width="${size}" height="${size}" />
+           ${kpiBadge}
+         </div>`
+      : `<div class="mk-dead" style="width:${size}px;height:${size}px">
+           <img src="${iconUrl}" width="${size}" height="${size}" />
+           ${kpiBadge}
+         </div>`;
+
     marker.setIcon(
-      L.icon({
-        iconUrl,
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2]
+      L.divIcon({
+        html,
+        iconSize: [pulseSize, pulseSize],
+        iconAnchor: [pulseSize / 2, pulseSize / 2],
+        className: '',
       })
     );
   }
@@ -690,11 +757,12 @@ export class ModuloGis implements OnInit, OnDestroy {
           // Decide qué URL usar (gris o color) — prefer API site_type if cached
             const cachedSite = this.lookupApiSite(name);
             const iconUrl = this.resolveSiteIconUrl(name, cachedSite?.site_type);
+            const estatus = this.resolveEstatus(name);
 
-          // ✅ meta primero, luego scale
-          this.setMarkerIconMeta(marker, iconUrl);
+          // ✅ meta + KPI primero, luego scale
+          this.setMarkerIconMeta(marker, iconUrl, estatus);
+          this.setMarkerKpi(marker, cachedSite);
           this.applyIconScaleToMarker(marker);
-          if (this.map.getZoom() < 10) marker.setOpacity(0);
 
           if ((marker as any).bringToFront) (marker as any).bringToFront();
 
@@ -804,9 +872,9 @@ export class ModuloGis implements OnInit, OnDestroy {
           marker.addTo(targetLayer);
 
           const iconUrl = this.resolveSiteIconUrl(name, site.site_type);
-          this.setMarkerIconMeta(marker, iconUrl);
+          this.setMarkerIconMeta(marker, iconUrl, siteEstatus);
+          this.setMarkerKpi(marker, site);
           this.applyIconScaleToMarker(marker);
-          if (this.map.getZoom() < 10) marker.setOpacity(0);
 
           this.markersIndex.set(key, marker);
 

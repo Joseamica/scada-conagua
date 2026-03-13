@@ -751,11 +751,10 @@
               @case ('link') {
                 <div class="config-form">
                   <label>Sinoptico destino</label>
-                  <select [value]="asLink(w.config).targetSinopticoId ?? ''"
-                    (change)="updateLinkTarget(w.id, $event)">
-                    <option value="">-- Seleccionar --</option>
+                  <select (change)="updateLinkTarget(w.id, $event)">
+                    <option value="" [selected]="!asLink(w.config).targetSinopticoId">-- Seleccionar --</option>
                     @for (s of availableSinopticos(); track s.id) {
-                      <option [value]="s.id">{{ s.name }}</option>
+                      <option [value]="s.id" [selected]="s.id === asLink(w.config).targetSinopticoId">{{ s.name }}</option>
                     }
                   </select>
                   <label>Etiqueta</label>
@@ -808,11 +807,10 @@
                   <div class="config-field-group">
                     <span class="field-group-label">Fuente de datos</span>
                     <label>Vista de variables</label>
-                    <select [value]="asVariable(w.config).viewId ?? ''"
-                      (change)="onVariableViewChange(w.id, $event)">
-                      <option value="">-- Seleccionar vista --</option>
+                    <select (change)="onVariableViewChange(w.id, $event)">
+                      <option value="" [selected]="!asVariable(w.config).viewId">-- Seleccionar vista --</option>
                       @for (v of availableViews(); track v.id) {
-                        <option [value]="v.id">{{ v.name }}</option>
+                        <option [value]="v.id" [selected]="v.id === asVariable(w.config).viewId">{{ v.name }}</option>
                       }
                     </select>
 

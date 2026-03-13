@@ -255,7 +255,7 @@
               <button
                 class="btn-add-formula"
                 (click)="addFormula()"
-                [disabled]="!newFormulaAlias.trim() || !newFormulaExpr.trim() || !formulaValid()"
+                [disabled]="addingFormula() || !newFormulaAlias.trim() || !newFormulaExpr.trim() || !formulaValid()"
               >
                 <ng-icon name="heroPlus" size="14" />
                 Agregar
