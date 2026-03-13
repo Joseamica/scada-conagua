@@ -59,6 +59,20 @@ function scopeWhere(user: any, alias: string = 'p'): { clause: string; params: a
 router.get('/projects', isAuth, async (req: Request, res: Response) => {
     try {
         const user = req.user!;
+        const isAdmin = user.role_id === 1;
+
+        if (isAdmin) {
+            // Admins see ALL projects (federal view)
+            const result = await pool.query(
+                `SELECT p.*, u.full_name AS owner_name,
+                        (SELECT COUNT(*) FROM scada.sinopticos s WHERE s.project_id = p.id) AS sinoptico_count
+                 FROM scada.sinoptico_projects p
+                 JOIN scada.users u ON u.id = p.owner_id
+                 ORDER BY p.updated_at DESC`
+            );
+            return res.json(result.rows);
+        }
+
         const scope = scopeWhere(user);
         const paramOffset = scope.params.length;
 
