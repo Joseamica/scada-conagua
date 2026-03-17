@@ -538,7 +538,7 @@ router.delete('/sinopticos/:id', canEditSinopticos, async (req: Request, res: Re
 // ═══════════════════════════════════════════
 
 // POST /sinopticos/:id/images — upload an image for a sinoptico canvas
-router.post('/sinopticos/:id/images', canEditSinopticos, (req: Request, res: Response, next: Function) => {
+router.post('/:id/images', canEditSinopticos, (req: Request, res: Response, next: Function) => {
     sinopticoUpload.single('image')(req, res, (err: any) => {
         if (err instanceof multer.MulterError) {
             if (err.code === 'LIMIT_FILE_SIZE') {
@@ -581,7 +581,8 @@ router.post('/sinopticos/:id/images', canEditSinopticos, (req: Request, res: Res
 });
 
 // GET /sinopticos/:id/images/:filename — serve uploaded image
-router.get('/sinopticos/:id/images/:filename', isAuth, (req: Request, res: Response) => {
+// No auth — served as static resource for <img src="..."> tags
+router.get('/:id/images/:filename', (req: Request, res: Response) => {
     const { id, filename } = req.params;
     // Sanitize filename to prevent path traversal
     const safeName = path.basename(filename);
@@ -595,7 +596,7 @@ router.get('/sinopticos/:id/images/:filename', isAuth, (req: Request, res: Respo
 });
 
 // GET /sinopticos/:id/images — list all images for a sinoptico
-router.get('/sinopticos/:id/images', isAuth, (req: Request, res: Response) => {
+router.get('/:id/images', isAuth, (req: Request, res: Response) => {
     const dir = path.join(SINOPTICO_UPLOADS_DIR, req.params.id);
     if (!fs.existsSync(dir)) {
         return res.json([]);
