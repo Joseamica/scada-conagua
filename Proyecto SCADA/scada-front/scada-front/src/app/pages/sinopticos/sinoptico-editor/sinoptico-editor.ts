@@ -166,6 +166,9 @@ export class SinopticoEditor implements OnInit, OnDestroy {
   // Activity panel
   showActivityPanel = signal(false);
 
+  // Image upload
+  imageUploading = signal(false);
+
   // Context menu
   contextMenu = signal<{ x: number; y: number; widgetId: string | null } | null>(null);
 
@@ -875,6 +878,30 @@ export class SinopticoEditor implements OnInit, OnDestroy {
   }
   asImage(config: any): ImageConfig {
     return config;
+  }
+
+  onImageFileSelected(event: Event, widgetId: string) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const sinId = this.sinoptico()?.id;
+    if (!sinId) return;
+
+    this.imageUploading.set(true);
+    this.sinopticoService.uploadSinopticoImage(sinId, file).subscribe({
+      next: (res) => {
+        this.store.updateWidgetConfig(widgetId, { src: res.url });
+        this.imageUploading.set(false);
+        input.value = ''; // reset file input
+      },
+      error: (err: any) => {
+        console.error('Error uploading image:', err);
+        alert(err.error?.error || 'Error al subir imagen.');
+        this.imageUploading.set(false);
+        input.value = '';
+      },
+    });
   }
   asText(config: any): TextConfig {
     return config;

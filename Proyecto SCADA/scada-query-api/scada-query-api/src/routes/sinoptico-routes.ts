@@ -1,10 +1,46 @@
 // src/routes/sinoptico-routes.ts — Sinoptico projects, canvas CRUD, sharing, activity log
 import { Router, Request, Response } from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import { pool } from '../services/db-service';
 import { isAuth, canEditSinopticos } from '../middlewares/auth-middleware';
 import { auditLog } from '../services/audit-service';
 import { evaluateFormulasBatch } from '../services/formula-engine';
 import { getLatestValue } from '../services/influx-query-service';
+
+// --- Sinoptico image uploads config ---
+const SINOPTICO_UPLOADS_DIR = process.env.UPLOADS_DIR
+    ? path.join(process.env.UPLOADS_DIR, '..', 'sinopticos')
+    : path.join(__dirname, '..', '..', 'uploads', 'sinopticos');
+fs.mkdirSync(SINOPTICO_UPLOADS_DIR, { recursive: true });
+
+const sinopticoStorage = multer.diskStorage({
+    destination: (req, _file, cb) => {
+        const sinId = req.params.id || 'unknown';
+        const dir = path.join(SINOPTICO_UPLOADS_DIR, sinId);
+        fs.mkdirSync(dir, { recursive: true });
+        cb(null, dir);
+    },
+    filename: (_req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
+        cb(null, uniqueName);
+    },
+});
+
+const sinopticoUpload = multer({
+    storage: sinopticoStorage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+    fileFilter: (_req, file, cb) => {
+        const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'];
+        if (allowed.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Solo se permiten imágenes PNG, JPG, WEBP, GIF o SVG.'));
+        }
+    },
+});
 
 const router = Router();
 
@@ -495,6 +531,84 @@ router.delete('/sinopticos/:id', canEditSinopticos, async (req: Request, res: Re
         console.error('Error deleting sinoptico:', e.message);
         res.status(500).json({ error: 'Error al eliminar sinoptico.' });
     }
+});
+
+// ═══════════════════════════════════════════
+// SINOPTICO IMAGE UPLOADS
+// ═══════════════════════════════════════════
+
+// POST /sinopticos/:id/images — upload an image for a sinoptico canvas
+router.post('/sinopticos/:id/images', canEditSinopticos, (req: Request, res: Response, next: Function) => {
+    sinopticoUpload.single('image')(req, res, (err: any) => {
+        if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ error: 'La imagen no puede exceder 10 MB.' });
+            }
+            return res.status(400).json({ error: err.message });
+        }
+        if (err) {
+            return res.status(400).json({ error: err.message });
+        }
+        next();
+    });
+}, async (req: Request, res: Response) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No se envió ningún archivo.' });
+    }
+
+    try {
+        // Verify sinoptico exists
+        const sin = await pool.query(
+            'SELECT id FROM scada.sinopticos WHERE id = $1 AND deleted_at IS NULL',
+            [req.params.id]
+        );
+        if (sin.rows.length === 0) {
+            fs.unlinkSync(req.file.path);
+            return res.status(404).json({ error: 'Sinoptico no encontrado.' });
+        }
+
+        const imageUrl = `/api/v1/sinopticos/${req.params.id}/images/${req.file.filename}`;
+
+        res.json({
+            url: imageUrl,
+            filename: req.file.filename,
+            message: 'Imagen subida correctamente.',
+        });
+    } catch (e: any) {
+        console.error('Error uploading sinoptico image:', e.message);
+        res.status(500).json({ error: 'Error al subir imagen.' });
+    }
+});
+
+// GET /sinopticos/:id/images/:filename — serve uploaded image
+router.get('/sinopticos/:id/images/:filename', isAuth, (req: Request, res: Response) => {
+    const { id, filename } = req.params;
+    // Sanitize filename to prevent path traversal
+    const safeName = path.basename(filename);
+    const filePath = path.join(SINOPTICO_UPLOADS_DIR, id, safeName);
+
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'Imagen no encontrada.' });
+    }
+
+    res.sendFile(filePath);
+});
+
+// GET /sinopticos/:id/images — list all images for a sinoptico
+router.get('/sinopticos/:id/images', isAuth, (req: Request, res: Response) => {
+    const dir = path.join(SINOPTICO_UPLOADS_DIR, req.params.id);
+    if (!fs.existsSync(dir)) {
+        return res.json([]);
+    }
+
+    const files = fs.readdirSync(dir)
+        .filter(f => /\.(png|jpe?g|webp|gif|svg)$/i.test(f))
+        .map(f => ({
+            filename: f,
+            url: `/api/v1/sinopticos/${req.params.id}/images/${f}`,
+        }));
+
+    res.json(files);
 });
 
 // POST /sinopticos/:id/duplicate — clone sinoptico

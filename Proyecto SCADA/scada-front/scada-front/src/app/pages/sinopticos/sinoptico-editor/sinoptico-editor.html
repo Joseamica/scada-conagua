@@ -605,13 +605,37 @@
               <!-- ========== IMAGE CONFIG ========== -->
               @case ('image') {
                 <div class="config-form">
-                  <label>URL Imagen</label>
+                  <label>Subir imagen</label>
+                  <div class="image-upload-row">
+                    <button class="btn-upload" (click)="imageFileInput.click()">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                      </svg>
+                      Subir archivo
+                    </button>
+                    <input
+                      #imageFileInput
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                      style="display:none"
+                      (change)="onImageFileSelected($event, w.id)"
+                    />
+                    @if (imageUploading()) {
+                      <span class="upload-status">Subiendo...</span>
+                    }
+                  </div>
+                  <label>o URL directa</label>
                   <input
                     type="text"
                     [value]="asImage(w.config).src"
                     (input)="updateConfig(w.id, 'src', $event)"
                     placeholder="https://..."
                   />
+                  @if (asImage(w.config).src) {
+                    <div class="image-preview">
+                      <img [src]="asImage(w.config).src" alt="Preview" />
+                    </div>
+                  }
                   <label>Alt text</label>
                   <input
                     type="text"

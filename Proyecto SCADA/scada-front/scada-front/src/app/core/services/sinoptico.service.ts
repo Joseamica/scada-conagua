@@ -386,4 +386,14 @@ export class SinopticoService {
   queryWidgets(sinopticoId: number, widgets: any[], range?: string): Observable<{ results: Record<string, any>; timestamp: string }> {
     return this.http.post<{ results: Record<string, any>; timestamp: string }>(`${this.base}/sinopticos/${sinopticoId}/query`, { widgets, range });
   }
+
+  // Upload image for sinoptico canvas
+  uploadSinopticoImage(sinopticoId: number, file: File): Observable<{ url: string; filename: string; message: string }> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return this.http.post<{ url: string; filename: string; message: string }>(
+      `${this.base}/sinopticos/${sinopticoId}/images`,
+      formData,
+    );
+  }
 }
