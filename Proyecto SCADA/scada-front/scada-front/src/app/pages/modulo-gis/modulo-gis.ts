@@ -1493,7 +1493,7 @@ export class ModuloGis implements OnInit, OnDestroy {
     // Load MarkerCluster plugin — must happen before creating layers
     const clusterOk = await loadMarkerClusterPlugin();
     if (clusterOk) {
-      this.pozosOperandoLayer = createClusterGroup('#22c55e');   // green
+      this.pozosOperandoLayer = createClusterGroup('#3b82f6');   // blue
       this.pozosSinGastoLayer = createClusterGroup('#f59e0b');   // amber
       this.pozosSinComLayer = createClusterGroup('#ef4444');      // red
       this.pozosObraLayer = createClusterGroup('#f59e0b');
