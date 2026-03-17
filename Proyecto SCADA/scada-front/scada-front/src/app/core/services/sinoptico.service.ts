@@ -392,7 +392,7 @@ export class SinopticoService {
     const formData = new FormData();
     formData.append('image', file);
     return this.http.post<{ url: string; filename: string; message: string }>(
-      `${this.base}/sinopticos/${sinopticoId}/images`,
+      `${this.base}/${sinopticoId}/images`,
       formData,
     );
   }
