@@ -3,7 +3,7 @@
 <div class="sinopticos-page">
   <div class="page-header">
     <h1>Sinopticos</h1>
-    <button class="btn-primary" (click)="openCreateDialog()">
+    <button class="btn-primary" (click)="openCreateDialog()" *ngIf="canEditSinopticos()">
       <ng-icon name="heroPlus" size="18" />
       Nuevo Proyecto
     </button>
@@ -27,7 +27,7 @@
           <span>{{ project.owner_name }}</span>
         </div>
       </div>
-      <div class="card-actions">
+      <div class="card-actions" *ngIf="canEditSinopticos()">
         <button class="btn-icon btn-danger" (click)="deleteProject(project, $event)" title="Eliminar">
           <ng-icon name="heroTrash" size="16" />
         </button>
@@ -37,7 +37,7 @@
     <div class="empty-state" *ngIf="projects().length === 0">
       <ng-icon name="heroFolder" size="48" />
       <p>No hay proyectos de sinopticos</p>
-      <button class="btn-primary" (click)="openCreateDialog()">Crear primer proyecto</button>
+      <button class="btn-primary" (click)="openCreateDialog()" *ngIf="canEditSinopticos()">Crear primer proyecto</button>
     </div>
   </div>
 

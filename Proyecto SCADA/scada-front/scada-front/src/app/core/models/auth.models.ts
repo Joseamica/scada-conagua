@@ -9,6 +9,7 @@ export interface UserSession {
   totp_enabled: boolean;
   is_2fa_enabled: boolean;
   can_operate?: boolean;
+  can_edit_sinopticos?: boolean;
 }
 
 export interface AuthResponse {

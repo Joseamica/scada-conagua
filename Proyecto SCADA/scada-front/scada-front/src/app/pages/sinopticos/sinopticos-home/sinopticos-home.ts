@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +14,7 @@ import {
   heroEye,
 } from '@ng-icons/heroicons/outline';
 import { SinopticoService, SinopticoProject, Sinoptico } from '../../../core/services/sinoptico.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 
@@ -29,7 +30,15 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 })
 export class SinopticosHome implements OnInit {
   private sinopticoService = inject(SinopticoService);
+  private authService = inject(AuthService);
   private router = inject(Router);
+
+  canEditSinopticos = computed(() => {
+    const user = this.authService.currentUser();
+    if (!user) return false;
+    if (user.role_id === 1) return true; // Admin always
+    return user.can_edit_sinopticos === true;
+  });
 
   projects = signal<SinopticoProject[]>([]);
   sharedWithMe = signal<(Sinoptico & { permission: string; project_name: string })[]>([]);

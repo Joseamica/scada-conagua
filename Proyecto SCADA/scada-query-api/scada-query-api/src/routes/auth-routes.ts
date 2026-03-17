@@ -89,7 +89,8 @@ router.post('/login', async (req: Request, res: Response) => {
         	estado_id: user.estado_id,
         	totp_enabled: !!user.totp_enabled,
         	is_2fa_enabled: !!user.is_2fa_enabled,
-        	can_operate: perms?.can_operate ?? false
+        	can_operate: perms?.can_operate ?? false,
+        	can_edit_sinopticos: perms?.can_edit_sinopticos ?? false
     	    }
         });
 
@@ -166,7 +167,8 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
                 estado_id: user.estado_id,
                 totp_enabled: !!user.totp_enabled,
                 is_2fa_enabled: !!user.is_2fa_enabled,
-                can_operate: perms?.can_operate ?? false
+                can_operate: perms?.can_operate ?? false,
+        	can_edit_sinopticos: perms?.can_edit_sinopticos ?? false
             }
         });
 
@@ -401,7 +403,8 @@ router.post('/verify-totp', async (req: Request, res: Response) => {
                 estado_id: user.estado_id,
                 totp_enabled: true,
                 is_2fa_enabled: !!user.is_2fa_enabled,
-                can_operate: perms?.can_operate ?? false
+                can_operate: perms?.can_operate ?? false,
+        	can_edit_sinopticos: perms?.can_edit_sinopticos ?? false
             }
         });
 
@@ -503,7 +506,8 @@ router.get('/verify-email', async (req: Request, res: Response) => {
                 estado_id: user.estado_id,
                 totp_enabled: !!user.totp_enabled,
                 is_2fa_enabled: !!user.is_2fa_enabled,
-                can_operate: perms?.can_operate ?? false
+                can_operate: perms?.can_operate ?? false,
+        	can_edit_sinopticos: perms?.can_edit_sinopticos ?? false
             }
         });
     } catch (error) {
