@@ -251,12 +251,17 @@ export function defaultWidgetConfig(type: CanvasWidget['type']): WidgetConfig {
   }
 }
 
+export type SinopticoPermission = 'view' | 'edit' | 'create' | 'delete' | 'admin';
+
 export interface SinopticoShare {
   id: number;
   user_id: number;
-  permission: 'read' | 'edit';
+  permission: string; // comma-separated: "view,edit" or "admin"
   full_name: string;
   email: string;
+  role_id: number;
+  role_name: string;
+  municipio_name: string | null;
   created_at: string;
 }
 
@@ -340,7 +345,7 @@ export class SinopticoService {
     return this.http.get<SinopticoShare[]>(`${this.base}/sinopticos/${sinopticoId}/shares`);
   }
 
-  addShare(sinopticoId: number, userId: number, permission: 'read' | 'edit'): Observable<any> {
+  addShare(sinopticoId: number, userId: number, permission: string): Observable<any> {
     return this.http.post(`${this.base}/sinopticos/${sinopticoId}/shares`, { user_id: userId, permission });
   }
 
@@ -348,9 +353,27 @@ export class SinopticoService {
     return this.http.delete(`${this.base}/sinopticos/${sinopticoId}/shares/${shareId}`);
   }
 
-  searchShareCandidates(sinopticoId: number, q: string): Observable<{ id: number; full_name: string; email: string }[]> {
-    return this.http.get<{ id: number; full_name: string; email: string }[]>(
+  searchShareCandidates(sinopticoId: number, q: string): Observable<{
+    id: number; full_name: string; email: string;
+    role_id: number; role_name: string; municipio_name: string | null;
+  }[]> {
+    return this.http.get<{
+      id: number; full_name: string; email: string;
+      role_id: number; role_name: string; municipio_name: string | null;
+    }[]>(
       `${this.base}/sinopticos/${sinopticoId}/share-candidates`, { params: { q } },
+    );
+  }
+
+  searchCandidates(q: string): Observable<{
+    id: number; full_name: string; email: string;
+    role_id: number; role_name: string; municipio_name: string | null;
+  }[]> {
+    return this.http.get<{
+      id: number; full_name: string; email: string;
+      role_id: number; role_name: string; municipio_name: string | null;
+    }[]>(
+      `${this.base}/sinopticos/share-candidates`, { params: { q } },
     );
   }
 

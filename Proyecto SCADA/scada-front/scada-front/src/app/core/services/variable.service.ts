@@ -67,6 +67,11 @@ export interface FormulaSeriesResult {
   partialTimestamps?: number[];
 }
 
+export interface AllSeriesResult {
+  columns: { alias: string; data: [number, number][] }[];
+  formulas: { formulaId: number; alias: string; expression: string; data: [number, number][] }[];
+}
+
 export interface FormulaQuality {
   partial: boolean;
   nullInputs: string[];
@@ -197,6 +202,13 @@ export class VariableService {
     return this.http.post<FormulaSeriesResult>(
       `${this.base}/views/${viewId}/execute-series`,
       { formulaId, range },
+    );
+  }
+
+  executeViewAllSeries(viewId: number, range: string): Observable<AllSeriesResult> {
+    return this.http.post<AllSeriesResult>(
+      `${this.base}/views/${viewId}/execute-series`,
+      { all: true, range },
     );
   }
 

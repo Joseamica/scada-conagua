@@ -17,6 +17,19 @@
         <h1>{{ view()?.name }}</h1>
       </div>
       <div class="header-right">
+        <button
+          class="btn-chart-toggle"
+          (click)="openSeriesChart()"
+          [disabled]="columns().length === 0"
+          title="Ver grafico de series"
+        >
+          <ng-icon name="heroChartBar" size="16" />
+          Grafico
+        </button>
+        <button class="btn-peek" (click)="showQuickPeek.set(true)" title="Vista rapida del mapa o telemetria">
+          <ng-icon name="heroEye" size="16" />
+          Vista rapida
+        </button>
         <button class="btn-share" (click)="openShareDialog()">
           <ng-icon name="heroShare" size="16" />
           Compartir
@@ -400,13 +413,13 @@
         }
       </div>
 
-      <!-- Series Chart Panel -->
+      <!-- Series Chart Panel with toggleable checkboxes -->
       @if (showSeriesChart()) {
         <div class="series-chart-section">
           <div class="series-header">
             <div class="series-title-row">
               <ng-icon name="heroChartBar" size="16" />
-              <span>{{ seriesAlias() }}</span>
+              <span>Grafico de series</span>
             </div>
             <div class="series-controls">
               @for (r of ['1h','6h','24h','7d','30d']; track r) {
@@ -424,14 +437,57 @@
           @if (seriesLoading()) {
             <div class="series-loading">
               <div class="spinner"></div>
-              <p>Consultando serie historica...</p>
+              <p>Consultando series historicas...</p>
             </div>
-          } @else if (seriesData().length === 0) {
+          } @else if (allSeriesData()) {
+            <div class="series-body">
+              <!-- Legend / Checkbox panel -->
+              <div class="series-legend">
+                @if (allSeriesData()!.columns.length > 0) {
+                  <div class="legend-group">
+                    <span class="legend-group-label">Variables</span>
+                    @for (col of allSeriesData()!.columns; track col.alias; let i = $index) {
+                      <label
+                        class="legend-item"
+                        [class.legend-item-active]="seriesEnabled()['col:' + col.alias]"
+                        (click)="toggleSeriesItem('col:' + col.alias)"
+                      >
+                        <span class="legend-dot" [style.background]="getSeriesColor(i)"></span>
+                        <span class="legend-label">{{ col.alias }}</span>
+                        <span class="legend-count">{{ col.data.length }} pts</span>
+                      </label>
+                    }
+                  </div>
+                }
+                @if (allSeriesData()!.formulas.length > 0) {
+                  <div class="legend-group">
+                    <span class="legend-group-label">Formulas</span>
+                    @for (f of allSeriesData()!.formulas; track f.formulaId; let i = $index) {
+                      <label
+                        class="legend-item"
+                        [class.legend-item-active]="seriesEnabled()['formula:' + f.alias]"
+                        (click)="toggleSeriesItem('formula:' + f.alias)"
+                      >
+                        <span class="legend-dot legend-dot-dashed" [style.background]="getSeriesColor(allSeriesData()!.columns.length + i)"></span>
+                        <span class="legend-label">{{ f.alias }}</span>
+                        <span class="legend-count">{{ f.data.length }} pts</span>
+                      </label>
+                    }
+                  </div>
+                }
+              </div>
+              <!-- Chart -->
+              <div #seriesChartContainer class="series-chart-container"></div>
+            </div>
+          } @else if (seriesError()) {
+            <div class="series-error-state">
+              <p>{{ seriesError() }}</p>
+              <button class="btn-validate" (click)="retryLoadSeries()">Reintentar</button>
+            </div>
+          } @else {
             <div class="series-empty">
               <p>Sin datos para este rango</p>
             </div>
-          } @else {
-            <div id="series-chart-container" class="series-chart-container"></div>
           }
         </div>
       }
@@ -500,6 +556,49 @@
             <p class="shares-empty">Nadie tiene acceso a esta vista.</p>
           }
         </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Quick Peek Modal -->
+@if (showQuickPeek()) {
+  <div class="dialog-overlay" (click)="showQuickPeek.set(false)">
+    <div class="peek-dialog" [class.peek-fullscreen]="peekFullscreen()" (click)="$event.stopPropagation()">
+      <div class="peek-header">
+        <div class="peek-tabs">
+          <button
+            class="peek-tab"
+            [class.peek-tab-active]="quickPeekView() === 'mapa'"
+            (click)="quickPeekView.set('mapa')"
+          >
+            <ng-icon name="heroMap" size="15" />
+            Mapa SIG
+          </button>
+          <button
+            class="peek-tab"
+            [class.peek-tab-active]="quickPeekView() === 'telemetria'"
+            (click)="quickPeekView.set('telemetria')"
+          >
+            <ng-icon name="heroChartBar" size="15" />
+            Telemetria
+          </button>
+        </div>
+        <div class="peek-actions">
+          <button class="btn-fullscreen" (click)="peekFullscreen.set(!peekFullscreen())" [title]="peekFullscreen() ? 'Salir de pantalla completa' : 'Pantalla completa'">
+            <ng-icon [name]="peekFullscreen() ? 'heroArrowsPointingIn' : 'heroArrowsPointingOut'" size="16" />
+          </button>
+          <button class="btn-close" (click)="showQuickPeek.set(false); peekFullscreen.set(false)">
+            <ng-icon name="heroXMark" size="18" />
+          </button>
+        </div>
+      </div>
+      <div class="peek-body">
+        @if (quickPeekView() === 'mapa') {
+          <iframe src="/modulo-gis?embed=1" class="peek-iframe"></iframe>
+        } @else {
+          <iframe src="/telemetria?embed=1" class="peek-iframe"></iframe>
+        }
       </div>
     </div>
   </div>

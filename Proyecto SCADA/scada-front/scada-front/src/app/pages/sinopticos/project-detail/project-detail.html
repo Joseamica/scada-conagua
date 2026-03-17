@@ -117,7 +117,7 @@
 
 <!-- Create Dialog -->
 <div class="dialog-overlay" *ngIf="showCreateDialog()" (click)="showCreateDialog.set(false)">
-  <div class="dialog" (click)="$event.stopPropagation()">
+  <div class="dialog create-dialog" (click)="$event.stopPropagation()">
     <h2>Nuevo Sinoptico</h2>
     <div class="form-group">
       <label>Nombre *</label>
@@ -127,6 +127,63 @@
       <label>Descripcion</label>
       <textarea [(ngModel)]="newDescription" rows="3" placeholder="Descripcion opcional"></textarea>
     </div>
+
+    <!-- User Assignment Section -->
+    <div class="create-assign-section">
+      <label>Asignar usuarios</label>
+      <div class="share-search-row">
+        <div class="share-search-input">
+          <ng-icon name="heroMagnifyingGlass" size="14" />
+          <input
+            type="text"
+            placeholder="Buscar usuario por nombre o email..."
+            [value]="createSearch()"
+            (input)="createSearch.set($any($event.target).value); searchCreateCandidates()"
+          />
+        </div>
+      </div>
+
+      <!-- Candidates dropdown -->
+      <div class="share-candidates" *ngIf="createCandidates().length > 0">
+        <div class="share-candidate" *ngFor="let c of createCandidates()" (click)="addCreateAssignee(c)">
+          <div class="candidate-info">
+            <span class="candidate-name">{{ c.full_name }}</span>
+            <span class="candidate-meta">
+              <span class="role-badge role-{{ c.role_id }}">{{ c.role_name }}</span>
+              <span class="candidate-email">{{ c.email }}</span>
+              <span class="candidate-municipio" *ngIf="c.municipio_name">{{ c.municipio_name }}</span>
+            </span>
+          </div>
+          <ng-icon name="heroUserPlus" size="16" />
+        </div>
+      </div>
+
+      <!-- Assigned users list with per-user permissions -->
+      <div class="create-assignees" *ngIf="createAssignees().length > 0">
+        <div class="assignee-card" *ngFor="let a of createAssignees()">
+          <div class="assignee-header">
+            <div class="share-avatar">{{ a.full_name.charAt(0).toUpperCase() }}</div>
+            <div class="share-user-detail">
+              <span class="share-user-name">{{ a.full_name }}</span>
+              <span class="share-user-meta">
+                <span class="role-badge role-{{ a.role_id }}">{{ a.role_name }}</span>
+                <span class="candidate-municipio" *ngIf="a.municipio_name">{{ a.municipio_name }}</span>
+              </span>
+            </div>
+            <button class="btn-remove-share" (click)="removeCreateAssignee(a.id)" title="Quitar">
+              <ng-icon name="heroXMark" size="14" />
+            </button>
+          </div>
+          <div class="assignee-perms">
+            <label class="perm-pill" *ngFor="let p of permOptions"
+              [class.active]="a.perms[p.key]" (click)="toggleAssigneePerm(a.id, p.key)">
+              {{ p.label }}
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="dialog-actions">
       <button class="btn-secondary" (click)="showCreateDialog.set(false)">Cancelar</button>
       <button class="btn-primary" (click)="createSinoptico()" [disabled]="!newName.trim()">Crear</button>
@@ -144,7 +201,7 @@
       </button>
     </div>
 
-    <!-- Search + Add -->
+    <!-- Search -->
     <div class="share-search-row">
       <div class="share-search-input">
         <ng-icon name="heroMagnifyingGlass" size="15" />
@@ -155,10 +212,6 @@
           (input)="shareSearch.set($any($event.target).value); searchShareCandidates()"
         />
       </div>
-      <select class="share-perm-select" [value]="sharePermission()" (change)="sharePermission.set($any($event.target).value)">
-        <option value="read">Lectura</option>
-        <option value="edit">Edicion</option>
-      </select>
     </div>
 
     <!-- Candidates -->
@@ -166,29 +219,38 @@
       <div class="share-candidate" *ngFor="let c of shareCandidates()" (click)="addShare(c.id)">
         <div class="candidate-info">
           <span class="candidate-name">{{ c.full_name }}</span>
-          <span class="candidate-email">{{ c.email }}</span>
+          <span class="candidate-meta">
+            <span class="role-badge role-{{ c.role_id }}">{{ c.role_name }}</span>
+            <span class="candidate-email">{{ c.email }}</span>
+            <span class="candidate-municipio" *ngIf="c.municipio_name">{{ c.municipio_name }}</span>
+          </span>
         </div>
         <ng-icon name="heroUserPlus" size="16" />
       </div>
     </div>
 
-    <!-- Current shares -->
+    <!-- Current shares with per-user permission pills -->
     <div class="share-list">
-      <div class="share-item" *ngFor="let s of shares()">
-        <div class="share-user-info">
+      <div class="assignee-card" *ngFor="let s of shares()">
+        <div class="assignee-header">
           <div class="share-avatar">{{ s.full_name.charAt(0).toUpperCase() }}</div>
           <div class="share-user-detail">
             <span class="share-user-name">{{ s.full_name }}</span>
-            <span class="share-user-email">{{ s.email }}</span>
+            <span class="share-user-meta">
+              <span class="role-badge role-{{ s.role_id }}">{{ s.role_name }}</span>
+              <span class="share-user-email">{{ s.email }}</span>
+              <span class="candidate-municipio" *ngIf="s.municipio_name">{{ s.municipio_name }}</span>
+            </span>
           </div>
-        </div>
-        <div class="share-actions">
-          <span class="share-perm-badge" [class.edit]="s.permission === 'edit'">
-            {{ s.permission === 'edit' ? 'Edicion' : 'Lectura' }}
-          </span>
           <button class="btn-remove-share" (click)="removeShare(s.id)" title="Quitar acceso">
             <ng-icon name="heroXMark" size="14" />
           </button>
+        </div>
+        <div class="assignee-perms">
+          <label class="perm-pill" *ngFor="let p of permOptions"
+            [class.active]="hasPermission(s.permission, p.key)" (click)="toggleExistingSharePerm(s, p.key)">
+            {{ p.label }}
+          </label>
         </div>
       </div>
       <p class="share-empty" *ngIf="shares().length === 0">

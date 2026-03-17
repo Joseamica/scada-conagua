@@ -56,18 +56,14 @@ router.get('/tags', isAuth, async (req: Request, res: Response) => {
         `;
         const params: any[] = [];
 
-        // Municipal scope filtering
-        if (user.scope === 'Municipal') {
-            sql += ` AND LOWER(TRIM(i.municipality)) IN (
-                SELECT LOWER(TRIM(e.name)) FROM scada.entities e
-                WHERE e.municipio_id = $1 AND e.level = 'Municipal'
-            )`;
+        // Municipal scope filtering (integer comparison via municipio_id)
+        if (user.scope === 'Municipal' && user.scope_id) {
+            sql += ' AND (i.municipio_id = $1 OR i.municipio_id IS NULL)';
             params.push(user.scope_id);
-        } else if (user.scope === 'Estatal') {
-            sql += ` AND LOWER(TRIM(i.municipality)) IN (
-                SELECT LOWER(TRIM(e.name)) FROM scada.entities e
-                WHERE e.estado_id = $1
-            )`;
+        } else if (user.scope === 'Estatal' && user.estado_id) {
+            sql += ` AND (i.municipio_id IN (
+                SELECT e.municipio_id FROM scada.entities e WHERE e.estado_id = $1 AND e.level = 'Municipal'
+            ) OR i.municipio_id IS NULL)`;
             params.push(user.estado_id);
         }
 
@@ -461,7 +457,8 @@ router.post('/views/:id/execute', isAuth, async (req: Request, res: Response) =>
         const columnValues: Record<string, number | null> = {};
         const execRange = range || '24h';
 
-        for (const col of columns.rows) {
+        // Parallelize all column value fetches
+        const colTasks = columns.rows.map(async (col: any) => {
             if (col.aggregation === 'LAST_VALUE' || !col.aggregation) {
                 // Fast path: cached site_status
                 const statusResult = await pool.query(
@@ -489,10 +486,9 @@ router.post('/views/:id/execute', isAuth, async (req: Request, res: Response) =>
                         value_lluvia: 'last_lluvia_value',
                     };
                     const pgField = measurementMap[col.measurement] || col.measurement;
-                    columnValues[col.alias] = row[pgField] !== null ? Number(row[pgField]) : null;
-                } else {
-                    columnValues[col.alias] = null;
+                    return { alias: col.alias, value: row[pgField] !== null ? Number(row[pgField]) : null };
                 }
+                return { alias: col.alias, value: null };
             } else {
                 // InfluxDB aggregation (AVG, MIN, MAX, SUM, BAL)
                 try {
@@ -542,12 +538,17 @@ router.post('/views/:id/execute', isAuth, async (req: Request, res: Response) =>
                     `;
 
                     const rows = await queryInfluxSeries(fluxQuery);
-                    columnValues[col.alias] = rows.length > 0 ? rows[0].value : null;
+                    return { alias: col.alias, value: rows.length > 0 ? rows[0].value : null };
                 } catch (aggErr) {
                     console.error(`Aggregation error for ${col.alias}:`, aggErr);
-                    columnValues[col.alias] = null;
+                    return { alias: col.alias, value: null };
                 }
             }
+        });
+
+        const colResults = await Promise.all(colTasks);
+        for (const { alias, value } of colResults) {
+            columnValues[alias] = value;
         }
 
         // Add i_N index-based bindings (i_1 = first column, i_2 = second, etc.)
@@ -650,7 +651,15 @@ async function queryInfluxSeries(
 
 router.post('/views/:id/execute-series', isAuth, async (req: Request, res: Response) => {
     const viewId = parseInt(req.params.id);
-    const { formulaId, range = '24h' } = req.body;
+    if (isNaN(viewId)) {
+        return res.status(400).json({ error: 'ID de vista invalido.' });
+    }
+    const { formulaId, all = false, range = '24h' } = req.body;
+
+    // Validate formulaId when not in "all" mode
+    if (!all && (formulaId == null || isNaN(Number(formulaId)))) {
+        return res.status(400).json({ error: 'formulaId es requerido (o usa all: true).' });
+    }
 
     try {
         const user = req.user!;
@@ -664,29 +673,35 @@ router.post('/views/:id/execute-series', isAuth, async (req: Request, res: Respo
             [viewId]
         );
 
-        // Load the specific formula
-        const fResult = await pool.query(
-            'SELECT * FROM scada.view_formulas WHERE id = $1 AND view_id = $2',
-            [formulaId, viewId]
-        );
-        if (!fResult.rows.length) {
-            return res.status(404).json({ error: 'Formula not found' });
-        }
-        const formula = fResult.rows[0];
-
         // Load all formulas for dependency resolution
         const allFormulasResult = await pool.query(
             'SELECT * FROM scada.view_formulas WHERE view_id = $1 ORDER BY sort_order',
             [viewId]
         );
 
-        // Query InfluxDB for each column's historical data
+        // If single formulaId mode, find the formula in already-loaded results
+        let formula: any = null;
+        if (!all) {
+            formula = allFormulasResult.rows.find((f: any) => f.id === Number(formulaId));
+            if (!formula) {
+                return res.status(404).json({ error: 'Formula not found' });
+            }
+        }
+
+        // Sanitize a string for safe interpolation into Flux queries
+        const sanitizeFlux = (s: string) => s
+            .replace(/\\/g, '\\\\')
+            .replace(/"/g, '\\"')
+            .replace(/[\n\r]/g, '');
+
+        // Query InfluxDB for each column's historical data (in parallel)
         const influxRange = toInfluxRange(range);
         const columnSeries: Record<string, Map<number, number>> = {};
+        const columnAliasSeries: Map<string, Map<number, number>> = new Map();
         const columns = colResult.rows;
 
-        for (let i = 0; i < columns.length; i++) {
-            const col = columns[i];
+        // Build query tasks for parallel execution
+        const queryTasks = columns.map(async (col: any, i: number) => {
             const isIgnition = col.dev_eui.toLowerCase().startsWith('dev');
             const activeBucket = isIgnition
                 ? process.env.INFLUX_BUCKET_IGNITION || 'telemetria_ignition'
@@ -715,13 +730,9 @@ router.post('/views/:id/execute-series', isAuth, async (req: Request, res: Respo
                     [col.dev_eui.trim()]
                 );
                 const siteName = pgRes.rows[0]?.site_name || '';
-                const safeSiteName = siteName
-                    .replace(/\\/g, '\\\\')
-                    .replace(/"/g, '\\"')
-                    .replace(/[\n\r]/g, '');
-                tagFilter = `r["pozo"] == "${safeSiteName}"`;
+                tagFilter = `r["pozo"] == "${sanitizeFlux(siteName)}"`;
             } else {
-                tagFilter = `r["devEui"] == "${col.dev_eui.trim()}"`;
+                tagFilter = `r["devEui"] == "${sanitizeFlux(col.dev_eui.trim())}"`;
             }
 
             const fluxQuery = `
@@ -729,7 +740,7 @@ router.post('/views/:id/execute-series', isAuth, async (req: Request, res: Respo
                     |> range(start: ${influxRange})
                     |> filter(fn: (r) => r["_measurement"] == "${activeMeasurement}")
                     |> filter(fn: (r) => ${tagFilter})
-                    |> filter(fn: (r) => r["_field"] == "${influxField}")
+                    |> filter(fn: (r) => r["_field"] == "${sanitizeFlux(influxField)}")
                     |> group()
                     |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)
                     |> yield(name: "mean")
@@ -745,8 +756,15 @@ router.post('/views/:id/execute-series', isAuth, async (req: Request, res: Respo
                 console.error(`InfluxDB query error for column ${col.alias}:`, e);
             }
 
-            columnSeries[col.alias] = tsMap;
-            columnSeries[`i_${i + 1}`] = tsMap;
+            return { alias: col.alias, index: i, tsMap };
+        });
+
+        // Execute all InfluxDB queries in parallel
+        const queryResults = await Promise.all(queryTasks);
+        for (const { alias, index, tsMap } of queryResults) {
+            columnSeries[alias] = tsMap;
+            columnSeries[`i_${index + 1}`] = tsMap;
+            columnAliasSeries.set(alias, tsMap);
         }
 
         // Read null_policy from view
@@ -762,9 +780,12 @@ router.post('/views/:id/execute-series', isAuth, async (req: Request, res: Respo
         }
         const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b);
 
-        // Evaluate formula at each timestamp
-        const seriesData: [number, number][] = [];
-        const partialTimestamps: number[] = [];
+        // Evaluate ALL formulas at each timestamp
+        const formulaSeriesMap: Record<string, [number, number][]> = {};
+        for (const f of allFormulasResult.rows) {
+            formulaSeriesMap[f.alias] = [];
+        }
+
         for (const ts of sortedTimestamps) {
             const bindings: Record<string, number | null> = {};
             for (const [alias, tsMap] of Object.entries(columnSeries)) {
@@ -781,20 +802,35 @@ router.post('/views/:id/execute-series', isAuth, async (req: Request, res: Respo
                 nullPolicy
             );
 
-            const val = evaluated[formula.alias];
-            if (val !== null && val !== undefined && !isNaN(val)) {
-                seriesData.push([ts, val]);
-                if (quality[formula.alias]?.partial) {
-                    partialTimestamps.push(ts);
+            for (const f of allFormulasResult.rows) {
+                const val = evaluated[f.alias];
+                if (val !== null && val !== undefined && !isNaN(val)) {
+                    formulaSeriesMap[f.alias].push([ts, val]);
                 }
             }
         }
 
+        // "all" mode: return every column + formula series in one response
+        if (all) {
+            const columnSeriesArr = columns.map((col: any) => ({
+                alias: col.alias,
+                data: Array.from(columnAliasSeries.get(col.alias) || []).sort((a, b) => a[0] - b[0]),
+            }));
+            const formulaSeriesArr = allFormulasResult.rows.map((f: any) => ({
+                formulaId: f.id,
+                alias: f.alias,
+                expression: f.expression,
+                data: formulaSeriesMap[f.alias] || [],
+            }));
+            return res.json({ columns: columnSeriesArr, formulas: formulaSeriesArr });
+        }
+
+        // Single formula mode (backward compatible)
+        const seriesData = formulaSeriesMap[formula.alias] || [];
         res.json({
             formulaId: formula.id,
             alias: formula.alias,
             data: seriesData,
-            partialTimestamps: partialTimestamps.length > 0 ? partialTimestamps : undefined,
         });
     } catch (err) {
         console.error('Error executing formula series:', err);

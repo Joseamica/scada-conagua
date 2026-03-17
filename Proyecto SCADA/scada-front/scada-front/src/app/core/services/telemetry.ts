@@ -90,6 +90,7 @@ export class TelemetryService {
     longitude?: number;
     proveedor?: string;
     estatus?: string;
+    municipio_id?: number;
   }): Observable<{ dev_eui: string; message: string }> {
     return this.http.post<{ dev_eui: string; message: string }>(`${this.BASE_URL}/sites`, payload);
   }
@@ -99,6 +100,7 @@ export class TelemetryService {
     dev_eui: string; gw_eui: string; site_name: string; site_type: string;
     municipality: string; latitude: number | null; longitude: number | null;
     proveedor: string | null; estatus: string | null; render_url: string | null;
+    utr_id: string | null;
   }> {
     return this.http.get<any>(`${this.BASE_URL}/sites/${devEUI.trim()}`);
   }
@@ -106,8 +108,9 @@ export class TelemetryService {
   // Actualizar un sitio existente
   updateSite(devEUI: string, payload: {
     site_name: string; site_type: string; municipality: string;
-    gw_eui?: string; latitude?: number; longitude?: number;
+    gw_eui?: string; utr_id?: string; latitude?: number; longitude?: number;
     proveedor?: string; estatus?: string; new_dev_eui?: string;
+    municipio_id?: number;
   }): Observable<{ message: string }> {
     return this.http.put<{ message: string }>(`${this.BASE_URL}/sites/${devEUI.trim()}`, payload);
   }

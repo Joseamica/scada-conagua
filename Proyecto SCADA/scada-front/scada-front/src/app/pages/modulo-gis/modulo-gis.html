@@ -1,6 +1,8 @@
-<app-header-bar></app-header-bar>
+@if (!embed()) {
+  <app-header-bar></app-header-bar>
+}
 
-<div class="gis-container">
+<div class="gis-container" [class.embed-mode]="embed()">
 
   <!-- ── Barra de leyenda ── -->
   <div class="gis-legend-wrapper">
@@ -34,12 +36,24 @@
     <div class="gis-legend-section">
       <h4>Estado</h4>
       <div class="legend-item">
-        <span class="legend-dot blue"></span>
-        <span>Activo</span>
+        <span class="legend-dot green"></span>
+        <span>Operando</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot amber"></span>
+        <span>Sin gasto</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot red"></span>
+        <span>Sin comunicacion</span>
       </div>
       <div class="legend-item">
         <span class="legend-dot yellow"></span>
         <span>En obra</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot red"></span>
+        <span>Inactivo</span>
       </div>
       <div class="legend-item">
         <span class="legend-dot gray"></span>
@@ -60,7 +74,7 @@
   <!-- ── Mapa ── -->
   <div class="gis-map-wrapper">
 
-    <!-- Buscador flotante -->
+    <!-- Buscador flotante + filtros -->
     <div class="gis-search">
       <div class="gis-search-inner">
         <span class="gis-search-icon">
@@ -73,7 +87,82 @@
           placeholder="Buscar municipio o pozo…"
           (input)="searchGlobal($any($event.target).value)"
         />
+        <button
+          class="gis-filter-toggle"
+          [class.gis-filter-active]="filterPanelOpen() || filterMunicipio() > 0 || filterSiteType() || filterMinFlow() > 0 || filterOnlyAlarm()"
+          (click)="filterPanelOpen.set(!filterPanelOpen())"
+          title="Filtros rapidos"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+          </svg>
+        </button>
       </div>
+
+      @if (filterPanelOpen()) {
+        <div class="gis-filter-panel">
+          <!-- Municipio -->
+          <div class="gf-row">
+            <label class="gf-label">Municipio</label>
+            <select
+              class="gf-select"
+              [value]="filterMunicipio()"
+              (change)="filterMunicipio.set(+$any($event.target).value); applyFilters()"
+            >
+              <option [value]="0">Todos</option>
+              @for (m of municipioOptions(); track m.id) {
+                <option [value]="m.id">{{ m.name }}</option>
+              }
+            </select>
+          </div>
+
+          <!-- Tipo de sitio -->
+          <div class="gf-row">
+            <label class="gf-label">Tipo</label>
+            <div class="gf-pills">
+              @for (t of [
+                { key: '', label: 'Todos' },
+                { key: 'pozo', label: 'Pozo' },
+                { key: 'pluviometro', label: 'Pluvio' },
+                { key: 'tanque', label: 'Tanque' },
+                { key: 'drenaje', label: 'Drenaje' }
+              ]; track t.key) {
+                <button
+                  class="gf-pill"
+                  [class.gf-pill-active]="filterSiteType() === t.key"
+                  (click)="filterSiteType.set(t.key); applyFilters()"
+                >{{ t.label }}</button>
+              }
+            </div>
+          </div>
+
+          <!-- Gasto minimo -->
+          <div class="gf-row">
+            <label class="gf-label">Gasto min.</label>
+            <div class="gf-range-row">
+              <input
+                type="range"
+                class="gf-range"
+                min="0" max="50" step="1"
+                [value]="filterMinFlow()"
+                (input)="filterMinFlow.set(+$any($event.target).value); applyFilters()"
+              />
+              <span class="gf-range-value">{{ filterMinFlow() > 0 ? '>' + filterMinFlow() + ' L/s' : 'Sin filtro' }}</span>
+            </div>
+          </div>
+
+          <!-- Solo alarmas + Limpiar -->
+          <div class="gf-bottom">
+            <label class="gf-check" (click)="filterOnlyAlarm.set(!filterOnlyAlarm()); applyFilters()">
+              <input type="checkbox" [checked]="filterOnlyAlarm()" />
+              <span>Solo sin comunicacion</span>
+            </label>
+            @if (filterMunicipio() > 0 || filterSiteType() || filterMinFlow() > 0 || filterOnlyAlarm()) {
+              <button class="gf-clear" (click)="clearFilters()">Limpiar</button>
+            }
+          </div>
+        </div>
+      }
     </div>
 
     <div id="map" class="gis-map"></div>
@@ -128,11 +217,33 @@
           <div class="lc-section">
             <span class="lc-section-title">Estado operativo</span>
             <div class="lc-layers">
-              <label class="lc-layer" [class.lc-layer-empty]="layerCounts().activos === 0">
-                <input type="checkbox" [checked]="layerVisible().activos" (change)="toggleLayer('activos')" />
+              <!-- Parent: Activos (toggles all 3 sub-layers) -->
+              <label class="lc-layer lc-layer-parent">
+                <input type="checkbox" [checked]="activosAllChecked" (change)="toggleActivos()" />
                 <span class="lc-dot lc-dot-blue"></span>
                 <span class="lc-layer-name">Activos</span>
-                <span class="lc-count">{{ layerCounts().activos }}</span>
+                <span class="lc-count">{{ activosCount }}</span>
+              </label>
+              <!-- Sub: Operando -->
+              <label class="lc-layer lc-layer-child" [class.lc-layer-empty]="layerCounts().operando === 0">
+                <input type="checkbox" [checked]="layerVisible().operando" (change)="toggleLayer('operando')" />
+                <span class="lc-dot lc-dot-green"></span>
+                <span class="lc-layer-name">Operando</span>
+                <span class="lc-count">{{ layerCounts().operando }}</span>
+              </label>
+              <!-- Sub: Sin gasto -->
+              <label class="lc-layer lc-layer-child" [class.lc-layer-empty]="layerCounts().sinGasto === 0">
+                <input type="checkbox" [checked]="layerVisible().sinGasto" (change)="toggleLayer('sinGasto')" />
+                <span class="lc-dot lc-dot-amber"></span>
+                <span class="lc-layer-name">Sin gasto</span>
+                <span class="lc-count">{{ layerCounts().sinGasto }}</span>
+              </label>
+              <!-- Sub: Sin comunicacion -->
+              <label class="lc-layer lc-layer-child" [class.lc-layer-empty]="layerCounts().sinCom === 0">
+                <input type="checkbox" [checked]="layerVisible().sinCom" (change)="toggleLayer('sinCom')" />
+                <span class="lc-dot lc-dot-red"></span>
+                <span class="lc-layer-name">Sin comunicacion</span>
+                <span class="lc-count">{{ layerCounts().sinCom }}</span>
               </label>
               <label class="lc-layer" [class.lc-layer-empty]="layerCounts().obra === 0">
                 <input type="checkbox" [checked]="layerVisible().obra" (change)="toggleLayer('obra')" />
@@ -192,4 +303,6 @@
 
 </div>
 
-<app-footer-tabs></app-footer-tabs>
+@if (!embed()) {
+  <app-footer-tabs></app-footer-tabs>
+}

@@ -170,6 +170,7 @@ export class SitioForm implements OnInit {
           tipo,
           devEUI: site.dev_eui,
           gatewayId: site.gw_eui,
+          utrId: site.utr_id || '',
           lat: site.latitude || 0,
           lng: site.longitude || 0,
         });
@@ -269,9 +270,11 @@ export class SitioForm implements OnInit {
 
     if (this.modo === 'create') {
       const v = this.form.value;
+      const municipio_id = this.resolveMunicipioId(v.estado || '', v.municipio || '');
       const payload = {
         dev_eui: v.devEUI?.trim() || '',
         gw_eui: v.gatewayId?.trim() || undefined,
+        utr_id: v.utrId?.trim() || undefined,
         site_name: v.nombre?.trim() || '',
         site_type: v.tipo || 'pozo',
         municipality: v.municipio?.trim() || '',
@@ -279,6 +282,7 @@ export class SitioForm implements OnInit {
         longitude: v.lng || undefined,
         proveedor: this.proveedores.find((p) => p.id === v.proveedor)?.nombre || undefined,
         estatus: v.estatus || 'activo',
+        municipio_id: municipio_id || undefined,
       };
 
       this.saving.set(true);
@@ -317,16 +321,19 @@ export class SitioForm implements OnInit {
       const v = this.form.getRawValue();
       const newDevEUI = v.devEUI?.trim() || '';
       const devEUIChanged = newDevEUI && newDevEUI !== this.originalDevEUI;
+      const municipio_id = this.resolveMunicipioId(v.estado || '', v.municipio || '');
       const payload = {
         site_name: v.nombre?.trim() || '',
         site_type: v.tipo || 'pozo',
         municipality: v.municipio?.trim() || '',
         gw_eui: v.gatewayId?.trim() || undefined,
+        utr_id: v.utrId?.trim() || undefined,
         latitude: v.lat || undefined,
         longitude: v.lng || undefined,
         proveedor: this.proveedores.find((p) => p.id === v.proveedor)?.nombre || undefined,
         estatus: v.estatus || 'activo',
         new_dev_eui: devEUIChanged ? newDevEUI : undefined,
+        municipio_id: municipio_id || undefined,
       };
 
       this.saving.set(true);
@@ -442,6 +449,21 @@ export class SitioForm implements OnInit {
       }
     }
     return inside;
+  }
+
+  /** Resolve INEGI municipio_id from estado name + municipio name using estados.json */
+  private resolveMunicipioId(estadoNombre: string, municipioNombre: string): number | null {
+    if (!estadoNombre || !municipioNombre) return null;
+    for (const [estadoKey, estadoData] of Object.entries(this.baseEstadosData)) {
+      if (estadoData.estado === estadoNombre) {
+        for (const [munKey, munName] of Object.entries(estadoData.municipios)) {
+          if (munName === municipioNombre) {
+            return parseInt(munKey, 10) || null;
+          }
+        }
+      }
+    }
+    return null;
   }
 
   private applyDetectedLocation(cveEnt: string, cveMun: string) {

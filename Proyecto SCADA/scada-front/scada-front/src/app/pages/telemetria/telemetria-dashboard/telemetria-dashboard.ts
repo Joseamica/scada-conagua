@@ -1,6 +1,6 @@
 import { Component, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
@@ -176,11 +176,16 @@ export class TelemetriaDashboard implements OnInit {
     return `${h}:${m}`;
   }
 
+  embed = signal(false);
+
   constructor(
+    private route: ActivatedRoute,
     private router: Router,
     private telemetryService: TelemetryService,
     private authService: AuthService
-  ) {}
+  ) {
+    this.embed.set(this.route.snapshot.queryParamMap.get('embed') === '1');
+  }
 
   ngOnInit(): void {
     this.loadSites();
@@ -198,9 +203,14 @@ export class TelemetriaDashboard implements OnInit {
           const hasTelemetry = s.last_updated_at != null;
           const hasFlow = flow != null && flow > 0.01;
 
+          // Detect COMM LOSS: has telemetry record but last update >15 min ago
+          const isStale = hasTelemetry && (Date.now() - new Date(s.last_updated_at!).getTime() > 15 * 60 * 1000);
+
           let status: string;
           if (!hasTelemetry) {
             status = 'pending';
+          } else if (isStale) {
+            status = 'no-signal';
           } else if (hasFlow) {
             status = 'ok';
           } else {

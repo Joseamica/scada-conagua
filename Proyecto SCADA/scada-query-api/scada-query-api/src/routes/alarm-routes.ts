@@ -205,6 +205,20 @@ router.delete('/:id', isSupervisor, async (req: Request, res: Response) => {
 
 router.get('/active', isAuth, async (req: Request, res: Response) => {
     try {
+        const user = (req as any).user;
+        let scopeFilter = '';
+        const params: any[] = [];
+
+        if (user?.scope === 'Municipal' && user?.scope_id) {
+            scopeFilter = ' AND (i.municipio_id = $1 OR i.municipio_id IS NULL)';
+            params.push(user.scope_id);
+        } else if (user?.scope === 'Estatal' && user?.estado_id) {
+            scopeFilter = ` AND (i.municipio_id IN (
+                SELECT e.municipio_id FROM scada.entities e WHERE e.estado_id = $1 AND e.level = 'Municipal'
+            ) OR i.municipio_id IS NULL)`;
+            params.push(user.estado_id);
+        }
+
         const result = await pool.query(
             `SELECT a.id, a.name, a.severity, a.dev_eui, a.measurement,
                     a.comparison_operator, a.threshold_value,
@@ -217,9 +231,11 @@ router.get('/active', isAuth, async (req: Request, res: Response) => {
              JOIN scada.alarm_groups g ON g.id = a.group_id
              LEFT JOIN scada.inventory i ON TRIM(i.dev_eui) = TRIM(a.dev_eui)
              WHERE s.current_state != 'INACTIVE' AND a.is_enabled = true
+             ${scopeFilter}
              ORDER BY
                 CASE a.severity WHEN 'critico' THEN 1 WHEN 'alerta' THEN 2 WHEN 'aviso' THEN 3 END,
-                s.last_triggered_at DESC`
+                s.last_triggered_at DESC`,
+            params
         );
         res.json(result.rows);
     } catch (e: any) {

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -15,6 +15,10 @@ import {
   heroShare,
   heroXMark,
   heroChartBar,
+  heroMap,
+  heroEye,
+  heroArrowsPointingOut,
+  heroArrowsPointingIn,
 } from '@ng-icons/heroicons/outline';
 import {
   VariableService,
@@ -25,6 +29,7 @@ import {
   ViewShare,
   ShareCandidate,
   FormulaSeriesResult,
+  AllSeriesResult,
   FormulaQuality,
 } from '../../../core/services/variable.service';
 import {
@@ -58,12 +63,16 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
       heroShare,
       heroXMark,
       heroChartBar,
+      heroMap,
+      heroEye,
+      heroArrowsPointingOut,
+      heroArrowsPointingIn,
     }),
   ],
   templateUrl: './variable-view-editor.html',
   styleUrl: './variable-view-editor.css',
 })
-export class VariableViewEditor implements OnInit {
+export class VariableViewEditor implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private variableService = inject(VariableService);
@@ -115,14 +124,32 @@ export class VariableViewEditor implements OnInit {
   selectedCandidateId = 0;
   sharePermission = 'read';
 
-  // Series chart
+  // Series chart — multi-series with toggleable checkboxes
   showSeriesChart = signal(false);
   seriesFormulaId = signal<number | null>(null);
   seriesRange = signal('24h');
   seriesLoading = signal(false);
   seriesData = signal<[number, number][]>([]);
   seriesAlias = signal('');
+  seriesError = signal<string | null>(null);
   private chartInstance: any = null;
+  private echartsModule: any = null;
+  private resizeObserver: ResizeObserver | null = null;
+  private pendingRenderTimeout: any = null;
+  @ViewChild('seriesChartContainer') chartContainerRef!: ElementRef<HTMLDivElement>;
+
+  // All-series data for checkbox mode
+  allSeriesData = signal<AllSeriesResult | null>(null);
+  seriesEnabled = signal<Record<string, boolean>>({});
+  private readonly SERIES_COLORS = [
+    '#6d002b', '#2563eb', '#059669', '#d97706', '#7c3aed',
+    '#dc2626', '#0891b2', '#65a30d', '#c026d3', '#ea580c',
+  ];
+
+  // Quick peek
+  showQuickPeek = signal(false);
+  quickPeekView = signal<'mapa' | 'telemetria'>('mapa');
+  peekFullscreen = signal(false);
 
   // Null policy
   nullPolicy = signal<'zero' | 'null'>('zero');
@@ -133,6 +160,20 @@ export class VariableViewEditor implements OnInit {
   ngOnInit(): void {
     this.viewId = Number(this.route.snapshot.paramMap.get('id'));
     this.loadView();
+  }
+
+  ngOnDestroy(): void {
+    if (this.chartInstance) {
+      this.chartInstance.dispose();
+      this.chartInstance = null;
+    }
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+    if (this.pendingRenderTimeout) {
+      clearTimeout(this.pendingRenderTimeout);
+    }
   }
 
   loadView(): void {
@@ -787,83 +828,183 @@ export class VariableViewEditor implements OnInit {
 
   // ---- Series Chart ----
 
-  openSeriesChart(formula: ViewFormula): void {
-    this.seriesFormulaId.set(formula.id);
-    this.seriesAlias.set(formula.alias);
+  openSeriesChart(formula?: ViewFormula): void {
+    if (formula) {
+      this.seriesFormulaId.set(formula.id);
+      this.seriesAlias.set(formula.alias);
+    } else {
+      this.seriesAlias.set('');
+    }
+    this.seriesError.set(null);
     this.showSeriesChart.set(true);
-    this.loadSeries();
+    this.loadAllSeries();
   }
 
   changeSeriesRange(range: string): void {
     this.seriesRange.set(range);
-    this.loadSeries();
+    this.loadAllSeries();
   }
 
-  private loadSeries(): void {
-    const fid = this.seriesFormulaId();
-    if (!fid) return;
+  toggleSeriesItem(key: string): void {
+    this.seriesEnabled.update((prev) => ({ ...prev, [key]: !prev[key] }));
+    this.updateChartSeries();
+  }
+
+  getSeriesColor(index: number): string {
+    return this.SERIES_COLORS[index % this.SERIES_COLORS.length];
+  }
+
+  private async getEcharts(): Promise<any> {
+    if (!this.echartsModule) {
+      this.echartsModule = await import('echarts');
+    }
+    return this.echartsModule;
+  }
+
+  retryLoadSeries(): void {
+    this.loadAllSeries();
+  }
+
+  private loadAllSeries(): void {
     this.seriesLoading.set(true);
-    this.variableService.executeViewSeries(this.viewId, fid, this.seriesRange()).subscribe({
+    this.seriesError.set(null);
+    this.variableService.executeViewAllSeries(this.viewId, this.seriesRange()).subscribe({
       next: (result) => {
-        this.seriesData.set(result.data || []);
+        this.allSeriesData.set(result);
+        // Initialize enabled state: enable clicked formula or all columns
+        const enabled: Record<string, boolean> = {};
+        const clickedAlias = this.seriesAlias();
+        for (const col of result.columns) {
+          enabled[`col:${col.alias}`] = !clickedAlias;
+        }
+        for (const f of result.formulas) {
+          enabled[`formula:${f.alias}`] = clickedAlias ? f.alias === clickedAlias : false;
+        }
+        if (!clickedAlias && result.columns.length > 0) {
+          for (const col of result.columns) {
+            enabled[`col:${col.alias}`] = true;
+          }
+        }
+        this.seriesEnabled.set(enabled);
         this.seriesLoading.set(false);
-        // Wait for Angular to render the chart container before initializing ECharts
-        setTimeout(() => this.renderChart());
+        this.pendingRenderTimeout = setTimeout(() => this.initChart());
       },
       error: () => {
         this.seriesLoading.set(false);
-        this.seriesData.set([]);
+        this.allSeriesData.set(null);
+        this.seriesError.set('Error al cargar las series. Intenta de nuevo.');
       },
     });
   }
 
-  private renderChart(): void {
-    const container = document.getElementById('series-chart-container');
-    if (!container) return;
+  private buildSeries(): any[] {
+    const allData = this.allSeriesData();
+    if (!allData) return [];
+    const enabled = this.seriesEnabled();
+    const series: any[] = [];
+    let colorIdx = 0;
 
-    // Lazy-load ECharts
-    import('echarts').then((echarts) => {
-      if (this.chartInstance) {
-        this.chartInstance.dispose();
-      }
-      this.chartInstance = echarts.init(container);
-      const data = this.seriesData();
-      this.chartInstance.setOption({
-        tooltip: {
-          trigger: 'axis',
-          formatter: (params: any) => {
-            const p = params[0];
-            const date = new Date(p.value[0]);
-            const timeStr = date.toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
-            return `${timeStr}<br/><strong>${p.seriesName}:</strong> ${p.value[1]?.toFixed(2) ?? '--'}`;
-          },
-        },
-        grid: { left: 50, right: 20, top: 20, bottom: 30 },
-        xAxis: {
-          type: 'time',
-          axisLabel: { fontSize: 10, color: '#94a3b8' },
-          splitLine: { show: false },
-        },
-        yAxis: {
-          type: 'value',
-          axisLabel: { fontSize: 10, color: '#94a3b8' },
-          splitLine: { lineStyle: { color: '#f1f5f9' } },
-        },
-        series: [{
-          name: this.seriesAlias(),
+    for (const col of allData.columns) {
+      const key = `col:${col.alias}`;
+      const color = this.getSeriesColor(colorIdx++);
+      if (enabled[key]) {
+        series.push({
+          name: col.alias,
           type: 'line',
           smooth: true,
           symbol: 'none',
-          lineStyle: { width: 2, color: '#6d002b' },
-          areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(109,0,43,0.15)' }, { offset: 1, color: 'rgba(109,0,43,0)' }] } },
-          data: data.map(([ts, val]) => [ts, val]),
-        }],
-      });
+          itemStyle: { color },
+          lineStyle: { width: 2, color },
+          data: col.data,
+        });
+      }
+    }
+
+    for (const f of allData.formulas) {
+      const key = `formula:${f.alias}`;
+      const color = this.getSeriesColor(colorIdx++);
+      if (enabled[key]) {
+        series.push({
+          name: `${f.alias} (formula)`,
+          type: 'line',
+          smooth: true,
+          symbol: 'none',
+          itemStyle: { color },
+          lineStyle: { width: 2, color, type: 'dashed' },
+          data: f.data,
+        });
+      }
+    }
+
+    return series;
+  }
+
+  /** Full init — called once after data loads */
+  private async initChart(): Promise<void> {
+    const container = this.chartContainerRef?.nativeElement;
+    if (!container) return;
+
+    const echarts = await this.getEcharts();
+
+    if (this.chartInstance) {
+      this.chartInstance.dispose();
+    }
+    this.chartInstance = echarts.init(container);
+
+    // Resize observer
+    if (this.resizeObserver) this.resizeObserver.disconnect();
+    this.resizeObserver = new ResizeObserver(() => this.chartInstance?.resize());
+    this.resizeObserver.observe(container);
+
+    this.chartInstance.setOption({
+      tooltip: {
+        trigger: 'axis',
+        formatter: (params: any) => {
+          if (!params?.length) return '';
+          const date = new Date(params[0].value[0]);
+          const timeStr = date.toLocaleString('es-MX', {
+            hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short',
+          });
+          let html = timeStr;
+          for (const p of params) {
+            html += `<br/><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color};margin-right:4px"></span>`;
+            html += `<strong>${p.seriesName}:</strong> ${p.value[1]?.toFixed(2) ?? '--'}`;
+          }
+          return html;
+        },
+      },
+      grid: { left: 50, right: 20, top: 20, bottom: 30 },
+      xAxis: {
+        type: 'time',
+        axisLabel: { fontSize: 10, color: '#94a3b8' },
+        splitLine: { show: false },
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: { fontSize: 10, color: '#94a3b8' },
+        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.15)' } },
+      },
+      series: this.buildSeries(),
     });
+  }
+
+  /** Lightweight update — reuses existing chart instance on toggle */
+  private updateChartSeries(): void {
+    if (!this.chartInstance) {
+      this.initChart();
+      return;
+    }
+    this.chartInstance.setOption({ series: this.buildSeries() }, { replaceMerge: ['series'] });
   }
 
   closeSeriesChart(): void {
     this.showSeriesChart.set(false);
+    this.allSeriesData.set(null);
+    this.seriesError.set(null);
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
     if (this.chartInstance) {
       this.chartInstance.dispose();
       this.chartInstance = null;

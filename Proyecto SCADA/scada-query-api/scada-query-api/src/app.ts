@@ -116,6 +116,7 @@ export const getSiteStatus = async (req: Request, res: Response) => {
     try {
         const sql = `
             SELECT i.site_name, i.municipality, i.site_type, i.latitude, i.longitude,
+                   i.municipio_id,
                    s.last_flow_value, s.last_pressure_value, s.battery_level,
                    s.is_cfe_on, s.last_updated_at, s.rssi, s.snr,
 		   s.bomba_activa, s.fallo_arrancador, s.last_total_flow,
@@ -129,7 +130,16 @@ export const getSiteStatus = async (req: Request, res: Response) => {
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Device not found in inventory' });
         }
-        res.json(result.rows[0]);
+
+        const row = result.rows[0];
+        const user = (req as any).user;
+        if (row.municipio_id && user?.scope === 'Municipal' && user?.scope_id) {
+            if (row.municipio_id !== user.scope_id) {
+                return res.status(403).json({ error: 'Sin acceso a este sitio.' });
+            }
+        }
+
+        res.json(row);
     } catch (e) {
         console.error('❌ Database Error:', e);
         res.status(500).json({ error: 'Internal Database Error' });
@@ -197,6 +207,20 @@ export const getSiteHistory = async (req: Request, res: Response) => {
         return res.status(400).json({ error: '"from" must be earlier than "to".' });
     }
 
+    // Scope check: municipal users can only query their own sites
+    const user = (req as any).user;
+    if (user?.scope === 'Municipal' && user?.scope_id) {
+        const scopeCheck = await pool.query(
+            'SELECT municipio_id FROM scada.inventory WHERE TRIM(dev_eui) = $1', [devEUI.trim()]
+        );
+        if (scopeCheck.rows.length > 0) {
+            const siteMunId = scopeCheck.rows[0].municipio_id;
+            if (siteMunId && siteMunId !== user.scope_id) {
+                return res.status(403).json({ error: 'Sin acceso a telemetria de este sitio.' });
+            }
+        }
+    }
+
     const rangeStart = from || range;
     const rangeStop  = (from && to) ? to : undefined;
 
@@ -231,13 +255,15 @@ app.get('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
         let scopeFilter = '';
         const params: any[] = [];
 
-        // Municipal users only see their municipality's sites
+        // Municipal users only see their municipality's sites (integer comparison)
         if (user?.scope === 'Municipal' && user?.scope_id) {
-            scopeFilter = `AND LOWER(TRIM(i.municipality)) IN (
-                SELECT LOWER(TRIM(e.name)) FROM scada.entities e
-                WHERE e.municipio_id = $1 AND e.level = 'Municipal'
-            )`;
+            scopeFilter = 'AND (i.municipio_id = $1 OR i.municipio_id IS NULL)';
             params.push(user.scope_id);
+        } else if (user?.scope === 'Estatal' && user?.estado_id) {
+            scopeFilter = `AND (i.municipio_id IN (
+                SELECT e.municipio_id FROM scada.entities e WHERE e.estado_id = $1 AND e.level = 'Municipal'
+            ) OR i.municipio_id IS NULL)`;
+            params.push(user.estado_id);
         }
 
         const result = await pool.query(`
@@ -258,10 +284,9 @@ app.get('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
                 i.render_url,
                 s.last_nivel_value,
                 s.last_lluvia_value,
-                e.municipio_id
+                i.municipio_id
             FROM scada.inventory i
             LEFT JOIN scada.site_status s ON TRIM(s.dev_eui) = TRIM(i.dev_eui)
-            LEFT JOIN scada.entities e ON LOWER(TRIM(i.municipality)) = LOWER(TRIM(e.name)) AND e.level = 'Municipal'
             WHERE TRIM(COALESCE(i.dev_eui, '')) != ''
             ${scopeFilter}
             ORDER BY site_name
@@ -275,7 +300,7 @@ app.get('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
 
 // Crear un nuevo sitio en el inventario
 app.post('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
-    const { dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude, proveedor, estatus } = req.body;
+    const { dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude, proveedor, estatus, utr_id } = req.body;
 
     if (!site_name || !dev_eui || !municipality) {
         return res.status(400).json({ error: 'site_name, dev_eui y municipality son obligatorios.' });
@@ -299,9 +324,19 @@ app.post('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
         // gw_eui is NOT NULL + UNIQUE — use provided value or generate placeholder
         const effectiveGwEui = gw_eui?.trim() || `GW-${dev_eui.trim()}`.substring(0, 16);
 
+        // Resolve municipio_id from municipality text (or use explicit value from frontend)
+        let resolvedMunicipioId = req.body.municipio_id || null;
+        if (!resolvedMunicipioId && municipality) {
+            const munLookup = await pool.query(
+                "SELECT municipio_id FROM scada.entities WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) AND level = 'Municipal'",
+                [municipality.trim()]
+            );
+            resolvedMunicipioId = munLookup.rows[0]?.municipio_id || null;
+        }
+
         const result = await pool.query(
-            `INSERT INTO scada.inventory (dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude, proveedor, estatus)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            `INSERT INTO scada.inventory (dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude, proveedor, estatus, municipio_id, utr_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
              RETURNING dev_eui`,
             [
                 dev_eui.trim(),
@@ -313,6 +348,8 @@ app.post('/api/v1/sites', isAuth, async (req: Request, res: Response) => {
                 longitude || null,
                 proveedor || null,
                 estatus || 'activo',
+                resolvedMunicipioId,
+                utr_id?.trim() || null,
             ]
         );
 
@@ -340,7 +377,7 @@ app.get('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
     }
     try {
         const result = await pool.query(
-            `SELECT dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude, is_active, proveedor, estatus, render_url
+            `SELECT dev_eui, gw_eui, site_name, site_type, municipality, latitude, longitude, is_active, proveedor, estatus, render_url, municipio_id, utr_id
              FROM scada.inventory WHERE TRIM(dev_eui) = $1`,
             [devEUI.trim()]
         );
@@ -348,6 +385,14 @@ app.get('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
             return res.status(404).json({ error: 'Sitio no encontrado.' });
         }
         const row = result.rows[0];
+
+        const user = (req as any).user;
+        if (row.municipio_id && user?.scope === 'Municipal' && user?.scope_id) {
+            if (row.municipio_id !== user.scope_id) {
+                return res.status(403).json({ error: 'Sin acceso a este sitio.' });
+            }
+        }
+
         res.json({
             dev_eui: (row.dev_eui || '').trim(),
             gw_eui: (row.gw_eui || '').trim(),
@@ -360,6 +405,8 @@ app.get('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
             proveedor: row.proveedor || null,
             estatus: row.estatus || 'activo',
             render_url: row.render_url || null,
+            municipio_id: row.municipio_id || null,
+            utr_id: row.utr_id || null,
         });
     } catch (e) {
         console.error('❌ Error fetching site:', e);
@@ -374,7 +421,7 @@ app.put('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
         return res.status(400).json({ error: 'Invalid devEUI format.' });
     }
 
-    const { site_name, site_type, municipality, latitude, longitude, gw_eui, proveedor, estatus, new_dev_eui } = req.body;
+    const { site_name, site_type, municipality, latitude, longitude, gw_eui, proveedor, estatus, new_dev_eui, utr_id } = req.body;
     if (!site_name || !municipality) {
         return res.status(400).json({ error: 'site_name y municipality son obligatorios.' });
     }
@@ -386,11 +433,20 @@ app.put('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
 
     try {
         const existing = await pool.query(
-            'SELECT dev_eui FROM scada.inventory WHERE TRIM(dev_eui) = $1',
+            'SELECT dev_eui, municipio_id FROM scada.inventory WHERE TRIM(dev_eui) = $1',
             [devEUI.trim()]
         );
         if (existing.rows.length === 0) {
             return res.status(404).json({ error: 'Sitio no encontrado.' });
+        }
+
+        // Scope check: municipal users can only edit their own sites
+        const user = (req as any).user;
+        const existingMunId = existing.rows[0].municipio_id;
+        if (existingMunId && user?.scope === 'Municipal' && user?.scope_id) {
+            if (existingMunId !== user.scope_id) {
+                return res.status(403).json({ error: 'Sin acceso a este sitio.' });
+            }
         }
 
         // If changing devEUI, check the new one doesn't already exist
@@ -432,6 +488,17 @@ app.put('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) => 
 
         setClauses.push(`estatus = $${values.length + 1}`);
         values.push(estatus || 'activo');
+
+        setClauses.push(`utr_id = $${values.length + 1}`);
+        values.push(utr_id?.trim() || null);
+
+        // Resolve municipio_id from municipality text
+        const munLookup = await pool.query(
+            "SELECT municipio_id FROM scada.entities WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) AND level = 'Municipal'",
+            [municipality.trim()]
+        );
+        setClauses.push(`municipio_id = $${values.length + 1}`);
+        values.push(munLookup.rows[0]?.municipio_id || null);
 
         // Update dev_eui itself if a new one was provided
         const effectiveNewEui = (new_dev_eui && new_dev_eui.trim().toLowerCase() !== devEUI.trim().toLowerCase())
@@ -481,11 +548,20 @@ app.delete('/api/v1/sites/:devEUI', isAuth, async (req: Request, res: Response) 
 
     try {
         const existing = await pool.query(
-            'SELECT dev_eui, site_name FROM scada.inventory WHERE TRIM(dev_eui) = $1',
+            'SELECT dev_eui, site_name, municipio_id FROM scada.inventory WHERE TRIM(dev_eui) = $1',
             [devEUI.trim()]
         );
         if (existing.rows.length === 0) {
             return res.status(404).json({ error: 'Sitio no encontrado.' });
+        }
+
+        // Scope check: municipal users can only delete their own sites
+        const user = (req as any).user;
+        const delMunId = existing.rows[0].municipio_id;
+        if (delMunId && user?.scope === 'Municipal' && user?.scope_id) {
+            if (delMunId !== user.scope_id) {
+                return res.status(403).json({ error: 'Sin acceso a este sitio.' });
+            }
         }
 
         const siteName = existing.rows[0].site_name;

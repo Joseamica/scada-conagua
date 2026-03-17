@@ -4,6 +4,82 @@ Todos los cambios notables del proyecto se documentan aquí.
 
 ## [Unreleased]
 
+### scada-front (GIS + Telemetria — sub-filtros operativos)
+- **feat:** GIS layer panel — "Activos" split into 3 sub-layers: Operando (green, flow > 0), Sin gasto (amber, connected but no flow), Sin comunicacion (red, COMM LOSS >15min). Parent "Activos" checkbox toggles all 3.
+- **feat:** GIS cluster groups now use distinct colors per operational state (green/amber/red)
+- **feat:** GIS legend bar updated with new operational states (Operando, Sin gasto, Sin comunicacion)
+- **feat:** Telemetria dashboard — status filter dropdown adds "Sin comunicacion" option + COMM LOSS detection (>15min stale)
+- **feat:** Telemetria table — new `pill--danger` and `site-dot--danger` CSS for "Sin com." status display
+
+### scada-query-api (municipio_id FK + scope filtering)
+- **feat:** migration 035 — add `municipio_id` INT column to `scada.inventory`, backfill from municipality text via `scada.entities`, fix Chicoloapan INEGI code (28→29), create missing entities (Texcoco, Chimalhuacan, Nezahualcoyotl)
+- **feat:** scope filter on `GET /sites` refactored from `LOWER(TRIM())` string match to integer `municipio_id` comparison (also adds Estatal scope)
+- **feat:** scope check on `GET /status/:devEUI`, `GET /telemetry/:devEUI/:measurement`, `GET /sites/:devEUI`, `PUT /sites/:devEUI`, `DELETE /sites/:devEUI` — municipal users get 403 for out-of-scope sites
+- **feat:** scope filter on `GET /alarms/active` — municipal/estatal users only see alarms for their sites
+- **feat:** scope filter on `GET /variables/tags` refactored to integer `municipio_id` comparison
+- **feat:** `POST /sites` and `PUT /sites/:devEUI` auto-resolve `municipio_id` from municipality text (or accept explicit value from frontend)
+- **feat:** `GET /sites/:devEUI` now returns `municipio_id` in response
+
+### scada-front (municipio_id on site create/edit)
+- **feat:** `TelemetryService.createSite()` and `updateSite()` now accept optional `municipio_id` in payload
+- **feat:** `SitioForm.save()` resolves INEGI `municipio_id` from `estados.json` and sends it with create/update requests
+
+### scada-front (GIS — Marker color fix)
+- **fix:** `.mk-op-stopped` CSS no longer applies `hue-rotate(148deg)` — stopped markers render blue like operating ones instead of orange
+- **fix:** `.mk-ring-red` pulse changed from red (`rgba(239,68,68)`) to blue (`rgba(59,130,246)`) to match active marker color scheme
+
+### scada-query-api (ID UTR field — bug fix)
+- **feat:** Migration `036_add_utr_id_to_inventory.sql` — adds `utr_id VARCHAR(50)` column to `scada.inventory`
+- **fix:** `GET /sites/:devEUI` now returns `utr_id` field
+- **fix:** `PUT /sites/:devEUI` now accepts and persists `utr_id` field (was silently dropped)
+- **fix:** `POST /sites` now accepts `utr_id` field on creation
+
+### scada-front (ID UTR field — bug fix)
+- **fix:** Site edit form (`sitio-form`) now loads `utr_id` from API into the "ID UTR" input field
+- **fix:** Site edit/create form now sends `utr_id` in the update/create payload (reported by Anibal: field was always blank after save)
+
+### scada-front (Alarm polling — BroadcastChannel leader election)
+- **feat:** `AlarmService` now uses `BroadcastChannel` leader election — only 1 tab polls, others receive via broadcast. Reduces 40 tabs from 160 req/min to 4 req/min.
+
+### scada-front (Quick peek — embed mode + fullscreen)
+- **feat:** GIS and Telemetria pages support `?embed=1` query param to hide header/footer (for iframe embedding)
+- **feat:** Quick peek modal fullscreen toggle button (expand/collapse with `heroArrowsPointingOut`/`heroArrowsPointingIn` icons)
+
+### scada-front (GIS — Alarm overlay + Quick filter + COMM LOSS)
+- **feat:** COMM LOSS detection — sites with `last_updated_at` >15 min stale are marked `no-signal` regardless of `estatus` field, with red glow animation on markers
+- **feat:** Alarm badge overlay — bottom-center pill shows count of sites without communication (pulsing red dot)
+- **feat:** Quick filter toolbar — collapsible panel with municipality dropdown, site type pills, flow range slider, and "Solo sin comunicacion" toggle
+- **feat:** Filter by opacity (0.08) instead of hiding markers so cluster counts remain accurate
+- **fix:** Filter panel z-index (1100) now renders above Leaflet zoom controls
+- **fix:** Custom checkbox and range slider styling for consistent cross-browser appearance
+
+### scada-front (Variable editor — Vista rapida)
+- **feat:** "Vista rapida" button in variable-view-editor header opens a modal dialog with tabbed iframes (Mapa SIG / Telemetria) so users can reference the map without navigating away
+
+### scada-front (Dev experience)
+- **feat:** Dev favicon — localhost shows a dark-red "DEV" badge in the browser tab + title becomes "SOA [DEV]" to differentiate from production
+
+### scada-query-api (RBAC-aware sinoptico sharing)
+- **feat:** `GET /sinopticos/:id/share-candidates` now filters by caller's scope (Municipal/Estatal/Federal) and role hierarchy — municipal users only see same-municipality users at same or lower role
+- **feat:** `GET /sinopticos/:id/shares` now returns `role_id`, `role_name`, and `municipio_name` for each shared user
+- **feat:** `POST /sinopticos/:id/shares` validates scope + role before inserting — rejects sharing with higher-role users or out-of-scope users (403)
+
+### scada-front (RBAC-aware sinoptico sharing UI)
+- **feat:** Share candidates show role badge (color-coded by role) and municipality name
+- **feat:** Current shares list shows role badge and municipality for each shared user
+- **feat:** `SinopticoShare` interface and `searchShareCandidates` return type extended with role/scope fields
+
+### scada-query-api (Multi-series chart endpoint)
+- **feat:** `POST /views/:id/execute-series` now supports `all: true` mode — returns all column (raw variable) and formula time series in a single request, avoiding redundant InfluxDB queries
+- **feat:** Backward-compatible: existing single-formula calls (`formulaId`) still work unchanged
+
+### scada-front (Variable editor — multi-series chart with checkboxes)
+- **feat:** Series chart now shows all columns (incognitas) and formulas with toggleable checkbox legend panel
+- **feat:** Checkbox panel next to chart: color-coded dots, alias labels, point counts — click to toggle series visibility
+- **feat:** "Grafico" button in header opens the multi-series chart view directly
+- **feat:** Columns shown as solid lines, formulas as dashed lines, with 10-color palette
+- **feat:** `executeViewAllSeries()` service method for the new `all: true` API mode
+
 ### scada-query-api (Formula null handling — professional SCADA behavior)
 - **feat:** Migration `033_view_null_policy.sql` — adds `null_policy` column to `variable_views` (default: `'zero'`)
 - **feat:** Formula engine now supports `nullPolicy` parameter: `'zero'` substitutes null with 0 (Ignition/AVEVA behavior), `'null'` propagates null (strict mode)

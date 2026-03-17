@@ -310,6 +310,47 @@ router.get('/sinopticos-all', isAuth, async (req: Request, res: Response) => {
     }
 });
 
+// GET /sinopticos/share-candidates — search users RBAC-filtered (no sinoptico context, for creation flow)
+// IMPORTANT: must be BEFORE /sinopticos/:id to avoid Express treating "share-candidates" as :id
+router.get('/sinopticos/share-candidates', isAuth, async (req: Request, res: Response) => {
+    try {
+        const user = req.user!;
+        const q = ((req.query.q as string) || '').toLowerCase();
+
+        const conditions: string[] = [
+            'u.is_active = true',
+            'u.id != $1',
+            '(LOWER(u.full_name) LIKE $2 OR LOWER(u.email) LIKE $2)',
+            'u.role_id >= $3',
+        ];
+        const values: any[] = [user.id, `%${q}%`, user.role_id];
+
+        if (user.scope === 'Municipal') {
+            conditions.push(`u.scope_id = $${values.length + 1}`);
+            values.push(user.scope_id);
+            conditions.push(`u.estado_id = $${values.length + 1}`);
+            values.push(user.estado_id);
+        } else if (user.scope === 'Estatal') {
+            conditions.push(`u.estado_id = $${values.length + 1}`);
+            values.push(user.estado_id);
+        }
+
+        const result = await pool.query(
+            `SELECT u.id, u.full_name, u.email, u.role_id, r.role_name,
+                    u.scope, u.municipio_name
+             FROM scada.users u
+             JOIN scada.roles r ON r.id = u.role_id
+             WHERE ${conditions.join(' AND ')}
+             ORDER BY u.full_name LIMIT 20`,
+            values
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error searching share candidates:', err);
+        res.status(500).json({ error: 'Error searching users' });
+    }
+});
+
 // GET /sinopticos/:id — load canvas (full JSONB) — checks access
 router.get('/sinopticos/:id', isAuth, async (req: Request, res: Response) => {
     try {
@@ -525,9 +566,11 @@ router.post('/sinopticos/:id/restore', canEditSinopticos, async (req: Request, r
 router.get('/sinopticos/:id/shares', isAuth, async (req: Request, res: Response) => {
     try {
         const result = await pool.query(
-            `SELECT sh.id, sh.user_id, sh.permission, sh.created_at, u.full_name, u.email
+            `SELECT sh.id, sh.user_id, sh.permission, sh.created_at,
+                    u.full_name, u.email, u.role_id, r.role_name, u.municipio_name
              FROM scada.sinoptico_shares sh
              JOIN scada.users u ON u.id = sh.user_id
+             JOIN scada.roles r ON r.id = u.role_id
              WHERE sh.sinoptico_id = $1
              ORDER BY u.full_name`,
             [req.params.id]
@@ -539,21 +582,53 @@ router.get('/sinopticos/:id/shares', isAuth, async (req: Request, res: Response)
 });
 
 // POST /sinopticos/:id/shares
+const VALID_PERMISSIONS = ['view', 'edit', 'create', 'delete', 'admin', 'read'];
+const PERM_ALIASES: Record<string, string> = { read: 'view' };
 router.post('/sinopticos/:id/shares', canEditSinopticos, async (req: Request, res: Response) => {
     const { user_id, permission } = req.body;
-    if (!user_id || !['read', 'edit'].includes(permission)) {
-        return res.status(400).json({ error: 'user_id y permission (read/edit) son obligatorios.' });
+    // permission can be a single string or comma-separated: "view,edit"
+    const perms = (typeof permission === 'string' ? permission : '').split(',')
+        .map((p: string) => PERM_ALIASES[p.trim()] || p.trim()).filter(Boolean);
+    if (!user_id || perms.length === 0 || !perms.every((p: string) => ['view', 'edit', 'create', 'delete', 'admin'].includes(p))) {
+        return res.status(400).json({ error: 'user_id y permission son obligatorios. Valores: view, edit, create, delete, admin' });
     }
+    // Normalize: sort and deduplicate, "admin" implies all
+    const normalizedPerm = perms.includes('admin') ? 'admin' : [...new Set(perms)].sort().join(',');
 
     try {
+        // Validate caller can share with this user (scope + role check)
+        const target = await pool.query(
+            'SELECT role_id, scope_id, estado_id FROM scada.users WHERE id = $1 AND is_active = true',
+            [user_id]
+        );
+        if (target.rows.length === 0) {
+            return res.status(404).json({ error: 'Usuario no encontrado.' });
+        }
+
+        const t = target.rows[0];
+        const caller = req.user!;
+
+        // Role check: can't share with higher role (unless caller is Admin)
+        if (t.role_id < caller.role_id && caller.role_id !== 1) {
+            return res.status(403).json({ error: 'No puedes compartir con un usuario de rol superior.' });
+        }
+
+        // Scope check
+        if (caller.scope === 'Municipal' && (t.scope_id !== caller.scope_id || t.estado_id !== caller.estado_id)) {
+            return res.status(403).json({ error: 'Solo puedes compartir con usuarios de tu municipio.' });
+        }
+        if (caller.scope === 'Estatal' && t.estado_id !== caller.estado_id) {
+            return res.status(403).json({ error: 'Solo puedes compartir con usuarios de tu estado.' });
+        }
+
         const result = await pool.query(
             `INSERT INTO scada.sinoptico_shares (sinoptico_id, user_id, permission)
              VALUES ($1, $2, $3)
              ON CONFLICT (sinoptico_id, user_id) DO UPDATE SET permission = $3
              RETURNING *`,
-            [req.params.id, user_id, permission]
+            [req.params.id, user_id, normalizedPerm]
         );
-        await auditLog(req.user!.id, 'SINOPTICO_SHARED', { sinoptico_id: req.params.id, shared_with: user_id, permission }, req.ip!);
+        await auditLog(req.user!.id, 'SINOPTICO_SHARED', { sinoptico_id: req.params.id, shared_with: user_id, permission: normalizedPerm }, req.ip!);
         res.status(201).json(result.rows[0]);
     } catch (e: any) {
         res.status(500).json({ error: 'Error al compartir sinoptico.' });
@@ -571,16 +646,43 @@ router.delete('/sinopticos/:id/shares/:shareId', canEditSinopticos, async (req: 
     }
 });
 
-// GET /sinopticos/:id/share-candidates — search users to share with
+// GET /sinopticos/:id/share-candidates — search users to share with (RBAC-filtered, excludes already shared)
 router.get('/sinopticos/:id/share-candidates', isAuth, async (req: Request, res: Response) => {
     try {
+        const user = req.user!;
+        const sinopticoId = req.params.id;
         const q = ((req.query.q as string) || '').toLowerCase();
+
+        const conditions: string[] = [
+            'u.is_active = true',
+            'u.id != $1',
+            '(LOWER(u.full_name) LIKE $2 OR LOWER(u.email) LIKE $2)',
+            'u.role_id >= $3',  // Can only share with same or lower role
+            // Exclude users already shared with
+            `u.id NOT IN (SELECT sh.user_id FROM scada.sinoptico_shares sh WHERE sh.sinoptico_id = $4)`,
+        ];
+        const values: any[] = [user.id, `%${q}%`, user.role_id, sinopticoId];
+
+        // Scope filtering: Municipal sees only same municipality, Estatal sees same state
+        if (user.scope === 'Municipal') {
+            conditions.push(`u.scope_id = $${values.length + 1}`);
+            values.push(user.scope_id);
+            conditions.push(`u.estado_id = $${values.length + 1}`);
+            values.push(user.estado_id);
+        } else if (user.scope === 'Estatal') {
+            conditions.push(`u.estado_id = $${values.length + 1}`);
+            values.push(user.estado_id);
+        }
+        // Federal: no additional scope filter
+
         const result = await pool.query(
-            `SELECT id, full_name, email FROM scada.users
-             WHERE is_active = true AND id != $1
-             AND (LOWER(full_name) LIKE $2 OR LOWER(email) LIKE $2)
-             ORDER BY full_name LIMIT 20`,
-            [req.user!.id, `%${q}%`]
+            `SELECT u.id, u.full_name, u.email, u.role_id, r.role_name,
+                    u.scope, u.municipio_name
+             FROM scada.users u
+             JOIN scada.roles r ON r.id = u.role_id
+             WHERE ${conditions.join(' AND ')}
+             ORDER BY u.full_name LIMIT 20`,
+            values
         );
         res.json(result.rows);
     } catch (err) {

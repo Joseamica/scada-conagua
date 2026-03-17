@@ -117,11 +117,14 @@ export class AlarmService {
   soundAlarms = computed(() => this.activeAlarms().filter(a => a.play_sound && a.current_state === 'ACTIVE_UNACK'));
 
   private pollingInterval: any = null;
+  private isLeader = false;
+  private bc: BroadcastChannel | null = null;
+  private leaderHeartbeat: any = null;
+  private lastLeaderSeen = 0;
 
   startPolling(intervalMs = 15000): void {
     this.stopPolling();
-    this.fetchActive();
-    this.pollingInterval = setInterval(() => this.fetchActive(), intervalMs);
+    this.setupLeaderElection(intervalMs);
   }
 
   stopPolling(): void {
@@ -129,11 +132,69 @@ export class AlarmService {
       clearInterval(this.pollingInterval);
       this.pollingInterval = null;
     }
+    if (this.leaderHeartbeat) {
+      clearInterval(this.leaderHeartbeat);
+      this.leaderHeartbeat = null;
+    }
+    if (this.isLeader && this.bc) {
+      this.bc.postMessage({ type: 'leader-resign' });
+    }
+    this.isLeader = false;
+  }
+
+  private setupLeaderElection(intervalMs: number): void {
+    if (typeof BroadcastChannel === 'undefined') {
+      // Fallback: no BroadcastChannel support, poll directly
+      this.becomeLeader(intervalMs);
+      return;
+    }
+
+    this.bc = new BroadcastChannel('scada-alarm-polling');
+    this.bc.onmessage = (e) => {
+      const msg = e.data;
+      if (msg.type === 'alarms-update') {
+        this.activeAlarms.set(msg.alarms);
+      } else if (msg.type === 'leader-heartbeat') {
+        this.lastLeaderSeen = Date.now();
+      } else if (msg.type === 'leader-resign') {
+        // Leader left, try to become leader after short random delay
+        setTimeout(() => this.tryBecomeLeader(intervalMs), Math.random() * 1000);
+      }
+    };
+
+    // Try to claim leadership
+    this.tryBecomeLeader(intervalMs);
+  }
+
+  private tryBecomeLeader(intervalMs: number): void {
+    if (this.isLeader) return;
+    // If we've seen a leader recently, stay follower
+    if (Date.now() - this.lastLeaderSeen < 5000) return;
+    this.becomeLeader(intervalMs);
+  }
+
+  private becomeLeader(intervalMs: number): void {
+    this.isLeader = true;
+    this.fetchActive();
+    this.pollingInterval = setInterval(() => this.fetchActive(), intervalMs);
+    // Send heartbeat so other tabs know there's a leader
+    if (this.bc) {
+      this.leaderHeartbeat = setInterval(() => {
+        this.bc!.postMessage({ type: 'leader-heartbeat' });
+      }, 3000);
+      this.bc.postMessage({ type: 'leader-heartbeat' });
+    }
   }
 
   private fetchActive(): void {
     this.http.get<ActiveAlarm[]>(`${this.base}/active`).subscribe({
-      next: (alarms) => this.activeAlarms.set(alarms),
+      next: (alarms) => {
+        this.activeAlarms.set(alarms);
+        // Broadcast to other tabs
+        if (this.isLeader && this.bc) {
+          this.bc.postMessage({ type: 'alarms-update', alarms });
+        }
+      },
       error: () => {},
     });
   }

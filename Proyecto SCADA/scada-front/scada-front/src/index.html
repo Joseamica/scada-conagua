@@ -5,7 +5,14 @@
   <title>SOA</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="icon" type="image/png" href="assets/favicon.png" id="favicon">
+  <script>
+    if(location.hostname==='localhost'||location.hostname==='127.0.0.1'){
+      var s='<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" rx="6" fill="%236d002b"/><text x="16" y="22" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="13" fill="%23fff">DEV</text></svg>';
+      document.getElementById('favicon').setAttribute('href','data:image/svg+xml,'+s);
+      document.title='SOA [DEV]';
+    }
+  </script>
 </head>
 <body>
   <app-root></app-root>

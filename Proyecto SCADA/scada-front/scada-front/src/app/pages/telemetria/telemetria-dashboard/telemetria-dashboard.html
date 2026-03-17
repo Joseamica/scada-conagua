@@ -1,4 +1,6 @@
-<app-header-bar></app-header-bar>
+@if (!embed()) {
+  <app-header-bar></app-header-bar>
+}
 
 <div class="shell">
   <main class="page">
@@ -155,8 +157,9 @@
                 [value]="statusSel()"
                 (change)="statusSel.set($any($event.target).value)">
                 <option value="">Todos</option>
-                <option value="ok">Con gasto</option>
+                <option value="ok">Operando</option>
                 <option value="no-flow">Sin gasto</option>
+                <option value="no-signal">Sin comunicación</option>
                 <option value="pending">Pendiente</option>
               </select>
             </div>
@@ -275,6 +278,7 @@
                         <span class="site-dot"
                           [class.site-dot--ok]="site.status === 'ok'"
                           [class.site-dot--warn]="site.status === 'no-flow'"
+                          [class.site-dot--danger]="site.status === 'no-signal'"
                           [class.site-dot--pending]="site.status === 'pending'"
                           aria-hidden="true">
                         </span>
@@ -292,10 +296,11 @@
                         [ngClass]="{
                           'pill--ok':      site.status === 'ok',
                           'pill--warn':    site.status === 'no-flow',
+                          'pill--danger':  site.status === 'no-signal',
                           'pill--pending': site.status === 'pending'
                         }">
                         <span class="pill-dot" aria-hidden="true"></span>
-                        {{ site.status === 'ok' ? 'Con gasto' : site.status === 'pending' ? 'Pendiente' : 'Sin gasto' }}
+                        {{ site.status === 'ok' ? 'Operando' : site.status === 'no-signal' ? 'Sin com.' : site.status === 'pending' ? 'Pendiente' : 'Sin gasto' }}
                       </span>
                     </td>
                     <td class="col-signal">
@@ -374,4 +379,6 @@
   </main>
 </div>
 
-<app-footer-tabs></app-footer-tabs>
+@if (!embed()) {
+  <app-footer-tabs></app-footer-tabs>
+}

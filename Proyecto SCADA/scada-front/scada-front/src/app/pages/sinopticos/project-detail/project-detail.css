@@ -917,3 +917,115 @@
   padding: 20px 0;
   margin: 0;
 }
+
+/* =========================
+   ROLE BADGES & CANDIDATE META
+   ========================= */
+.role-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.role-1 { background: #fecdd3; color: #9f1239; }
+.role-2 { background: #fde68a; color: #92400e; }
+.role-3 { background: #bfdbfe; color: #1e40af; }
+.role-4 { background: #d1d5db; color: #374151; }
+
+.candidate-meta,
+.share-user-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.candidate-municipio {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* =========================
+   CREATE DIALOG — USER ASSIGNMENT
+   ========================= */
+.create-dialog {
+  max-width: 520px;
+}
+
+.create-assign-section {
+  margin-top: 16px;
+  border-top: 1px solid var(--border-default);
+  padding-top: 14px;
+}
+
+.create-assign-section > label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.create-assignees {
+  max-height: 260px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+/* =========================
+   ASSIGNEE CARD (per-user permissions)
+   ========================= */
+.assignee-card {
+  padding: 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.assignee-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.assignee-header .share-user-detail {
+  flex: 1;
+  min-width: 0;
+}
+
+.assignee-perms {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-default);
+  flex-wrap: wrap;
+}
+
+.perm-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  user-select: none;
+  border: 1.5px solid var(--border-default);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+}
+
+.perm-pill:hover {
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.perm-pill.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}

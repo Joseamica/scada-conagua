@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, effect, signal, ViewEncapsulation } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import * as L from 'leaflet';
 import * as omnivore from 'leaflet-omnivore';
 import * as echarts from 'echarts';
@@ -54,33 +54,7 @@ const SCADA_ICON_MAP: Record<ScadaIconKey, string> = {
   drainage: 'drainage.svg'
 };
 
-const GRAY_ICON_MAP: Record<ScadaIconKey, L.Icon> = {
-  well: L.icon({
-    iconUrl: 'assets/icons/map/well-gray.svg',
-    iconSize: [32, 32],
-    iconAnchor: [16, 16]
-  }),
-  tank: L.icon({
-    iconUrl: 'assets/icons/map/tank-gray.svg',
-    iconSize: [32, 32],
-    iconAnchor: [16, 16]
-  }),
-  block_water: L.icon({
-    iconUrl: 'assets/icons/map/block-water-gray.svg',
-    iconSize: [32, 32],
-    iconAnchor: [16, 16]
-  }),
-  rain_gauge: L.icon({
-    iconUrl: 'assets/icons/map/rain-gauge-gray.svg',
-    iconSize: [32, 32],
-    iconAnchor: [16, 16]
-  }),
-  drainage: L.icon({
-    iconUrl: 'assets/icons/map/drainage-gray.svg',
-    iconSize: [32, 32],
-    iconAnchor: [16, 16]
-  })
-};
+// GRAY_ICON_MAP removed — was declared but never used (dead code cleanup)
 
 const MUNICIPIOS_CON_POZO = new Set<number>(
   SITIOS_SOURCES
@@ -144,21 +118,26 @@ function createClusterGroup(color: string): L.LayerGroup {
 })
 
 export class ModuloGis implements OnInit, OnDestroy {
+  private route = inject(ActivatedRoute);
+  embed = signal(this.route.snapshot.queryParamMap.get('embed') === '1');
   mapLoading = signal(true);
   map!: L.Map;
   private popupChart: echarts.ECharts | null = null;
   private popupChartGeneration = 0;
   private municipioChartCache = new Map<number, [number, number | null][]>();
   private pozoChartCache = new Map<string, [number, number | null][]>();
+  private chartCacheTTL: ReturnType<typeof setInterval> | null = null;
+  private static readonly CHART_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
   // LayerGroups
-  pozosLayer = L.layerGroup();
   capasLayer = L.layerGroup();
   redPrimariaLayer = L.layerGroup();
   redSecundariaLayer = L.layerGroup();
   zonasLayer = L.layerGroup();
 
-  pozosActivosLayer: L.LayerGroup = L.layerGroup();
+  pozosOperandoLayer: L.LayerGroup = L.layerGroup();    // operating (flow > 0)
+  pozosSinGastoLayer: L.LayerGroup = L.layerGroup();     // stopped (connected, no flow)
+  pozosSinComLayer: L.LayerGroup = L.layerGroup();        // no-signal (COMM LOSS)
   pozosObraLayer: L.LayerGroup = L.layerGroup();
   pozosInactivosLayer: L.LayerGroup = L.layerGroup();
   pozosPendienteLayer: L.LayerGroup = L.layerGroup();
@@ -167,7 +146,9 @@ export class ModuloGis implements OnInit, OnDestroy {
   layerPanelOpen = signal(true);
   activeBase = signal<'mapa' | 'satelite' | 'terreno'>('mapa');
   layerVisible = signal({
-    activos: true,
+    operando: true,
+    sinGasto: true,
+    sinCom: true,
     obra: true,
     inactivos: true,
     pendientes: true,
@@ -176,11 +157,21 @@ export class ModuloGis implements OnInit, OnDestroy {
     zonas: false,
   });
   layerCounts = signal({
-    activos: 0, obra: 0, inactivos: 0, pendientes: 0,
+    operando: 0, sinGasto: 0, sinCom: 0,
+    obra: 0, inactivos: 0, pendientes: 0,
     redPrimaria: 0, redSecundaria: 0, zonas: 0,
   });
   totalSites = signal(0);
   alarmCount = signal(0);
+
+  // Quick filter state
+  filterPanelOpen = signal(false);
+  filterMunicipio = signal<number>(0); // 0 = all
+  filterSiteType = signal<string>(''); // '' = all
+  filterMinFlow = signal<number>(0);   // 0 = no filter
+  filterOnlyAlarm = signal(false);
+
+  municipioOptions = signal<{ id: number; name: string }[]>([]);
 
 
   // Municipios
@@ -242,13 +233,15 @@ export class ModuloGis implements OnInit, OnDestroy {
     this.tileLayer = this.baseLayers[key];
   }
 
-  toggleLayer(key: 'activos' | 'obra' | 'inactivos' | 'pendientes' | 'redPrimaria' | 'redSecundaria' | 'zonas') {
+  toggleLayer(key: 'operando' | 'sinGasto' | 'sinCom' | 'obra' | 'inactivos' | 'pendientes' | 'redPrimaria' | 'redSecundaria' | 'zonas') {
     const vis = { ...this.layerVisible() };
     vis[key] = !vis[key];
     this.layerVisible.set(vis);
 
     const layerMap = {
-      activos: this.pozosActivosLayer,
+      operando: this.pozosOperandoLayer,
+      sinGasto: this.pozosSinGastoLayer,
+      sinCom: this.pozosSinComLayer,
       obra: this.pozosObraLayer,
       inactivos: this.pozosInactivosLayer,
       pendientes: this.pozosPendienteLayer,
@@ -265,9 +258,37 @@ export class ModuloGis implements OnInit, OnDestroy {
     }
   }
 
+  toggleActivos() {
+    const vis = this.layerVisible();
+    const allOn = vis.operando && vis.sinGasto && vis.sinCom;
+    const newState = !allOn;
+    this.layerVisible.set({ ...vis, operando: newState, sinGasto: newState, sinCom: newState });
+    const layers = [
+      { layer: this.pozosOperandoLayer, key: 'operando' as const },
+      { layer: this.pozosSinGastoLayer, key: 'sinGasto' as const },
+      { layer: this.pozosSinComLayer, key: 'sinCom' as const },
+    ];
+    for (const { layer } of layers) {
+      if (newState) layer.addTo(this.map);
+      else this.map.removeLayer(layer);
+    }
+  }
+
+  get activosAllChecked(): boolean {
+    const v = this.layerVisible();
+    return v.operando && v.sinGasto && v.sinCom;
+  }
+
+  get activosCount(): number {
+    const c = this.layerCounts();
+    return c.operando + c.sinGasto + c.sinCom;
+  }
+
   refreshLayerCounts() {
     this.layerCounts.set({
-      activos: this.pozosActivosLayer.getLayers().length,
+      operando: this.pozosOperandoLayer.getLayers().length,
+      sinGasto: this.pozosSinGastoLayer.getLayers().length,
+      sinCom: this.pozosSinComLayer.getLayers().length,
       obra: this.pozosObraLayer.getLayers().length,
       inactivos: this.pozosInactivosLayer.getLayers().length,
       pendientes: this.pozosPendienteLayer.getLayers().length,
@@ -276,13 +297,14 @@ export class ModuloGis implements OnInit, OnDestroy {
       zonas: this.zonasLayer.getLayers().length,
     });
     const c = this.layerCounts();
-    this.totalSites.set(c.activos + c.obra + c.inactivos + c.pendientes);
+    this.totalSites.set(c.operando + c.sinGasto + c.sinCom + c.obra + c.inactivos + c.pendientes);
     this.refreshAlarmCount();
+    this.buildMunicipioOptions();
   }
 
   private refreshAlarmCount() {
     let count = 0;
-    [this.pozosActivosLayer, this.pozosObraLayer, this.pozosInactivosLayer].forEach(group => {
+    [this.pozosOperandoLayer, this.pozosSinGastoLayer, this.pozosSinComLayer, this.pozosObraLayer, this.pozosInactivosLayer].forEach(group => {
       group.eachLayer((l: any) => {
         if (l instanceof L.Marker && (l as any).__scadaOpState === 'no-signal') {
           count++;
@@ -290,6 +312,55 @@ export class ModuloGis implements OnInit, OnDestroy {
       });
     });
     this.alarmCount.set(count);
+  }
+
+  // ─────────────────────────────
+  // Quick Filter
+  // ─────────────────────────────
+  applyFilters() {
+    const mun = this.filterMunicipio();
+    const sType = this.filterSiteType();
+    const minFlow = this.filterMinFlow();
+    const onlyAlarm = this.filterOnlyAlarm();
+    const hasFilter = mun > 0 || sType !== '' || minFlow > 0 || onlyAlarm;
+
+    [this.pozosOperandoLayer, this.pozosSinGastoLayer, this.pozosSinComLayer, this.pozosObraLayer, this.pozosInactivosLayer, this.pozosPendienteLayer]
+      .forEach(group => {
+        group.eachLayer((l: any) => {
+          if (!(l instanceof L.Marker)) return;
+          if (!hasFilter) {
+            l.setOpacity(1);
+            return;
+          }
+          let visible = true;
+          if (mun > 0 && (l as any).__scadaMunicipioId !== mun) visible = false;
+          if (sType && (l as any).__scadaSiteType !== sType) visible = false;
+          if (minFlow > 0 && ((l as any).__scadaFlow || 0) < minFlow) visible = false;
+          if (onlyAlarm && (l as any).__scadaOpState !== 'no-signal') visible = false;
+          l.setOpacity(visible ? 1 : 0.08);
+        });
+      });
+  }
+
+  clearFilters() {
+    this.filterMunicipio.set(0);
+    this.filterSiteType.set('');
+    this.filterMinFlow.set(0);
+    this.filterOnlyAlarm.set(false);
+    this.applyFilters();
+  }
+
+  private buildMunicipioOptions() {
+    const seen = new Map<number, string>();
+    for (const [, site] of this.apiSitesByName.entries()) {
+      const id = site.municipio_id;
+      const name = site.municipality;
+      if (id && name && !seen.has(id)) seen.set(id, name);
+    }
+    const opts = Array.from(seen.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    this.municipioOptions.set(opts);
   }
 
   // ─────────────────────────────
@@ -490,6 +561,51 @@ export class ModuloGis implements OnInit, OnDestroy {
   /**
    * Resolve estatus from API cache (DB is the single source of truth).
    */
+  private buildMarkerTooltip(name: string, estatus: string, apiSite?: any): string {
+    const statusLabels: Record<string, string> = {
+      activo: 'Activo', obra: 'En obra', inactivo: 'Inactivo', pendiente: 'Pendiente',
+    };
+    const statusColors: Record<string, string> = {
+      activo: '#3b82f6', obra: '#f59e0b', inactivo: '#ef4444', pendiente: '#94a3b8',
+    };
+    const label = statusLabels[estatus] || estatus;
+    const color = statusColors[estatus] || '#94a3b8';
+
+    // Determine real-time operational state
+    const isStale = apiSite ? this.isSiteStale(apiSite) : false;
+    const flow = Number(apiSite?.last_flow_value) || 0;
+    const pressure = Number(apiSite?.last_pressure_value) || 0;
+
+    let opLabel = '';
+    let opColor = '';
+    if (estatus === 'activo' && isStale) {
+      opLabel = 'Sin comunicacion';
+      opColor = '#ef4444';
+    } else if (estatus === 'activo' && (flow > 0.01 || pressure > 0)) {
+      opLabel = 'Operando';
+      opColor = '#059669';
+    } else if (estatus === 'activo') {
+      opLabel = 'Detenido';
+      opColor = '#94a3b8';
+    }
+
+    const municipality = apiSite?.municipality
+      ? `<div style="font-size:10px;color:#64748b;margin-top:2px">${apiSite.municipality}</div>` : '';
+
+    const opLine = opLabel
+      ? `<div style="display:flex;align-items:center;gap:4px;margin-top:1px">`
+        + `<span style="font-size:10px;color:${opColor};font-weight:500">${opLabel}</span>`
+        + `</div>` : '';
+
+    return `<div style="font-weight:600;font-size:12px">${name}</div>`
+      + `<div style="display:flex;align-items:center;gap:4px;margin-top:3px">`
+      + `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${color}"></span>`
+      + `<span style="font-size:11px;color:${color};font-weight:600">${label}</span>`
+      + `</div>`
+      + opLine
+      + municipality;
+  }
+
   private resolveEstatus(name: string): string {
     const apiSite = this.lookupApiSite(name);
     if (apiSite?.estatus) {
@@ -519,9 +635,14 @@ export class ModuloGis implements OnInit, OnDestroy {
 // ─────────────────────────────
 
 // Guarda meta por marker para reconstruir el icono al cambiar zoom
-  private setMarkerIconMeta(marker: L.Marker, iconUrl: string, estatus?: string) {
+  private setMarkerIconMeta(marker: L.Marker, iconUrl: string, estatus?: string, apiSite?: any) {
     (marker as any).__scadaIconUrl = iconUrl;
     if (estatus) (marker as any).__scadaEstatus = estatus;
+    if (apiSite) {
+      (marker as any).__scadaMunicipioId = apiSite.municipio_id || 0;
+      (marker as any).__scadaSiteType = (apiSite.site_type || '').toLowerCase();
+      (marker as any).__scadaFlow = Number(apiSite.last_flow_value) || 0;
+    }
   }
 
   /** Determine operational state for marker visuals */
@@ -667,7 +788,9 @@ export class ModuloGis implements OnInit, OnDestroy {
     this.map.on('zoomend', () => {
 
   [
-    this.pozosActivosLayer,
+    this.pozosOperandoLayer,
+    this.pozosSinGastoLayer,
+    this.pozosSinComLayer,
     this.pozosObraLayer,
     this.pozosInactivosLayer,
     this.pozosPendienteLayer
@@ -796,9 +919,26 @@ export class ModuloGis implements OnInit, OnDestroy {
             const normalized = this.normalizeKey(name);
             const estado = this.resolveEstatus(name);
 
-            // Agregar al layer correcto (default activo para sitios dinámicos)
+          // Decide icon URL — prefer API site_type if cached
+            const cachedSite = this.lookupApiSite(name);
+            const iconUrl = this.resolveSiteIconUrl(name, cachedSite?.site_type);
+            const estatus = this.resolveEstatus(name);
+
+          // Set meta + KPI + opState FIRST so we can classify into sub-layers
+          this.setMarkerIconMeta(marker, iconUrl, estatus, cachedSite);
+          this.setMarkerKpi(marker, cachedSite);
+          this.setMarkerOpState(marker, cachedSite);
+
+            // Agregar al layer correcto based on opState for activos
             if (estado === 'activo') {
-              marker.addTo(this.pozosActivosLayer);
+              const opState = (marker as any).__scadaOpState;
+              if (opState === 'no-signal') {
+                marker.addTo(this.pozosSinComLayer);
+              } else if (opState === 'stopped') {
+                marker.addTo(this.pozosSinGastoLayer);
+              } else {
+                marker.addTo(this.pozosOperandoLayer);
+              }
             }
             else if (estado === 'obra') {
               marker.addTo(this.pozosObraLayer);
@@ -810,15 +950,17 @@ export class ModuloGis implements OnInit, OnDestroy {
               marker.addTo(this.pozosInactivosLayer);
             }
 
-            this.applyIconScaleToMarker(marker);
+          this.applyIconScaleToMarker(marker);
 
             const key = this.normalizeKey(name);
             this.markersIndex.set(key, marker);
 
-            marker.bindTooltip(name, {
+            const ttSite = this.lookupApiSite(name);
+            const ttEstatus = this.resolveEstatus(name);
+            marker.bindTooltip(this.buildMarkerTooltip(name, ttEstatus, ttSite), {
               direction: 'top',
               offset: [0, -8],
-              opacity: 0.9
+              opacity: 0.95
             });
 
             marker.on('mouseover', () => marker.openTooltip());
@@ -831,18 +973,6 @@ export class ModuloGis implements OnInit, OnDestroy {
               this.closeAllTooltipsExcept(key);
               marker.openTooltip();
             });
-
-
-          // Decide qué URL usar (gris o color) — prefer API site_type if cached
-            const cachedSite = this.lookupApiSite(name);
-            const iconUrl = this.resolveSiteIconUrl(name, cachedSite?.site_type);
-            const estatus = this.resolveEstatus(name);
-
-          // ✅ meta + KPI + opState primero, luego scale
-          this.setMarkerIconMeta(marker, iconUrl, estatus);
-          this.setMarkerKpi(marker, cachedSite);
-          this.setMarkerOpState(marker, cachedSite);
-          this.applyIconScaleToMarker(marker);
 
           if ((marker as any).bringToFront) (marker as any).bringToFront();
 
@@ -894,10 +1024,9 @@ export class ModuloGis implements OnInit, OnDestroy {
 
           URL.revokeObjectURL(url);
 
-          // asegurar todo al frente
-          this.pozosLayer.eachLayer((l: any) => {
-            if (l.bringToFront) l.bringToFront();
-          });
+          // asegurar markers al frente
+          [this.pozosOperandoLayer, this.pozosSinGastoLayer, this.pozosSinComLayer, this.pozosObraLayer, this.pozosInactivosLayer, this.pozosPendienteLayer]
+            .forEach(g => g.eachLayer((l: any) => { if (l.bringToFront) l.bringToFront(); }));
         });
       })
       .catch(() => {
@@ -941,28 +1070,40 @@ export class ModuloGis implements OnInit, OnDestroy {
 
           const marker = L.marker([lat, lng]);
           const siteEstatus = (site as any).estatus || 'activo';
-          const targetLayer =
-            siteEstatus === 'obra'
-              ? this.pozosObraLayer
-              : siteEstatus === 'inactivo'
-                ? this.pozosInactivosLayer
-                : siteEstatus === 'pendiente'
-                  ? this.pozosPendienteLayer
-                  : this.pozosActivosLayer;
-          marker.addTo(targetLayer);
 
+          // Set meta + KPI + opState FIRST so we can classify into sub-layers
           const iconUrl = this.resolveSiteIconUrl(name, site.site_type);
-          this.setMarkerIconMeta(marker, iconUrl, siteEstatus);
+          this.setMarkerIconMeta(marker, iconUrl, siteEstatus, site);
           this.setMarkerKpi(marker, site);
           this.setMarkerOpState(marker, site);
+
+          let targetLayer: L.LayerGroup;
+          if (siteEstatus === 'obra') {
+            targetLayer = this.pozosObraLayer;
+          } else if (siteEstatus === 'inactivo') {
+            targetLayer = this.pozosInactivosLayer;
+          } else if (siteEstatus === 'pendiente') {
+            targetLayer = this.pozosPendienteLayer;
+          } else {
+            // activo — classify by opState
+            const opState = (marker as any).__scadaOpState;
+            if (opState === 'no-signal') {
+              targetLayer = this.pozosSinComLayer;
+            } else if (opState === 'stopped') {
+              targetLayer = this.pozosSinGastoLayer;
+            } else {
+              targetLayer = this.pozosOperandoLayer;
+            }
+          }
+          marker.addTo(targetLayer);
           this.applyIconScaleToMarker(marker);
 
           this.markersIndex.set(key, marker);
 
-          marker.bindTooltip(name, {
+          marker.bindTooltip(this.buildMarkerTooltip(name, siteEstatus, site), {
             direction: 'top',
             offset: [0, -8],
-            opacity: 0.9
+            opacity: 0.95
           });
 
           marker.on('mouseover', () => marker.openTooltip());
@@ -1040,10 +1181,6 @@ export class ModuloGis implements OnInit, OnDestroy {
 
         layer.addTo(this.redPrimariaLayer);
 
-        console.log(
-          'Red primaria cargada:',
-          this.redPrimariaLayer.getLayers().length
-        );
       });
   }
 
@@ -1055,8 +1192,11 @@ export class ModuloGis implements OnInit, OnDestroy {
   // ─────────────────────────────────────────
   // 1️⃣ OBTENER USUARIO DESDE LOCAL STORAGE
   // ─────────────────────────────────────────
-    const userData = localStorage.getItem('scada_user_data');
-    const user = userData ? JSON.parse(userData) : null;
+    let user: any = null;
+    try {
+      const userData = localStorage.getItem('scada_user_data');
+      user = userData ? JSON.parse(userData) : null;
+    } catch { /* corrupt localStorage — proceed as unauthenticated */ }
 
   // ─────────────────────────────────────────
   // 2️⃣ CARGAR GEOJSON
@@ -1235,10 +1375,6 @@ export class ModuloGis implements OnInit, OnDestroy {
           }
         });
         layer.addTo(this.redSecundariaLayer);
-        console.log(
-          'Red secundaria cargada:',
-          this.redSecundariaLayer.getLayers().length
-        );
       });
   }
 
@@ -1357,11 +1493,19 @@ export class ModuloGis implements OnInit, OnDestroy {
     // Load MarkerCluster plugin — must happen before creating layers
     const clusterOk = await loadMarkerClusterPlugin();
     if (clusterOk) {
-      this.pozosActivosLayer = createClusterGroup('#3b82f6');
+      this.pozosOperandoLayer = createClusterGroup('#22c55e');   // green
+      this.pozosSinGastoLayer = createClusterGroup('#f59e0b');   // amber
+      this.pozosSinComLayer = createClusterGroup('#ef4444');      // red
       this.pozosObraLayer = createClusterGroup('#f59e0b');
       this.pozosInactivosLayer = createClusterGroup('#ef4444');
       this.pozosPendienteLayer = createClusterGroup('#94a3b8');
     }
+
+    // Cache TTL — clear popup chart data every 5 minutes so stale data is refreshed
+    this.chartCacheTTL = setInterval(() => {
+      this.municipioChartCache.clear();
+      this.pozoChartCache.clear();
+    }, ModuloGis.CHART_CACHE_TTL_MS);
 
     // 1) Mapa base
     this.map = L.map('map').setView([19.3, -99.6], 8);
@@ -1398,8 +1542,9 @@ export class ModuloGis implements OnInit, OnDestroy {
     this.setupIconScalingByZoom();
 
     // 2) LayerGroups (contenedores)
-    this.pozosLayer.addTo(this.map);
-    this.pozosActivosLayer.addTo(this.map);
+    this.pozosOperandoLayer.addTo(this.map);
+    this.pozosSinGastoLayer.addTo(this.map);
+    this.pozosSinComLayer.addTo(this.map);
     this.pozosObraLayer.addTo(this.map);
     this.pozosInactivosLayer.addTo(this.map);
     this.pozosPendienteLayer.addTo(this.map);
@@ -1411,16 +1556,12 @@ export class ModuloGis implements OnInit, OnDestroy {
     // ─────────────────────────────────────────────────────────────────────────
     // 1) OBTENER IDENTIDAD Y ALCANCE (GEOGRAPHIC SCOPE) — before loading assets
     // ─────────────────────────────────────────────────────────────────────────
-    const userData = localStorage.getItem('scada_user_data');
-    const user = userData ? JSON.parse(userData) : null;
+    let user: any = null;
+    try {
+      const userData = localStorage.getItem('scada_user_data');
+      user = userData ? JSON.parse(userData) : null;
+    } catch { /* corrupt localStorage — proceed as unauthenticated */ }
     const isMunicipal = user?.scope === 'Municipal';
-
-    console.group('>>> [SCADA DEBUG] GIS Hierarchical Filter');
-    console.log('User Identity:', user?.full_name);
-    console.log('User Scope:', user?.scope);
-    console.log('State ID (estado_id):', user?.estado_id);
-    console.log('Target ID (scope_id):', user?.scope_id);
-    console.groupEnd();
 
     // 4) GeoJSON / overlays — conditional loading based on scope
     this.loadMunicipios();
@@ -1435,7 +1576,7 @@ export class ModuloGis implements OnInit, OnDestroy {
     // Mantener pozos al frente si prenden municipios
     this.map.on('overlayadd', (e: any) => {
       if (e?.name === 'Municipios') {
-        [this.pozosActivosLayer, this.pozosObraLayer, this.pozosInactivosLayer, this.pozosPendienteLayer]
+        [this.pozosOperandoLayer, this.pozosSinGastoLayer, this.pozosSinComLayer, this.pozosObraLayer, this.pozosInactivosLayer, this.pozosPendienteLayer]
           .forEach(group => {
             group.eachLayer((l:any)=>{
               if (l instanceof L.Marker) this.applyIconScaleToMarker(l);
@@ -1451,19 +1592,16 @@ export class ModuloGis implements OnInit, OnDestroy {
 
     if (!user || user.scope === 'Federal' || user.scope === 'ALL') {
       // NIVEL 1: Federal - Carga total de infraestructura
-      console.log('[GIS] Access: FEDERAL. Loading all sources.');
       filteredSources = SITIOS_SOURCES;
     }
     else if (user.scope === 'Estatal') {
       // NIVEL 2: Estatal - Filtra todos los municipios del estado (ej. Edomex ID 15)
       // Default to 15 (Estado de Mexico) if estado_id is missing — OCAVM only operates in EdoMex
       const estadoId = user.estado_id || 15;
-      console.log(`[GIS] Access: ESTATAL (ID: ${estadoId}). Filtering by State.`);
       filteredSources = SITIOS_SOURCES.filter(src => src.estadoId === estadoId);
     }
     else if (user.scope === 'Municipal') {
       // NIVEL 3: Municipal - Restricción total al scope_id (ej. Ecatepec ID 34)
-      console.log(`[GIS] Access: MUNICIPAL (ID: ${user.scope_id}). Single municipality view.`);
       filteredSources = SITIOS_SOURCES.filter(src => src.municipioId === user.scope_id);
     }
 
@@ -1806,10 +1944,25 @@ export class ModuloGis implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    // Dispose ECharts popup
     if (this.popupChart) {
       this.popupChart.dispose();
       this.popupChart = null;
     }
+    // Destroy Leaflet map — releases all layers, event listeners, tile loaders
+    if (this.map) {
+      this.map.remove();
+    }
+    // Clear chart cache TTL interval
+    if (this.chartCacheTTL) {
+      clearInterval(this.chartCacheTTL);
+      this.chartCacheTTL = null;
+    }
+    // Clear caches
+    this.municipioChartCache.clear();
+    this.pozoChartCache.clear();
+    this.markersIndex.clear();
+    this.municipiosIndex.clear();
   }
 
   goToOverview() {

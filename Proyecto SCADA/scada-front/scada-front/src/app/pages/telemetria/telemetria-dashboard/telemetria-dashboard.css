@@ -571,6 +571,11 @@
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
 }
 
+.site-dot--danger {
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
 .site-dot--pending {
   background: #6b7280;
   box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.15);
@@ -710,6 +715,9 @@
 
 .pill--warn { background: var(--warning-bg); border-color: var(--warning); color: var(--warning); }
 .pill--warn .pill-dot { background: #f59e0b; }
+
+.pill--danger { background: rgba(239, 68, 68, 0.1); border-color: #ef4444; color: #ef4444; }
+.pill--danger .pill-dot { background: #ef4444; }
 
 .pill--pending { background: rgba(107, 114, 128, 0.1); border-color: #6b7280; color: #6b7280; }
 .pill--pending .pill-dot { background: #6b7280; }

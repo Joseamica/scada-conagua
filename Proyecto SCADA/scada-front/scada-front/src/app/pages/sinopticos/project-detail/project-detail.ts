@@ -49,14 +49,36 @@ export class ProjectDetail implements OnInit {
   newName = '';
   newDescription = '';
 
+  // Permission options
+  readonly permOptions = [
+    { key: 'view', label: 'Ver' },
+    { key: 'edit', label: 'Editar' },
+    { key: 'create', label: 'Crear' },
+    { key: 'delete', label: 'Eliminar' },
+  ] as const;
+
+  // Create dialog — user assignment (per-user permissions)
+  createCandidates = signal<{
+    id: number; full_name: string; email: string;
+    role_id: number; role_name: string; municipio_name: string | null;
+  }[]>([]);
+  createSearch = signal('');
+  createAssignees = signal<{
+    id: number; full_name: string; email: string;
+    role_id: number; role_name: string; municipio_name: string | null;
+    perms: Record<string, boolean>;
+  }[]>([]);
+
   // Share dialog
   showShareDialog = signal(false);
   shareSinopticoId = signal(0);
   shareSinopticoName = signal('');
   shares = signal<SinopticoShare[]>([]);
-  shareCandidates = signal<{ id: number; full_name: string; email: string }[]>([]);
+  shareCandidates = signal<{
+    id: number; full_name: string; email: string;
+    role_id: number; role_name: string; municipio_name: string | null;
+  }[]>([]);
   shareSearch = signal('');
-  sharePermission = signal<'read' | 'edit'>('read');
 
   ngOnInit(): void {
     this.projectId = Number(this.route.snapshot.paramMap.get('id'));
@@ -95,7 +117,60 @@ export class ProjectDetail implements OnInit {
   openCreateDialog(): void {
     this.newName = '';
     this.newDescription = '';
+    this.createSearch.set('');
+    this.createCandidates.set([]);
+    this.createAssignees.set([]);
     this.showCreateDialog.set(true);
+  }
+
+  searchCreateCandidates(): void {
+    const q = this.createSearch();
+    if (q.length < 1) {
+      this.createCandidates.set([]);
+      return;
+    }
+    this.sinopticoService.searchCandidates(q).subscribe({
+      next: (data) => {
+        const assignedIds = new Set(this.createAssignees().map((a) => a.id));
+        this.createCandidates.set(data.filter((c) => !assignedIds.has(c.id)));
+      },
+    });
+  }
+
+  private buildPermString(perms: Record<string, boolean>): string {
+    const selected = Object.entries(perms).filter(([, v]) => v).map(([k]) => k);
+    return selected.length > 0 ? selected.join(',') : 'view';
+  }
+
+  addCreateAssignee(candidate: { id: number; full_name: string; email: string; role_id: number; role_name: string; municipio_name: string | null }): void {
+    this.createAssignees.update((list) => [
+      ...list,
+      { ...candidate, perms: { view: true, edit: false, create: false, delete: false } },
+    ]);
+    this.createCandidates.update((list) => list.filter((c) => c.id !== candidate.id));
+    this.createSearch.set('');
+  }
+
+  toggleAssigneePerm(userId: number, key: string): void {
+    this.createAssignees.update((list) =>
+      list.map((a) => a.id === userId ? { ...a, perms: { ...a.perms, [key]: !a.perms[key] } } : a),
+    );
+  }
+
+  removeCreateAssignee(userId: number): void {
+    this.createAssignees.update((list) => list.filter((a) => a.id !== userId));
+  }
+
+  permLabel(perm: string): string {
+    const map: Record<string, string> = {
+      view: 'Ver', edit: 'Editar', create: 'Crear', delete: 'Eliminar', admin: 'Admin',
+      read: 'Ver',
+    };
+    return perm.split(',').map((p) => map[p.trim()] || p).join(', ');
+  }
+
+  hasPermission(perm: string, key: string): boolean {
+    return perm.split(',').map((p) => p.trim()).includes(key);
   }
 
   createSinoptico(): void {
@@ -107,8 +182,24 @@ export class ProjectDetail implements OnInit {
       })
       .subscribe({
         next: (s) => {
-          this.showCreateDialog.set(false);
-          this.sinopticos.update((list) => [s, ...list]);
+          const assignees = this.createAssignees();
+          if (assignees.length === 0) {
+            this.showCreateDialog.set(false);
+            this.sinopticos.update((list) => [s, ...list]);
+            return;
+          }
+          let completed = 0;
+          for (const a of assignees) {
+            this.sinopticoService.addShare(s.id, a.id, this.buildPermString(a.perms)).subscribe({
+              next: () => {
+                completed++;
+                if (completed === assignees.length) {
+                  this.showCreateDialog.set(false);
+                  this.sinopticos.update((list) => [s, ...list]);
+                }
+              },
+            });
+          }
         },
       });
   }
@@ -173,7 +264,7 @@ export class ProjectDetail implements OnInit {
 
   searchShareCandidates(): void {
     const q = this.shareSearch();
-    if (q.length < 2) {
+    if (q.length < 1) {
       this.shareCandidates.set([]);
       return;
     }
@@ -183,15 +274,34 @@ export class ProjectDetail implements OnInit {
   }
 
   addShare(userId: number): void {
+    // Default: view only. User configures per-user permissions after adding.
     this.sinopticoService
-      .addShare(this.shareSinopticoId(), userId, this.sharePermission())
+      .addShare(this.shareSinopticoId(), userId, 'view')
       .subscribe({
         next: () => {
           this.loadShares(this.shareSinopticoId());
           this.shareCandidates.set([]);
           this.shareSearch.set('');
         },
+        error: (err) => {
+          const msg = err?.error?.error || 'Error al compartir';
+          alert(msg);
+        },
       });
+  }
+
+  toggleExistingSharePerm(share: SinopticoShare, key: string): void {
+    const current = new Set(share.permission.split(',').map((p) => p.trim()));
+    if (current.has(key)) {
+      current.delete(key);
+    } else {
+      current.add(key);
+    }
+    if (current.size === 0) current.add('view');
+    const newPerm = [...current].sort().join(',');
+    this.sinopticoService.addShare(this.shareSinopticoId(), share.user_id, newPerm).subscribe({
+      next: () => this.loadShares(this.shareSinopticoId()),
+    });
   }
 
   removeShare(shareId: number): void {
