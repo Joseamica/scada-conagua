@@ -79,6 +79,25 @@ export class TelemetryService {
     return this.http.get<TelemetryHistoryResponse>(`${environment.apiQueryUrl}/telemetry/${devEUI}/${measurement}`, { params });
   }
 
+  // Telemetría agregada por municipio (suma todos los pozos activos)
+  getMunicipalityHistory(
+    municipioId: number,
+    measurement: string,
+    range: string = '-24h',
+    options?: { from?: string; to?: string; interval?: string }
+  ): Observable<{ municipioId: number; measurement: string; data: { timestamp: string; value: number }[]; devEuiCount: number }> {
+    let params = new HttpParams();
+    if (options?.from && options?.to) {
+      params = params.set('from', options.from).set('to', options.to);
+    } else {
+      params = params.set('range', range);
+    }
+    if (options?.interval) {
+      params = params.set('interval', options.interval);
+    }
+    return this.http.get<any>(`${environment.apiQueryUrl}/telemetry/municipality/${municipioId}/${measurement}`, { params });
+  }
+
   // Crear un nuevo sitio en el inventario
   createSite(payload: {
     dev_eui: string;

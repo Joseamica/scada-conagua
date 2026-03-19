@@ -337,7 +337,7 @@ export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
   // ── Chart: data loading ──
 
   loadCharts() {
-    if (!this.activeDevEui || !this.chart) return;
+    if (!this.chart) return;
 
     let rangeStr = `-${this.range()}`;
     if (this.range() === '1m') rangeStr = '-1mo';
@@ -354,8 +354,13 @@ export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
     const selected = this.selectedVars();
     const requests: Record<string, any> = {};
 
+    // Use municipality aggregation endpoint for caudal and presion (sums all wells)
+    // Use individual device for signal metrics (rssi, snr) since those don't aggregate
     for (const v of this.chartVariables) {
-      if (selected.has(v.key)) {
+      if (!selected.has(v.key)) continue;
+      if (v.key === 'caudal_lts' || v.key === 'presion_kg') {
+        requests[v.key] = this.telemetryService.getMunicipalityHistory(this.municipioId, v.key, rangeStr, options);
+      } else if (this.activeDevEui) {
         requests[v.key] = this.telemetryService.getHistory(this.activeDevEui, v.key, rangeStr, options);
       }
     }

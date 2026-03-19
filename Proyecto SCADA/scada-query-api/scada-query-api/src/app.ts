@@ -650,6 +650,88 @@ app.post('/api/v1/sites/:devEUI/render', isAuth, (req: Request, res: Response, n
 app.get('/api/v1/status/:devEUI', isAuth, getSiteStatus);
 app.get('/api/v1/telemetry/:devEUI/:measurement', isAuth, getSiteHistory);
 
+// Telemetría agregada por municipio — suma todos los pozos activos
+app.get('/api/v1/telemetry/municipality/:municipioId/:measurement', isAuth, async (req: Request, res: Response) => {
+    const { municipioId, measurement } = req.params;
+    if (!RE_MEASUREMENT.test(measurement)) {
+        return res.status(400).json({ error: 'Invalid measurement format.' });
+    }
+    const munId = parseInt(municipioId, 10);
+    if (isNaN(munId) || munId <= 0) {
+        return res.status(400).json({ error: 'Invalid municipioId.' });
+    }
+
+    const from     = req.query.from as string | undefined;
+    const to       = req.query.to   as string | undefined;
+    const interval = req.query.interval as string | undefined;
+    const range    = req.query.range as string || '-24h';
+
+    if (from && !RE_RFC3339.test(from)) return res.status(400).json({ error: 'Invalid "from" format.' });
+    if (to && !RE_RFC3339.test(to)) return res.status(400).json({ error: 'Invalid "to" format.' });
+    if (interval && !RE_INTERVAL.test(interval)) return res.status(400).json({ error: 'Invalid interval format.' });
+    if (!from && !RE_RELATIVE_RANGE.test(range)) return res.status(400).json({ error: 'Invalid range format.' });
+
+    const rangeStart = from || range;
+    const rangeStop  = (from && to) ? to : undefined;
+    const everyMap: Record<string, string> = {
+        '-15m': '1m', '-30m': '2m', '-1h': '5m', '-6h': '15m',
+        '-12h': '30m', '-24h': '1h', '-7d': '6h', '-30d': '1d', '-1mo': '1d', '-1y': '7d',
+    };
+    const every = interval || everyMap[range] || '1h';
+
+    try {
+        // Get all active devEUIs for this municipality
+        const sitesRes = await pool.query(
+            `SELECT TRIM(dev_eui) as dev_eui FROM scada.inventory
+             WHERE municipio_id = $1 AND TRIM(COALESCE(dev_eui, '')) != ''
+               AND (estatus IS NULL OR estatus NOT IN ('inactivo', 'pendiente'))`,
+            [munId]
+        );
+        const devEUIs = sitesRes.rows.map(r => r.dev_eui.trim()).filter(d => d && !d.startsWith('pend'));
+
+        if (devEUIs.length === 0) {
+            return res.json({ municipioId: munId, measurement, data: [], devEuiCount: 0 });
+        }
+
+        // Build Flux filter for all devEUIs
+        const devEuiFilter = devEUIs.map(d => `r["devEui"] == "${d}"`).join(' or ');
+        const rangeClause = rangeStop ? `start: ${rangeStart}, stop: ${rangeStop}` : `start: ${rangeStart}`;
+
+        const fluxQuery = `
+            from(bucket: "${process.env.INFLUX_BUCKET || 'telemetria_sitios'}")
+                |> range(${rangeClause})
+                |> filter(fn: (r) => r["_measurement"] == "mediciones_pozos")
+                |> filter(fn: (r) => ${devEuiFilter})
+                |> filter(fn: (r) => r["_field"] == "${measurement}")
+                |> group(columns: ["_time"])
+                |> aggregateWindow(every: ${every}, fn: sum, createEmpty: false)
+                |> group()
+                |> sort(columns: ["_time"])
+                |> yield(name: "sum")
+        `;
+
+        const { influxDB: idb, org: iOrg } = require('./services/influx-query-service');
+        const qa = idb.getQueryApi(iOrg);
+        const data: { timestamp: string; value: number }[] = [];
+
+        await new Promise<void>((resolve, reject) => {
+            qa.queryRows(fluxQuery, {
+                next: (row: string[], tableMeta: any) => {
+                    const o = tableMeta.toObject(row);
+                    data.push({ timestamp: o._time, value: o._value ?? 0 });
+                },
+                error: (error: Error) => reject(error),
+                complete: () => resolve(),
+            });
+        });
+
+        res.json({ municipioId: munId, measurement, data, devEuiCount: devEUIs.length });
+    } catch (e) {
+        console.error('❌ Municipality telemetry error:', e);
+        res.status(500).json({ error: 'Error al consultar telemetría del municipio.' });
+    }
+});
+
 app.post('/api/v1/control', isAuth, async (req: Request, res: Response) => {
     const { devEUI, command } = req.body;
 
