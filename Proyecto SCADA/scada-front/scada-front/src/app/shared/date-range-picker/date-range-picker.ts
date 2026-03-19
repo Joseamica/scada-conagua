@@ -58,6 +58,8 @@ export class DateRangePickerComponent {
   readonly weekDays  = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'];
 
   isOpen = false;
+  popoverTop   = '0px';
+  popoverRight = '0px';
 
   draftFrom:   Date | null = null;
   draftTo:     Date | null = null;
@@ -95,6 +97,16 @@ export class DateRangePickerComponent {
     event.stopPropagation();
     this.isOpen = !this.isOpen;
     if (this.isOpen) {
+      const rect = (this.el.nativeElement as HTMLElement).getBoundingClientRect();
+      this.popoverTop   = `${rect.bottom + 8}px`;
+      // Align right edge with trigger; clamp so popover never goes off-screen left
+      const popoverW    = Math.min(700, window.innerWidth - 16);
+      const rightEdge   = window.innerWidth - rect.right;
+      const leftEdge    = rect.right - popoverW;
+      this.popoverRight = leftEdge < 8
+        ? `${Math.max(8, window.innerWidth - rect.left - popoverW)}px`
+        : `${Math.max(8, rightEdge)}px`;
+
       this.draftFrom   = this.appliedFrom ? new Date(this.appliedFrom) : null;
       this.draftTo     = this.appliedTo   ? new Date(this.appliedTo)   : null;
       this.hoverDate   = null;

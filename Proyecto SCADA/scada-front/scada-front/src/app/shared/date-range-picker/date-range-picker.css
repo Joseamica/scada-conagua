@@ -41,16 +41,15 @@
 
 /* ---- POPOVER ---- */
 .drp-popover {
-  position:      absolute;
-  right:         0;
-  top:           calc(100% + 8px);
-  z-index:       500;
+  position:      fixed;
+  z-index:       9999;
   background:    var(--bg-card);
   border:        1px solid var(--border-default);
   border-radius: 12px;
-  box-shadow:    0 12px 40px rgba(0,0,0,.16);
+  box-shadow:    0 12px 40px rgba(0,0,0,.24);
   overflow:      hidden;
-  min-width:     700px;
+  width:         700px;
+  max-width:     calc(100vw - 16px);
   animation:     drpFadeIn 0.15s ease;
 }
 @keyframes drpFadeIn {

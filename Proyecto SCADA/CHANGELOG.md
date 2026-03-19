@@ -6,15 +6,29 @@ Todos los cambios notables del proyecto se documentan aquí.
 
 ### scada-query-api (Alarm form redesign — backend)
 - **feat:** migration 037 — add `batch_id` UUID column to `scada.alarms` for multi-site alarm creation; create `scada.measurement_catalog` table with seeded 4PT/ICH measurements
+- **fix:** migration 038 — deduplicate `measurement_catalog` rows and add `UNIQUE(key)` constraint (migration 037 was missing it, making `ON CONFLICT DO NOTHING` inoperative)
 - **feat:** `GET /alarms/measurements` — returns measurement catalog grouped by provider for dropdown population
-- **feat:** `GET /alarms/sites` — returns scoped site list (dev_eui, site_name, municipality, proveedor, site_type) for alarm form site selector
-- **feat:** `POST /alarms` — accepts `dev_euis: string[]` for batch creation (up to 200 devices per request, transactional, generates shared `batch_id`); backward-compatible with single `dev_eui`
+- **feat:** `GET /alarms/sites` — returns scoped site list (dev_eui, site_name, municipality, proveedor, site_type) with Municipal/Estatal/Federal scope filtering
+- **feat:** `POST /alarms` — accepts `dev_euis: string[]` for batch creation (up to 200 devices per request, transactional with `BEGIN/COMMIT/ROLLBACK`, deduplication via `Set`, generates shared `batch_id`); backward-compatible with single `dev_eui`
+- **fix:** `GET /alarms` — added scope filtering (Municipal/Estatal/Federal) so operators only see alarms for their sites; added `LEFT JOIN scada.inventory` to return `site_name` and `municipality` per alarm
+- **feat:** `PUT /alarms/:id` — added audit log entry (`ALARM_UPDATED`) with changed fields
+
+### scada-front (date-range-picker — popover clipping fix)
+- **fix:** date-range-picker popover changed from `position: absolute` to `position: fixed` — prevents clipping by parent containers with `overflow: hidden` (was causing picker to appear cut off in gerencia-municipio and other pages)
+- **fix:** popover position now calculated via `getBoundingClientRect()` on open; clamps right-edge to prevent left viewport overflow
+- **fix:** `max-width: calc(100vw - 16px)` ensures picker is fully visible on any screen width
 
 ### scada-front (Alarm form redesign — dropdown UX + multi-site + severity banners)
 - **feat:** new `AlarmFormDialogComponent` — standalone alarm form dialog with site search dropdown (grouped by municipality), measurement dropdown (filtered by site provider), severity-colored select, chip-based multi-site selector, notification placeholder section
-- **refactor:** `AlarmConfig` — extracted inline alarm dialog into `AlarmFormDialogComponent`; simplified to delegate create/edit to dialog component
-- **feat:** `AlarmService` — added `AlarmSite`, `MeasurementOption`, `AlarmBatchResult` interfaces; added `getSitesForAlarm()`, `getMeasurements()`, `createAlarmBatch()` methods
-- **feat:** header-bar severity-colored alarm banners — critico (red), alerta (orange), aviso (blue) with matching pulse animations
+- **fix:** `siteSearchText` converted from plain string to `signal('')` — fixes computed reactivity (Angular `computed()` only tracks signal reads, not plain property reads)
+- **feat:** edit mode now allows changing the device/site — site selector is shown in both create and edit modes; `selectedSites` pre-populated from inventory async load with fallback for unknown devEUIs
+- **feat:** `saveError` signal with error display in dialog when API save fails
+- **feat:** `sitesLoading` signal with "Cargando sitios..." indicator while inventory loads
+- **feat:** `@HostListener('document:click')` closes site dropdown on outside click
+- **feat:** measurement options show provider suffix (4PT/ICH) when no site selected for disambiguation
+- **refactor:** `AlarmConfig` — replaced inline `confirm()` with inline confirmation pattern (`confirmingDeleteId` signal → ¿Eliminar? + trash + X buttons); badge count decrements immediately on delete; alarm card shows `site_name` or falls back to raw `dev_eui`
+- **feat:** `AlarmService` — added `AlarmSite`, `MeasurementOption`, `AlarmBatchResult` interfaces; added `getSitesForAlarm()`, `getMeasurements()`, `createAlarmBatch()` methods; added `site_name?: string` to `Alarm` interface
+- **feat:** header-bar severity-colored alarm banners — critico (red), alerta (orange), aviso (blue) with matching per-severity pulse animations
 
 ### scada-front (GIS + Telemetria — sub-filtros operativos)
 - **feat:** GIS layer panel — "Activos" split into 3 sub-layers: Operando (green, flow > 0), Sin gasto (amber, connected but no flow), Sin comunicacion (red, COMM LOSS >15min). Parent "Activos" checkbox toggles all 3.

@@ -16,7 +16,8 @@
   <!-- ======================== -->
   <!-- POPOVER                  -->
   <!-- ======================== -->
-  <div class="drp-popover" *ngIf="isOpen" (click)="stopProp($event)">
+  <div class="drp-popover" *ngIf="isOpen" (click)="stopProp($event)"
+       [style.top]="popoverTop" [style.right]="popoverRight">
 
     <!-- DATE INPUT ROW -->
     <div class="drp-inputs-row">
