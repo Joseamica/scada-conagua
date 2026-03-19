@@ -736,15 +736,39 @@ app.get('/api/v1/telemetry/municipality/:municipioId/:measurement', isAuth, asyn
 app.post('/api/v1/control', isAuth, async (req: Request, res: Response) => {
     const { devEUI, command } = req.body;
 
-    // Permission check: only users with can_operate may control pumps
+    // Input validation first (400 before 403)
+    if (!devEUI || (command !== 'START' && command !== 'STOP')) {
+        return res.status(400).json({ error: 'Invalid devEUI or command. Must be START or STOP.' });
+    }
+
+    const user = (req as any).user;
+
+    // Role check: only Admin (1) and Supervisor (2) can control pumps (CONAGUA confirmed)
+    if (!user || user.role_id > 2) {
+        return res.status(403).json({ error: 'Solo Administradores y Supervisores pueden controlar bombas.' });
+    }
+
+    // Scope check: Federal users cannot control pumps (oversight only, per CONAGUA case 5.2)
+    if (user.scope === 'Federal') {
+        return res.status(403).json({ error: 'Usuarios federales no pueden controlar bombas (solo supervisión).' });
+    }
+
+    // Scope check: municipal users can only control pumps in their municipality
+    if (user.scope === 'Municipal' && user.scope_id) {
+        const siteCheck = await pool.query(
+            'SELECT municipio_id FROM scada.inventory WHERE TRIM(dev_eui) = $1', [devEUI.trim()]
+        );
+        if (siteCheck.rows.length > 0 && siteCheck.rows[0].municipio_id) {
+            if (siteCheck.rows[0].municipio_id !== user.scope_id) {
+                return res.status(403).json({ error: 'Sin acceso a este sitio.' });
+            }
+        }
+    }
+
+    // Permission check: user must have can_operate flag
     const perms = await getPermissions(req.user!.id);
     if (!perms?.can_operate) {
         return res.status(403).json({ error: 'No tiene permiso para operar bombas.' });
-    }
-
-    // Validación de parámetros de entrada conforme a la interfaz SCADAControlRequest
-    if (!devEUI || (command !== 'START' && command !== 'STOP')) {
-        return res.status(400).json({ error: 'Invalid devEUI or command. Must be START or STOP.' });
     }
 
     const success = await sendSCADACommand(req.body);

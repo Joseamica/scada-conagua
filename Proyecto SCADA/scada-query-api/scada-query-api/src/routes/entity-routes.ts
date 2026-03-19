@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { isAuth, isAdmin } from '../middlewares/auth-middleware';
+import { isAuth, isAdmin, isSupervisor } from '../middlewares/auth-middleware';
 import { getAllEntities, getScopedEntities, createEntity } from '../services/entity-service';
 import { auditLog } from '../services/audit-service';
 
@@ -18,7 +18,7 @@ router.get('/', isAuth, async (req: Request, res: Response) => {
 });
 
 // POST / — Create a new entity (Admin only)
-router.post('/', isAdmin, async (req: Request, res: Response) => {
+router.post('/', isSupervisor, async (req: Request, res: Response) => {
     const { name, level, parent_id, estado_id, municipio_id } = req.body;
 
     if (!name || !level) {

@@ -91,30 +91,43 @@ describe('Token inválido — debe rechazar con 403', () => {
     });
 });
 
-// ─── Governance: POST /control (can_operate permission) ────
+// ─── Governance: POST /control (role + scope + can_operate per CONAGUA) ────
 describe('Governance: POST /api/v1/control', () => {
-    it('Admin (rol 1) con can_operate puede enviar comando → 202', async () => {
+    // Municipal admin can control pumps
+    const municipalAdmin = makeToken(1, 'Municipal', 33, 15);
+    // Estatal supervisor can control pumps
+    const estatalSupervisor = makeToken(2, 'Estatal', 0, 15);
+
+    it('Admin Municipal con can_operate puede enviar comando → 202', async () => {
+        const res = await request(app)
+            .post('/api/v1/control')
+            .set('Authorization', municipalAdmin)
+            .send({ devEUI: 'TEST001', command: 'START' });
+        expect(res.status).toBe(202);
+    });
+
+    it('Supervisor Estatal puede enviar comando → 202', async () => {
+        const res = await request(app)
+            .post('/api/v1/control')
+            .set('Authorization', estatalSupervisor)
+            .send({ devEUI: 'TEST001', command: 'START' });
+        expect(res.status).toBe(202);
+    });
+
+    it('Admin Federal NO puede controlar bombas (solo supervisión) → 403', async () => {
         const res = await request(app)
             .post('/api/v1/control')
             .set('Authorization', TOKEN.admin)
             .send({ devEUI: 'TEST001', command: 'START' });
-        expect(res.status).toBe(202);
+        expect(res.status).toBe(403);
     });
 
-    it('Supervisor (rol 2) puede enviar comando → 202', async () => {
-        const res = await request(app)
-            .post('/api/v1/control')
-            .set('Authorization', TOKEN.supervisor)
-            .send({ devEUI: 'TEST001', command: 'START' });
-        expect(res.status).toBe(202);
-    });
-
-    it('Operador (rol 3) puede enviar comando → 202', async () => {
+    it('Operador (rol 3) NO puede controlar bombas → 403', async () => {
         const res = await request(app)
             .post('/api/v1/control')
             .set('Authorization', TOKEN.operador)
             .send({ devEUI: 'TEST001', command: 'STOP' });
-        expect(res.status).toBe(202);
+        expect(res.status).toBe(403);
     });
 
     it('Ejecutivo (rol 4) NO puede enviar comando → 403', async () => {
@@ -154,13 +167,13 @@ describe('Governance: GET /api/v1/status y /telemetry (solo requiere estar auten
     }
 });
 
-// ─── Governance: /users (isAdmin — solo rol 1) ────────────────────────────────
-describe('Governance: /api/v1/users (solo Admin)', () => {
-    it('Supervisor NO puede listar usuarios → 403', async () => {
+// ─── Governance: /users (Admin + Supervisor per CONAGUA) ────────────────────────
+describe('Governance: /api/v1/users (Admin y Supervisor)', () => {
+    it('Supervisor PUEDE listar usuarios (gestiona subordinados) → 200', async () => {
         const res = await request(app)
             .get('/api/v1/users')
             .set('Authorization', TOKEN.supervisor);
-        expect(res.status).toBe(403);
+        expect(res.status).toBe(200);
     });
 
     it('Operador NO puede listar usuarios → 403', async () => {
