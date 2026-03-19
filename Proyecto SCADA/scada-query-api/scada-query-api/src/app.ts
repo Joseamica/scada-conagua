@@ -693,37 +693,38 @@ app.get('/api/v1/telemetry/municipality/:municipioId/:measurement', isAuth, asyn
             return res.json({ municipioId: munId, measurement, data: [], devEuiCount: 0 });
         }
 
-        // Build Flux filter for all devEUIs
-        const devEuiFilter = devEUIs.map(d => `r["devEui"] == "${d}"`).join(' or ');
+        // Query each devEUI individually and merge/sum by timestamp bucket
         const rangeClause = rangeStop ? `start: ${rangeStart}, stop: ${rangeStop}` : `start: ${rangeStart}`;
+        const { getTelemetryData } = require('./services/influx-query-service');
 
-        const fluxQuery = `
-            from(bucket: "${process.env.INFLUX_BUCKET || 'telemetria_sitios'}")
-                |> range(${rangeClause})
-                |> filter(fn: (r) => r["_measurement"] == "mediciones_pozos")
-                |> filter(fn: (r) => ${devEuiFilter})
-                |> filter(fn: (r) => r["_field"] == "${measurement}")
-                |> group(columns: ["_time"])
-                |> aggregateWindow(every: ${every}, fn: sum, createEmpty: false)
-                |> group()
-                |> sort(columns: ["_time"])
-                |> yield(name: "sum")
-        `;
+        // Run queries in parallel (max 10 concurrent to avoid overwhelming InfluxDB)
+        const batchSize = 10;
+        const allSeries: { timestamp: string; value: number }[][] = [];
 
-        const { influxDB: idb, org: iOrg } = require('./services/influx-query-service');
-        const qa = idb.getQueryApi(iOrg);
-        const data: { timestamp: string; value: number }[] = [];
-
-        await new Promise<void>((resolve, reject) => {
-            qa.queryRows(fluxQuery, {
-                next: (row: string[], tableMeta: any) => {
-                    const o = tableMeta.toObject(row);
-                    data.push({ timestamp: o._time, value: o._value ?? 0 });
-                },
-                error: (error: Error) => reject(error),
-                complete: () => resolve(),
+        for (let i = 0; i < devEUIs.length; i += batchSize) {
+            const batch = devEUIs.slice(i, i + batchSize);
+            const results = await Promise.all(
+                batch.map(devEui => getTelemetryData(devEui, measurement, rangeStart, every, rangeStop))
+            );
+            results.forEach((r: any) => {
+                if (r.data && r.data.length > 0) {
+                    allSeries.push(r.data.map((p: any) => ({ timestamp: p.timestamp, value: p.value ?? 0 })));
+                }
             });
-        });
+        }
+
+        // Merge: sum values by timestamp bucket
+        const sumMap = new Map<string, number>();
+        for (const series of allSeries) {
+            for (const point of series) {
+                const prev = sumMap.get(point.timestamp) || 0;
+                sumMap.set(point.timestamp, prev + (point.value > 0.01 ? point.value : 0));
+            }
+        }
+
+        const data = Array.from(sumMap.entries())
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([timestamp, value]) => ({ timestamp, value: Math.round(value * 100) / 100 }));
 
         res.json({ municipioId: munId, measurement, data, devEuiCount: devEUIs.length });
     } catch (e) {
