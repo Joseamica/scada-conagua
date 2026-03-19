@@ -457,11 +457,19 @@ export class ModuloGis implements OnInit, OnDestroy {
           if (key) this.apiSitesByName.set(key, site);
         });
 
+        const now = Date.now();
         sites.forEach(site => {
           const munId = site.municipio_id;
           if (!munId || !MUNICIPIOS_CON_POZO.has(munId)) return;
           const flow = Number(site.last_flow_value || 0);
           if (flow <= 0.01) return;
+          // Exclude sites without recent communication (COMM LOSS >15 min)
+          if (site.last_updated_at) {
+            const elapsed = now - new Date(site.last_updated_at).getTime();
+            if (elapsed > 15 * 60 * 1000) return;
+          } else {
+            return; // No telemetry at all
+          }
           const prev = this.gastoByMunicipio.get(munId) || 0;
           this.gastoByMunicipio.set(munId, Math.round((prev + flow) * 100) / 100);
         });
