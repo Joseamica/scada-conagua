@@ -120,14 +120,14 @@ export class TelemetriaDashboard implements OnInit {
   sites = signal<any[]>([]);
 
   // =========================
-  // KPI COMPUTED
+  // KPI COMPUTED (react to filters)
   // =========================
   sitesActivos = computed(() =>
-    this.sites().filter(s => s.status === 'ok').length
+    this.sitesFiltrados().filter(s => s.status === 'ok').length
   );
 
   sitesSinGasto = computed(() =>
-    this.sites().filter(s => s.status === 'no-flow').length
+    this.sitesFiltrados().filter(s => s.status === 'no-flow' || s.status === 'no-signal').length
   );
 
   // =========================
