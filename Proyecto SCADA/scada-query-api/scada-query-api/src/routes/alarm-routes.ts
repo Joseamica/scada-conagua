@@ -1,5 +1,6 @@
 // src/routes/alarm-routes.ts — Alarm CRUD, ACK, history, recipients, collections
 import { Router, Request, Response } from 'express';
+import { randomUUID } from 'crypto';
 import { pool } from '../services/db-service';
 import { isAuth, isSupervisor } from '../middlewares/auth-middleware';
 import { auditLog } from '../services/audit-service';
@@ -71,24 +72,89 @@ router.delete('/groups/:id', isSupervisor, async (req: Request, res: Response) =
 });
 
 // ═══════════════════════════════════════════
+// MEASUREMENT CATALOG + SITES — for alarm form dropdowns
+// ═══════════════════════════════════════════
+
+router.get('/measurements', isAuth, async (req: Request, res: Response) => {
+    try {
+        const result = await pool.query(
+            'SELECT key, label, unit, provider, category FROM scada.measurement_catalog ORDER BY provider, sort_order'
+        );
+        res.json({ measurements: result.rows });
+    } catch (e: any) {
+        res.status(500).json({ error: 'Error al obtener catalogo de mediciones.' });
+    }
+});
+
+router.get('/sites', isAuth, async (req: Request, res: Response) => {
+    try {
+        const user = (req as any).user;
+        let scopeFilter = '';
+        const params: any[] = [];
+
+        if (user?.scope === 'Municipal' && user?.scope_id) {
+            scopeFilter = ' WHERE i.municipio_id = $1';
+            params.push(user.scope_id);
+        } else if (user?.scope === 'Estatal' && user?.estado_id) {
+            scopeFilter = ` WHERE i.municipio_id IN (
+                SELECT e.municipio_id FROM scada.entities e WHERE e.estado_id = $1 AND e.level = 'Municipal'
+            )`;
+            params.push(user.estado_id);
+        }
+
+        const result = await pool.query(
+            `SELECT i.dev_eui, i.site_name, i.municipality, i.proveedor, i.site_type, i.municipio_id
+             FROM scada.inventory i
+             ${scopeFilter}
+             ORDER BY i.municipality, i.site_name`,
+            params
+        );
+        res.json(result.rows);
+    } catch (e: any) {
+        res.status(500).json({ error: 'Error al obtener sitios.' });
+    }
+});
+
+// ═══════════════════════════════════════════
 // ALARMS — threshold-based rules
 // ═══════════════════════════════════════════
 
 router.get('/', isAuth, async (req: Request, res: Response) => {
     const { group_id } = req.query;
     try {
+        const user = (req as any).user;
+        let scopeJoin = '';
+        let scopeWhere = '';
+        const params: any[] = [];
+
+        if (user?.scope === 'Municipal' && user?.scope_id) {
+            scopeJoin = ' LEFT JOIN scada.inventory i2 ON TRIM(i2.dev_eui) = TRIM(a.dev_eui)';
+            scopeWhere = ' AND (i2.municipio_id = $1 OR i2.municipio_id IS NULL)';
+            params.push(user.scope_id);
+        } else if (user?.scope === 'Estatal' && user?.estado_id) {
+            scopeJoin = ' LEFT JOIN scada.inventory i2 ON TRIM(i2.dev_eui) = TRIM(a.dev_eui)';
+            scopeWhere = ` AND (i2.municipio_id IN (
+                SELECT e.municipio_id FROM scada.entities e WHERE e.estado_id = $1 AND e.level = 'Municipal'
+            ) OR i2.municipio_id IS NULL)`;
+            params.push(user.estado_id);
+        }
+
         let sql = `
             SELECT a.*, g.name AS group_name,
                    s.current_state, s.last_value, s.last_evaluated_at,
-                   s.acknowledged_at, s.ack_comment
+                   s.acknowledged_at, s.ack_comment,
+                   i.site_name, i.municipality
             FROM scada.alarms a
             JOIN scada.alarm_groups g ON g.id = a.group_id
             LEFT JOIN scada.alarm_state s ON s.alarm_id = a.id
+            LEFT JOIN scada.inventory i ON TRIM(i.dev_eui) = TRIM(a.dev_eui)
+            ${scopeJoin}
+            WHERE 1=1 ${scopeWhere}
         `;
-        const params: any[] = [];
+
         if (group_id) {
-            sql += ' WHERE a.group_id = $1';
             params.push(group_id);
+            sql += ` AND a.group_id = $${params.length}`;
         }
         sql += ' ORDER BY a.created_at DESC';
 
@@ -101,47 +167,84 @@ router.get('/', isAuth, async (req: Request, res: Response) => {
 
 router.post('/', isSupervisor, async (req: Request, res: Response) => {
     const {
-        group_id, name, description, severity, dev_eui, measurement,
+        group_id, name, description, severity, dev_eui, dev_euis, measurement,
         comparison_operator, threshold_value,
         hysteresis_activation_sec, hysteresis_deactivation_sec,
         action_type, notify_on_state_change, notification_template,
         resend_period_min, resend_enabled, play_sound, show_banner,
     } = req.body;
 
-    if (!group_id || !name?.trim() || !dev_eui || !measurement || !comparison_operator || threshold_value === undefined) {
-        return res.status(400).json({ error: 'Campos obligatorios: group_id, name, dev_eui, measurement, comparison_operator, threshold_value.' });
+    // Resolve single vs batch: dev_euis array takes priority
+    const devices: string[] = Array.isArray(dev_euis) && dev_euis.length > 0
+        ? dev_euis
+        : dev_eui ? [dev_eui] : [];
+
+    // Deduplicate
+    const uniqueDevices = [...new Set(devices)];
+
+    if (!group_id || !name?.trim() || uniqueDevices.length === 0 || !measurement || !comparison_operator || threshold_value === undefined) {
+        return res.status(400).json({ error: 'Campos obligatorios: group_id, name, dev_eui(s), measurement, comparison_operator, threshold_value.' });
     }
 
+    if (uniqueDevices.length > 200) {
+        return res.status(400).json({ error: 'Maximo 200 dispositivos por solicitud.' });
+    }
+
+    const isBatch = uniqueDevices.length > 1;
+    const batchId = isBatch ? randomUUID() : null;
+    let client: any;
+
     try {
-        const result = await pool.query(
-            `INSERT INTO scada.alarms
-             (group_id, name, description, severity, dev_eui, measurement,
-              comparison_operator, threshold_value,
-              hysteresis_activation_sec, hysteresis_deactivation_sec,
-              action_type, notify_on_state_change, notification_template,
-              resend_period_min, resend_enabled, play_sound, show_banner, created_by)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING *`,
-            [
-                group_id, name.trim(), description || null, severity || 'aviso',
-                dev_eui, measurement, comparison_operator, threshold_value,
-                hysteresis_activation_sec || 0, hysteresis_deactivation_sec || 0,
-                action_type || 'none', notify_on_state_change ?? true, notification_template || null,
-                resend_period_min || 1440, resend_enabled ?? false,
-                play_sound ?? false, show_banner ?? false, req.user!.id,
-            ]
-        );
+        client = await pool.connect();
+        await client.query('BEGIN');
+        const createdAlarms: any[] = [];
 
-        // Create initial alarm state
-        await pool.query(
-            'INSERT INTO scada.alarm_state (alarm_id) VALUES ($1)',
-            [result.rows[0].id]
-        );
+        for (const deu of uniqueDevices) {
+            const result = await client.query(
+                `INSERT INTO scada.alarms
+                 (group_id, name, description, severity, dev_eui, measurement,
+                  comparison_operator, threshold_value,
+                  hysteresis_activation_sec, hysteresis_deactivation_sec,
+                  action_type, notify_on_state_change, notification_template,
+                  resend_period_min, resend_enabled, play_sound, show_banner, batch_id, created_by)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *`,
+                [
+                    group_id, name.trim(), description || null, severity || 'aviso',
+                    deu, measurement, comparison_operator, threshold_value,
+                    hysteresis_activation_sec || 0, hysteresis_deactivation_sec || 0,
+                    action_type || 'none', notify_on_state_change ?? true, notification_template || null,
+                    resend_period_min || 1440, resend_enabled ?? false,
+                    play_sound ?? false, show_banner ?? false, batchId, req.user!.id,
+                ]
+            );
 
-        await auditLog(req.user!.id, 'ALARM_CREATED', { alarm_id: result.rows[0].id, name, dev_eui }, req.ip!);
-        res.status(201).json(result.rows[0]);
+            await client.query(
+                'INSERT INTO scada.alarm_state (alarm_id) VALUES ($1)',
+                [result.rows[0].id]
+            );
+            createdAlarms.push(result.rows[0]);
+        }
+
+        await client.query('COMMIT');
+
+        await auditLog(req.user!.id, 'ALARM_CREATED', {
+            batch_id: batchId,
+            count: createdAlarms.length,
+            name,
+            dev_euis: uniqueDevices,
+        }, req.ip!);
+
+        if (isBatch) {
+            res.status(201).json({ batch_id: batchId, count: createdAlarms.length, alarms: createdAlarms });
+        } else {
+            res.status(201).json(createdAlarms[0]);
+        }
     } catch (e: any) {
+        if (client) await client.query('ROLLBACK').catch(() => {});
         console.error('Error creating alarm:', e.message);
         res.status(500).json({ error: 'Error al crear alarma.' });
+    } finally {
+        if (client) client.release();
     }
 });
 
@@ -182,6 +285,7 @@ router.put('/:id', isSupervisor, async (req: Request, res: Response) => {
             ]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Alarma no encontrada.' });
+        await auditLog(req.user!.id, 'ALARM_UPDATED', { alarm_id: req.params.id, name, measurement, threshold_value, severity }, req.ip!);
         res.json(result.rows[0]);
     } catch (e: any) {
         res.status(500).json({ error: 'Error al actualizar alarma.' });

@@ -4,6 +4,18 @@ Todos los cambios notables del proyecto se documentan aquí.
 
 ## [Unreleased]
 
+### scada-query-api (Alarm form redesign — backend)
+- **feat:** migration 037 — add `batch_id` UUID column to `scada.alarms` for multi-site alarm creation; create `scada.measurement_catalog` table with seeded 4PT/ICH measurements
+- **feat:** `GET /alarms/measurements` — returns measurement catalog grouped by provider for dropdown population
+- **feat:** `GET /alarms/sites` — returns scoped site list (dev_eui, site_name, municipality, proveedor, site_type) for alarm form site selector
+- **feat:** `POST /alarms` — accepts `dev_euis: string[]` for batch creation (up to 200 devices per request, transactional, generates shared `batch_id`); backward-compatible with single `dev_eui`
+
+### scada-front (Alarm form redesign — dropdown UX + multi-site + severity banners)
+- **feat:** new `AlarmFormDialogComponent` — standalone alarm form dialog with site search dropdown (grouped by municipality), measurement dropdown (filtered by site provider), severity-colored select, chip-based multi-site selector, notification placeholder section
+- **refactor:** `AlarmConfig` — extracted inline alarm dialog into `AlarmFormDialogComponent`; simplified to delegate create/edit to dialog component
+- **feat:** `AlarmService` — added `AlarmSite`, `MeasurementOption`, `AlarmBatchResult` interfaces; added `getSitesForAlarm()`, `getMeasurements()`, `createAlarmBatch()` methods
+- **feat:** header-bar severity-colored alarm banners — critico (red), alerta (orange), aviso (blue) with matching pulse animations
+
 ### scada-front (GIS + Telemetria — sub-filtros operativos)
 - **feat:** GIS layer panel — "Activos" split into 3 sub-layers: Operando (green, flow > 0), Sin gasto (amber, connected but no flow), Sin comunicacion (red, COMM LOSS >15min). Parent "Activos" checkbox toggles all 3.
 - **feat:** GIS cluster groups now use distinct colors per operational state (green/amber/red)

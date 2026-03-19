@@ -64,6 +64,7 @@ export type AuditAction =
   | 'VARIABLE_VIEW_UNSHARED'
   // Alarms
   | 'ALARM_CREATED'
+  | 'ALARM_UPDATED'
   | 'ALARM_DELETED'
   | 'ALARM_ACKNOWLEDGED';
 

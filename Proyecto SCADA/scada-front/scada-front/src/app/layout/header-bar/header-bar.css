@@ -52,6 +52,34 @@
   50% { background: #b91c1c; }
 }
 
+/* Severity: critico = red (default above) */
+.alarm-banner--critico {
+  background: #dc2626;
+  animation-name: banner-pulse;
+}
+
+/* Severity: alerta = orange */
+.alarm-banner--alerta {
+  background: #ea580c;
+  animation-name: banner-pulse-alerta;
+}
+
+@keyframes banner-pulse-alerta {
+  0%, 100% { background: #ea580c; }
+  50% { background: #c2410c; }
+}
+
+/* Severity: aviso = blue */
+.alarm-banner--aviso {
+  background: #2563eb;
+  animation-name: banner-pulse-aviso;
+}
+
+@keyframes banner-pulse-aviso {
+  0%, 100% { background: #2563eb; }
+  50% { background: #1d4ed8; }
+}
+
 /* =========================================
    HEADER BAR — SCADA SOA
    ========================================= */

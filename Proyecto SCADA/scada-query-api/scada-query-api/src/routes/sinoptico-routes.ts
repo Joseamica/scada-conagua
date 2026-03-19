@@ -77,12 +77,12 @@ const ALLOWED_SITE_STATUS_FIELDS = new Set([
 ]);
 
 // ─── Scope helper: restrict results to user's municipality ───
-function scopeWhere(user: any, alias: string = 'p'): { clause: string; params: any[] } {
-    if (user.scope === 'Municipal') {
-        return { clause: `AND ${alias}.municipio_id = $`, params: [user.scope_id] };
+function scopeWhere(user: any, alias: string = 'p', paramStart: number = 2): { clause: string; params: any[] } {
+    if (user.scope === 'Municipal' && user.scope_id) {
+        return { clause: `AND ${alias}.municipio_id = $${paramStart}`, params: [user.scope_id] };
     }
-    if (user.scope === 'Estatal') {
-        return { clause: `AND ${alias}.estado_id = $`, params: [user.estado_id] };
+    if (user.scope === 'Estatal' && user.estado_id) {
+        return { clause: `AND ${alias}.estado_id = $${paramStart}`, params: [user.estado_id] };
     }
     return { clause: '', params: [] };
 }
@@ -109,8 +109,7 @@ router.get('/projects', isAuth, async (req: Request, res: Response) => {
             return res.json(result.rows);
         }
 
-        const scope = scopeWhere(user);
-        const paramOffset = scope.params.length;
+        const scope = scopeWhere(user, 'p', 2);
 
         const sql = `
             SELECT p.*, u.full_name AS owner_name,
@@ -121,7 +120,7 @@ router.get('/projects', isAuth, async (req: Request, res: Response) => {
                    OR EXISTS (SELECT 1 FROM scada.sinoptico_shares sh
                               JOIN scada.sinopticos si ON si.id = sh.sinoptico_id
                               WHERE si.project_id = p.id AND sh.user_id = $1))
-            ${scope.clause ? scope.clause.replace('$', `$${paramOffset + 2}`) : ''}
+            ${scope.clause}
             ORDER BY p.updated_at DESC
         `;
         const params = [user.id, ...scope.params];
@@ -432,10 +431,10 @@ router.get('/sinopticos/:id', isAuth, async (req: Request, res: Response) => {
         // Check can_edit_sinopticos granular permission
         if (share_permission === 'read') {
             const permCheck = await pool.query(
-                'SELECT 1 FROM scada.permissions WHERE user_id = $1 AND permission_key = $2',
-                [user.id, 'can_edit_sinopticos']
+                'SELECT can_edit_sinopticos FROM scada.permissions WHERE user_id = $1',
+                [user.id]
             );
-            if (permCheck.rows.length > 0) share_permission = 'edit';
+            if (permCheck.rows[0]?.can_edit_sinopticos) share_permission = 'edit';
         }
 
         res.json({ ...sinoptico, share_permission });

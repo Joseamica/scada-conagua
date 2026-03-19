@@ -28,6 +28,17 @@ router.post('/', async (req: Request, res: Response) => {
 
         const userId = await createUser(req.body);
 
+        // Seed default permissions based on role
+        const roleId = req.body.role_id || 4;
+        await upsertPermissions(userId, {
+            can_view: true,
+            can_edit: roleId <= 3,        // Admin, Supervisor, Operador
+            can_export: roleId <= 2,       // Admin, Supervisor
+            can_block: roleId === 1,       // Admin only
+            can_operate: roleId <= 2,      // Admin, Supervisor
+            can_edit_sinopticos: roleId <= 2, // Admin, Supervisor
+        });
+
         await auditLog(req.user!.id, 'CREATE_USER_SUCCESS', { email }, req.ip!);
 
         res.status(201).json({ id: userId, message: 'User created' });

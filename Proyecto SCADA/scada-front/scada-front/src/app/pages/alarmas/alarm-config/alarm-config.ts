@@ -10,16 +10,18 @@ import {
   heroFolderOpen,
   heroBellAlert,
   heroChevronRight,
+  heroXMark,
 } from '@ng-icons/heroicons/outline';
 import { AlarmService, AlarmGroup, Alarm } from '../../../core/services/alarm.service';
 import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
+import { AlarmFormDialogComponent } from './alarm-form-dialog';
 
 @Component({
   selector: 'app-alarm-config',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgIconComponent, FooterTabsComponent, HeaderBarComponent],
-  providers: [provideIcons({ heroPlus, heroTrash, heroPencilSquare, heroFolderOpen, heroBellAlert, heroChevronRight })],
+  imports: [CommonModule, FormsModule, NgIconComponent, FooterTabsComponent, HeaderBarComponent, AlarmFormDialogComponent],
+  providers: [provideIcons({ heroPlus, heroTrash, heroPencilSquare, heroFolderOpen, heroBellAlert, heroChevronRight, heroXMark })],
   template: `
     <app-header-bar />
     <div class="alarm-config-page">
@@ -52,7 +54,7 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
         <main class="alarm-list-area">
           <div class="list-header" *ngIf="selectedGroupId()">
             <h2>{{ selectedGroupName() }}</h2>
-            <button class="btn-primary" (click)="editingAlarmId = null; resetNewAlarm(); showCreateAlarm = true">
+            <button class="btn-primary" (click)="openCreateDialog()">
               <ng-icon name="heroPlus" size="16" /> Nueva Alarma
             </button>
           </div>
@@ -64,18 +66,28 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
               <div class="alarm-severity" [class]="a.severity">{{ a.severity }}</div>
               <div class="alarm-info">
                 <h3>{{ a.name }}</h3>
-                <p>{{ a.dev_eui }} | {{ a.measurement }} {{ a.comparison_operator }} {{ a.threshold_value }}</p>
+                <p>{{ a.site_name || a.dev_eui }} | {{ a.measurement }} {{ a.comparison_operator }} {{ a.threshold_value }}</p>
                 <span class="state-badge" *ngIf="a.current_state && a.current_state !== 'INACTIVE'" [class]="a.current_state">
                   {{ a.current_state }}
                 </span>
               </div>
               <div class="alarm-actions">
-                <button class="btn-icon" (click)="editAlarm(a)" title="Editar">
-                  <ng-icon name="heroPencilSquare" size="16" />
-                </button>
-                <button class="btn-icon btn-danger" (click)="deleteAlarm(a)" title="Eliminar">
-                  <ng-icon name="heroTrash" size="16" />
-                </button>
+                @if (confirmingDeleteId() === a.id) {
+                  <span class="delete-confirm-text">¿Eliminar?</span>
+                  <button class="btn-icon btn-danger" (click)="confirmDelete(a)" title="Sí, eliminar">
+                    <ng-icon name="heroTrash" size="16" />
+                  </button>
+                  <button class="btn-icon" (click)="cancelDelete()" title="Cancelar">
+                    <ng-icon name="heroXMark" size="16" />
+                  </button>
+                } @else {
+                  <button class="btn-icon" (click)="openEditDialog(a)" title="Editar">
+                    <ng-icon name="heroPencilSquare" size="16" />
+                  </button>
+                  <button class="btn-icon btn-danger" (click)="deleteAlarm(a)" title="Eliminar">
+                    <ng-icon name="heroTrash" size="16" />
+                  </button>
+                }
               </div>
             </div>
             <div class="empty-state" *ngIf="alarms().length === 0">
@@ -110,69 +122,15 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
       </div>
     </div>
 
-    <!-- Create Alarm Dialog -->
-    <div class="dialog-overlay" *ngIf="showCreateAlarm" (click)="showCreateAlarm = false; editingAlarmId = null">
-      <div class="dialog dialog-wide" (click)="$event.stopPropagation()">
-        <h2>{{ editingAlarmId ? 'Editar Alarma' : 'Nueva Alarma' }}</h2>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Nombre *</label>
-            <input type="text" [(ngModel)]="newAlarm.name" placeholder="Nombre de la alarma" />
-          </div>
-          <div class="form-group">
-            <label>Severidad</label>
-            <select [(ngModel)]="newAlarm.severity">
-              <option value="aviso">Aviso</option>
-              <option value="alerta">Alerta</option>
-              <option value="critico">Critico</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>DevEUI *</label>
-            <input type="text" [(ngModel)]="newAlarm.dev_eui" placeholder="DevEUI del dispositivo" />
-          </div>
-          <div class="form-group">
-            <label>Medicion *</label>
-            <input type="text" [(ngModel)]="newAlarm.measurement" placeholder="caudal_lts, presion_kg..." />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Operador *</label>
-            <select [(ngModel)]="newAlarm.comparison_operator">
-              <option value=">">Mayor que (&gt;)</option>
-              <option value="<">Menor que (&lt;)</option>
-              <option value="=">Igual a (=)</option>
-              <option value="<>">Diferente de (&lt;&gt;)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Umbral *</label>
-            <input type="number" [(ngModel)]="newAlarm.threshold_value" placeholder="Valor umbral" />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="toggle-label">
-              <input type="checkbox" [(ngModel)]="newAlarm.play_sound" />
-              Reproducir sonido al activarse
-            </label>
-          </div>
-          <div class="form-group">
-            <label class="toggle-label">
-              <input type="checkbox" [(ngModel)]="newAlarm.show_banner" />
-              Mostrar banner en pantalla
-            </label>
-          </div>
-        </div>
-        <div class="dialog-actions">
-          <button class="btn-secondary" (click)="showCreateAlarm = false; editingAlarmId = null">Cancelar</button>
-          <button class="btn-primary" (click)="saveAlarm()" [disabled]="!isAlarmValid()">{{ editingAlarmId ? 'Guardar' : 'Crear' }}</button>
-        </div>
-      </div>
-    </div>
+    <!-- Alarm Form Dialog (create/edit) -->
+    @if (showAlarmDialog) {
+      <app-alarm-form-dialog
+        [alarm]="editingAlarm"
+        [groupId]="selectedGroupId()!"
+        (saved)="onAlarmSaved()"
+        (closed)="showAlarmDialog = false; editingAlarm = null"
+      />
+    }
 
     <app-footer-tabs />
   `,
@@ -262,6 +220,7 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
     .btn-icon:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     .btn-danger { color: var(--danger); }
     .btn-danger:hover { background: rgba(239,68,68,0.08); border-color: var(--danger); }
+    .delete-confirm-text { font-size: 12px; font-weight: 600; color: var(--danger); white-space: nowrap; }
     .empty-state {
       display: flex; flex-direction: column; align-items: center;
       gap: 8px; padding: 40px 16px; color: var(--text-muted);
@@ -287,7 +246,6 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
       padding: 24px; width: 90%; max-width: 480px;
       box-shadow: var(--shadow-lg);
     }
-    .dialog-wide { max-width: 560px; }
     .dialog h2 { margin: 0 0 16px; font-size: 18px; font-weight: 700; color: var(--text-primary); }
     .form-group { margin-bottom: 12px; }
     .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
@@ -302,17 +260,8 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
       border-color: var(--accent);
       box-shadow: 0 0 0 3px rgba(109, 0, 43, 0.10);
     }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .toggle-label {
-      display: flex; align-items: center; gap: 8px; cursor: pointer;
-      font-size: 13px; font-weight: 500; color: var(--text-primary);
-      padding: 9px 0;
-    }
-    .toggle-label input[type="checkbox"] {
-      width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer;
-    }
     .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
-    @media (max-width: 768px) { .config-grid { grid-template-columns: 1fr; } .form-row { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) { .config-grid { grid-template-columns: 1fr; } }
   `],
 })
 export class AlarmConfig implements OnInit {
@@ -324,15 +273,19 @@ export class AlarmConfig implements OnInit {
   selectedGroupId = signal<number | null>(null);
   selectedGroupName = signal('');
   loadingAlarms = signal(false);
+  confirmingDeleteId = signal<number | null>(null);
 
   showCreateGroup = false;
-  showCreateAlarm = false;
-  editingAlarmId: number | null = null;
+  showAlarmDialog = false;
+  editingAlarm: Alarm | null = null;
   newGroupName = '';
   newGroupMunicipality = '';
-  newAlarm: Partial<Alarm> = { severity: 'aviso', comparison_operator: '>', threshold_value: 0 };
 
   ngOnInit(): void {
+    this.loadGroups();
+  }
+
+  private loadGroups(): void {
     this.alarmService.getGroups().subscribe({
       next: (data) => this.groups.set(data),
     });
@@ -341,8 +294,14 @@ export class AlarmConfig implements OnInit {
   selectGroup(group: AlarmGroup): void {
     this.selectedGroupId.set(group.id);
     this.selectedGroupName.set(group.name);
+    this.loadAlarms();
+  }
+
+  private loadAlarms(): void {
+    const gid = this.selectedGroupId();
+    if (!gid) return;
     this.loadingAlarms.set(true);
-    this.alarmService.getAlarms(group.id).subscribe({
+    this.alarmService.getAlarms(gid).subscribe({
       next: (data) => { this.alarms.set(data); this.loadingAlarms.set(false); },
       error: () => this.loadingAlarms.set(false),
     });
@@ -355,56 +314,38 @@ export class AlarmConfig implements OnInit {
     });
   }
 
-  createAlarm(): void {
-    if (!this.isAlarmValid()) return;
-    this.alarmService.createAlarm({ ...this.newAlarm, group_id: this.selectedGroupId()! } as any).subscribe({
-      next: (a) => { this.alarms.update((list) => [a, ...list]); this.showCreateAlarm = false; this.resetNewAlarm(); },
-    });
+  openCreateDialog(): void {
+    this.editingAlarm = null;
+    this.showAlarmDialog = true;
   }
 
-  isAlarmValid(): boolean {
-    return !!(this.newAlarm.name?.trim() && this.newAlarm.dev_eui?.trim() && this.newAlarm.measurement?.trim() && this.newAlarm.comparison_operator && this.newAlarm.threshold_value !== undefined);
+  openEditDialog(alarm: Alarm): void {
+    this.editingAlarm = alarm;
+    this.showAlarmDialog = true;
   }
 
-  editAlarm(alarm: Alarm): void {
-    this.editingAlarmId = alarm.id;
-    this.newAlarm = {
-      name: alarm.name,
-      dev_eui: alarm.dev_eui,
-      measurement: alarm.measurement,
-      comparison_operator: alarm.comparison_operator,
-      severity: alarm.severity,
-      threshold_value: alarm.threshold_value,
-      play_sound: alarm.play_sound ?? false,
-      show_banner: alarm.show_banner ?? false,
-    };
-    this.showCreateAlarm = true;
-  }
-
-  saveAlarm(): void {
-    if (!this.isAlarmValid()) return;
-    if (this.editingAlarmId) {
-      this.alarmService.updateAlarm(this.editingAlarmId, this.newAlarm as any).subscribe({
-        next: (updated) => {
-          this.alarms.update((list) => list.map((a) => (a.id === updated.id ? updated : a)));
-          this.showCreateAlarm = false;
-          this.editingAlarmId = null;
-          this.resetNewAlarm();
-        },
-      });
-    } else {
-      this.createAlarm();
-    }
+  onAlarmSaved(): void {
+    this.showAlarmDialog = false;
+    this.editingAlarm = null;
+    this.loadAlarms();
+    this.loadGroups();
   }
 
   deleteAlarm(alarm: Alarm): void {
-    if (!confirm(`Eliminar alarma "${alarm.name}"?`)) return;
+    this.confirmingDeleteId.set(alarm.id);
+  }
+
+  confirmDelete(alarm: Alarm): void {
     this.alarmService.deleteAlarm(alarm.id).subscribe({
-      next: () => this.alarms.update((list) => list.filter((a) => a.id !== alarm.id)),
+      next: () => {
+        this.alarms.update((list) => list.filter((a) => a.id !== alarm.id));
+        this.confirmingDeleteId.set(null);
+        this.loadGroups();
+      },
     });
   }
 
-  resetNewAlarm(): void {
-    this.newAlarm = { severity: 'aviso', comparison_operator: '>', threshold_value: 0, play_sound: false, show_banner: false };
+  cancelDelete(): void {
+    this.confirmingDeleteId.set(null);
   }
 }

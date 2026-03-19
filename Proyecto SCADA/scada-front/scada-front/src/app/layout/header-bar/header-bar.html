@@ -1,6 +1,6 @@
 <!-- ========= BANNER DE ALARMAS CRITICAS ========= -->
 @for (alarm of visibleBanners(); track alarm.id) {
-  <div class="alarm-banner" role="alert">
+  <div class="alarm-banner" [class]="'alarm-banner alarm-banner--' + alarm.severity" role="alert">
     <div class="alarm-banner-content">
       <span class="alarm-banner-icon">&#9888;</span>
       <span class="alarm-banner-text">

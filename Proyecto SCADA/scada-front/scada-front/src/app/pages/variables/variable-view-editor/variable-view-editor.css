@@ -57,7 +57,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #059669;
+  background: var(--success, #059669);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -69,7 +69,7 @@
 }
 
 .btn-execute:hover {
-  background: #047857;
+  background: var(--success-hover, #047857);
   box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
 }
 
@@ -82,7 +82,7 @@
 /* ===== LAYOUT ===== */
 .editor-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.4fr 1fr;
   gap: 16px;
   min-height: 500px;
 }
@@ -170,8 +170,8 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
-  background: transparent;
-  border: 1px solid transparent;
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   padding: 2px 4px;
   font-family: 'Inter', system-ui, sans-serif;
@@ -187,7 +187,7 @@
 .item-tag {
   font-size: 11px;
   color: var(--text-muted);
-  font-family: 'SF Mono', 'Consolas', monospace;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -258,7 +258,7 @@
   background: rgba(109, 0, 43, 0.06);
   padding: 2px 6px;
   border-radius: 4px;
-  font-family: 'SF Mono', 'Consolas', monospace;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
 }
 
 .formula-form {
@@ -335,7 +335,6 @@
 .btn-formula-helper:hover {
   background: linear-gradient(135deg, #fde68a, #fcd34d);
   box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
-  transform: translateY(-1px);
 }
 
 .btn-formula-helper.active {
@@ -397,7 +396,6 @@
   border-color: #f59e0b;
   background: #fffbeb;
   box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
-  transform: translateY(-1px);
 }
 
 .helper-icon {
@@ -467,7 +465,7 @@
   color: var(--text-muted);
   margin-right: 4px;
   text-transform: uppercase;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.04em;
 }
 
@@ -622,9 +620,9 @@
 }
 
 .op-btn {
-  min-width: 24px;
-  height: 22px;
-  font-size: 11px;
+  min-width: 32px;
+  height: 28px;
+  font-size: 12px;
   font-weight: 600;
   font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
   background: var(--bg-card);
@@ -671,8 +669,8 @@
 }
 
 .fn-btn {
-  padding: 2px 6px;
-  font-size: 10px;
+  padding: 4px 10px;
+  font-size: 11px;
   font-weight: 600;
   font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
   background: var(--bg-card);
@@ -906,13 +904,13 @@
 }
 
 .btn-fix-apply {
-  background: #059669;
+  background: var(--success, #059669);
   border: none;
   color: #fff;
 }
 
 .btn-fix-apply:hover {
-  background: #047857;
+  background: var(--success-hover, #047857);
   box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
 }
 
@@ -994,7 +992,7 @@
 .var-tag {
   font-size: 11px;
   color: var(--text-muted);
-  font-family: 'SF Mono', 'Consolas', monospace;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
 }
 
 .var-value {
@@ -1004,7 +1002,8 @@
 }
 
 .formula-result-row {
-  background: rgba(109, 0, 43, 0.03);
+  background: rgba(109, 0, 43, 0.07);
+  border-left: 3px solid var(--accent);
 }
 
 .formula-alias {
@@ -1150,7 +1149,9 @@
 .series-chart-container {
   flex: 1;
   min-width: 0;
-  height: 280px;
+  min-height: 280px;
+  height: 40vh;
+  max-height: 500px;
 }
 
 .series-loading,
@@ -1315,6 +1316,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 /* ===== SHARE BUTTON ===== */

@@ -45,6 +45,7 @@ export interface Alarm {
   acknowledged_at?: string;
   ack_comment?: string;
   created_at: string;
+  site_name?: string;
 }
 
 export interface ActiveAlarm {
@@ -85,6 +86,29 @@ export interface RecipientCollection {
   name: string;
   description: string | null;
   member_count: number;
+}
+
+export interface AlarmSite {
+  dev_eui: string;
+  site_name: string;
+  municipality: string;
+  proveedor: string;
+  site_type: string;
+  municipio_id: number;
+}
+
+export interface MeasurementOption {
+  key: string;
+  label: string;
+  unit: string;
+  provider: string;
+  category: string;
+}
+
+export interface AlarmBatchResult {
+  batch_id: string;
+  count: number;
+  alarms: Alarm[];
 }
 
 export interface AlarmHistoryEntry {
@@ -196,6 +220,27 @@ export class AlarmService {
         }
       },
       error: () => {},
+    });
+  }
+
+  // Sites + Measurements for alarm form
+  getSitesForAlarm(): Observable<AlarmSite[]> {
+    return this.http.get<AlarmSite[]>(`${this.base}/sites`);
+  }
+
+  getMeasurements(): Observable<{ measurements: MeasurementOption[] }> {
+    return this.http.get<{ measurements: MeasurementOption[] }>(`${this.base}/measurements`);
+  }
+
+  createAlarmBatch(
+    groupId: number,
+    data: Partial<Alarm>,
+    devEuis: string[],
+  ): Observable<AlarmBatchResult> {
+    return this.http.post<AlarmBatchResult>(this.base, {
+      ...data,
+      group_id: groupId,
+      dev_euis: devEuis,
     });
   }
 
