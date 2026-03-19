@@ -187,14 +187,18 @@ export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
           lng: s.longitude || 0,
         })));
 
-        // Live flow aggregation from same response
+        // Live flow aggregation from same response (exclude COMM LOSS >15 min)
         let totalFlow = 0;
+        const now = Date.now();
         const liveMap = new Map<string, { caudal: number; presion: number }>();
 
         filtered.forEach(site => {
           const flow = Number(site.last_flow_value) || 0;
           const pressure = Number(site.last_pressure_value) || 0;
-          if (flow > 0.01) totalFlow += flow;
+          const isStale = site.last_updated_at
+            ? (now - new Date(site.last_updated_at).getTime() > 15 * 60 * 1000)
+            : true;
+          if (flow > 0.01 && !isStale) totalFlow += flow;
           liveMap.set(site.dev_eui, {
             caudal: Math.round(flow * 100) / 100,
             presion: Math.round(pressure * 100) / 100,
