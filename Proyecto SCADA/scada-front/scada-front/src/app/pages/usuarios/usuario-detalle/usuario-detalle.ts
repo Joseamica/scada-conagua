@@ -136,6 +136,21 @@ export class UsuarioDetalle implements OnInit {
       can_operate: [false]
     }, { validators: passwordMatchValidator });
 
+    // Preselect permission defaults when role changes (per CONAGUA questionnaire)
+    this.form.get('rol')?.valueChanges.subscribe((rolName: string) => {
+      const roleId = this.getRoleId(rolName);
+      // Only preselect on create mode, or if user confirms on edit
+      if (this.mode === 'create' || confirm('¿Restablecer permisos a los valores por defecto del rol?')) {
+        this.form.patchValue({
+          can_view: true,
+          can_edit: roleId <= 3,         // Admin, Supervisor, Operador
+          can_export: roleId <= 3,       // Admin, Supervisor, Operador
+          can_block: roleId === 1,       // Admin only
+          can_operate: roleId <= 3,      // Admin, Supervisor, Operador
+        });
+      }
+    });
+
     this.entityService.getAll().subscribe({
       next: (data) => {
         this.entities.set(data);
