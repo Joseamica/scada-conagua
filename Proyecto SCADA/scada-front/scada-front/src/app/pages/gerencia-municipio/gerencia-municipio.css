@@ -4,10 +4,30 @@
 
 .gerencia-container {
   display: grid;
-  grid-template-columns: 520px 1fr;
+  grid-template-columns: var(--panel-left-width, 520px) 6px 1fr;
   height: 100vh;
   background: var(--bg-app);
 }
+
+.resize-handle {
+  width: 6px;
+  cursor: col-resize;
+  background: var(--border-default, #e2e8f0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  z-index: 10;
+  user-select: none;
+}
+.resize-handle:hover,
+.resize-handle:active { background: var(--accent, #6d002b); }
+.resize-grip {
+  width: 2px; height: 32px; border-radius: 2px;
+  background: var(--text-muted, #94a3b8); opacity: 0.5;
+}
+.resize-handle:hover .resize-grip,
+.resize-handle:active .resize-grip { background: white; opacity: 1; }
 
 /* ===== LEFT PANEL ===== */
 

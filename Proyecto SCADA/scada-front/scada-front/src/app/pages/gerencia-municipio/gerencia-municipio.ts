@@ -74,6 +74,40 @@ export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
   private resizeHandler = () => { this.chart?.resize(); };
   private tileLayer?: L.TileLayer;
 
+  @ViewChild('panelLeft') panelLeftRef!: ElementRef<HTMLDivElement>;
+  private isResizing = false;
+
+  onResizeStart(e: MouseEvent | TouchEvent) {
+    e.preventDefault();
+    this.isResizing = true;
+    const container = this.panelLeftRef?.nativeElement?.parentElement;
+    if (!container) return;
+
+    const onMove = (ev: MouseEvent | TouchEvent) => {
+      if (!this.isResizing) return;
+      const clientX = ev instanceof MouseEvent ? ev.clientX : ev.touches[0].clientX;
+      const minW = 320;
+      const maxW = window.innerWidth * 0.7;
+      const newW = Math.min(maxW, Math.max(minW, clientX));
+      container.style.setProperty('--panel-left-width', `${newW}px`);
+    };
+
+    const onEnd = () => {
+      this.isResizing = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onEnd);
+      document.removeEventListener('touchmove', onMove as any);
+      document.removeEventListener('touchend', onEnd);
+      this.chart?.resize();
+      this.detalleMap?.invalidateSize();
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchmove', onMove as any);
+    document.addEventListener('touchend', onEnd);
+  }
+
   private themeEffect = effect(() => {
     const theme = this.themeService.resolved();
     if (this.chart) {
