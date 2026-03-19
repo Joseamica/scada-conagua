@@ -501,6 +501,7 @@
   overflow: auto;
   flex: 1;
   min-height: 0;
+  padding-bottom: 64px;
 }
 
 .table {
