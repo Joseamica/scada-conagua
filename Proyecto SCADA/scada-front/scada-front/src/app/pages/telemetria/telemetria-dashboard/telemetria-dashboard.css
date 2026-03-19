@@ -345,6 +345,8 @@
   align-self: stretch;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .tree-head {
@@ -498,10 +500,11 @@
 }
 
 .table-scroll {
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
-  min-height: 0;
-  padding-bottom: 64px;
+  min-height: 200px;
+  padding-bottom: 80px;
 }
 
 .table {
