@@ -245,6 +245,12 @@ export class GerenciaMunicipio implements OnInit, AfterViewInit, OnDestroy {
         this.sitios.set(this.sitios().map(s => {
           const live = liveMap.get(s.slug);
           return live ? { ...s, caudal: live.caudal, presion: live.presion } : s;
+        }).sort((a, b) => {
+          // Activos con gasto primero, luego activos sin gasto, luego el resto
+          const aActive = a.estatus?.toLowerCase() === 'activo' ? 1 : 0;
+          const bActive = b.estatus?.toLowerCase() === 'activo' ? 1 : 0;
+          if (aActive !== bActive) return bActive - aActive;
+          return (b.caudal || 0) - (a.caudal || 0);
         }));
 
         this.cdr.detectChanges();
