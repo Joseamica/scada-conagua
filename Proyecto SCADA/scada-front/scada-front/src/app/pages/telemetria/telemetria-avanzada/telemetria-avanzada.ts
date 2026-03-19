@@ -132,7 +132,7 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
   });
 
   // Sites
-  sitesDisponibles = signal<Array<{ devEUI: string; name: string }>>([]);
+  sitesDisponibles = signal<Array<{ devEUI: string; name: string; municipality: string }>>([]);
   selectedSites = signal<string[]>([]);
   searchQuery = signal('');
 
@@ -144,6 +144,37 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
       s.name.toLowerCase().includes(q) || s.devEUI.toLowerCase().includes(q)
     );
   });
+
+  groupedFilteredSites = computed(() => {
+    const sites = this.filteredSites();
+    const map = new Map<string, typeof sites>();
+    for (const s of sites) {
+      const muni = s.municipality || 'Sin municipio';
+      if (!map.has(muni)) map.set(muni, []);
+      map.get(muni)!.push(s);
+    }
+    return [...map.entries()].map(([municipality, sites]) => ({ municipality, sites }));
+  });
+
+  // Collapsed municipalities — all expanded by default
+  collapsedMunis = signal<Set<string>>(new Set());
+
+  isMuniCollapsed(muni: string): boolean {
+    return this.collapsedMunis().has(muni);
+  }
+
+  toggleMuni(muni: string): void {
+    this.collapsedMunis.update(set => {
+      const next = new Set(set);
+      if (next.has(muni)) next.delete(muni); else next.add(muni);
+      return next;
+    });
+  }
+
+  selectedInGroup(group: { sites: { devEUI: string }[] }): number {
+    const sel = this.selectedSites();
+    return group.sites.filter(s => sel.includes(s.devEUI)).length;
+  }
 
   // Variables
   chartVariables = CHART_VARIABLES;
@@ -295,7 +326,7 @@ export class TelemetriaAvanzada implements OnInit, AfterViewInit, OnDestroy {
       next: (sites) => {
         // API already scopes by municipality for municipal users
         const mapped = sites
-          .map(s => ({ devEUI: s.dev_eui, name: s.site_name }));
+          .map(s => ({ devEUI: s.dev_eui, name: s.site_name, municipality: s.municipality || '' }));
 
         this.sitesDisponibles.set(mapped);
 

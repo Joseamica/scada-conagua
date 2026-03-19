@@ -5,29 +5,29 @@
 <div class="shell">
   <main class="page">
 
-    <!-- KPI SUMMARY -->
+    <!-- KPI SUMMARY — 5 cards, clickable as quick-filters -->
     <section class="kpi-strip">
-      <div class="kpi-card">
+      <div class="kpi-card" [class.kpi-card--active]="statusSel() === ''" (click)="filterByStatus('')">
         <div class="kpi-icon kpi-icon--total">
           <ng-icon name="heroSignal" size="20"></ng-icon>
         </div>
         <div class="kpi-body">
-          <span class="kpi-value">{{ sitesFiltrados().length }}</span>
+          <span class="kpi-value">{{ sites().length }}</span>
           <span class="kpi-label">Total sitios</span>
         </div>
       </div>
 
-      <div class="kpi-card">
+      <div class="kpi-card" [class.kpi-card--active]="statusSel() === 'ok'" (click)="filterByStatus('ok')">
         <div class="kpi-icon kpi-icon--ok">
           <ng-icon name="heroCheckCircle" size="20"></ng-icon>
         </div>
         <div class="kpi-body">
-          <span class="kpi-value">{{ sitesActivos() }}</span>
-          <span class="kpi-label">Con gasto</span>
+          <span class="kpi-value">{{ sitesOperando() }}</span>
+          <span class="kpi-label">Operando</span>
         </div>
       </div>
 
-      <div class="kpi-card">
+      <div class="kpi-card" [class.kpi-card--active]="statusSel() === 'no-flow'" (click)="filterByStatus('no-flow')">
         <div class="kpi-icon kpi-icon--warn">
           <ng-icon name="heroExclamationTriangle" size="20"></ng-icon>
         </div>
@@ -37,13 +37,23 @@
         </div>
       </div>
 
-      <div class="kpi-card">
+      <div class="kpi-card" [class.kpi-card--active]="statusSel() === 'no-signal'" (click)="filterByStatus('no-signal')">
+        <div class="kpi-icon kpi-icon--danger">
+          <ng-icon name="heroXCircle" size="20"></ng-icon>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-value">{{ sitesSinCom() }}</span>
+          <span class="kpi-label">Sin com.</span>
+        </div>
+      </div>
+
+      <div class="kpi-card" [class.kpi-card--active]="statusSel() === 'pending'" (click)="filterByStatus('pending')">
         <div class="kpi-icon kpi-icon--info">
           <ng-icon name="heroFunnel" size="20"></ng-icon>
         </div>
         <div class="kpi-body">
-          <span class="kpi-value">{{ sitesFiltrados().length }}</span>
-          <span class="kpi-label">Filtrados</span>
+          <span class="kpi-value">{{ sitesPendientes() }}</span>
+          <span class="kpi-label">Pendientes</span>
         </div>
       </div>
     </section>
@@ -62,18 +72,17 @@
             </span>
             <input
               type="text"
-              placeholder="Buscar sitio..."
-              aria-label="Buscar sitio por nombre o clave"
+              placeholder="Buscar por nombre o DevEUI..."
+              aria-label="Buscar sitio por nombre o DevEUI"
               [value]="busqueda()"
               (input)="busqueda.set($any($event.target).value)"
             />
-            <span class="search-hint" *ngIf="!busqueda()">nombre o clave</span>
           </div>
 
-          <div class="updated-badge" title="Última actualización">
-            <ng-icon name="heroClock" size="14"></ng-icon>
+          <button class="updated-badge" title="Actualizar datos" (click)="refreshData()">
+            <ng-icon name="heroArrowPath" size="14"></ng-icon>
             {{ lastUpdated() }}
-          </div>
+          </button>
         </div>
 
         <div class="actions">
@@ -82,25 +91,24 @@
             <span class="btn-label">Gráficas avanzadas</span>
           </button>
 
-          <button class="btn btn-ghost" disabled title="Próximamente" aria-label="Analíticos — próximamente">
-            <ng-icon name="heroCog8Tooth" size="16"></ng-icon>
-            <span class="btn-label">Analíticos</span>
-          </button>
-
-          <button class="btn btn-primary" (click)="crearNuevoSitio()" aria-label="Crear nuevo sitio">
-            <ng-icon name="heroPlus" size="16"></ng-icon>
-            <span class="btn-label">Nuevo sitio</span>
-          </button>
+          @if (canEdit()) {
+            <button class="btn btn-primary" (click)="crearNuevoSitio()" aria-label="Crear nuevo sitio">
+              <ng-icon name="heroPlus" size="16"></ng-icon>
+              <span class="btn-label">Nuevo sitio</span>
+            </button>
+          }
         </div>
       </div>
 
       <!-- FILTROS -->
-      <div class="filters" [class.filters--collapsed]="filtersCollapsed()">
+      <div class="filters" role="search" aria-label="Filtros de telemetria" [class.filters--collapsed]="filtersCollapsed()">
         <div class="filters-header" (click)="filtersCollapsed.set(!filtersCollapsed())">
           <span class="filters-toggle-label">
             <ng-icon name="heroAdjustmentsHorizontal" size="16"></ng-icon>
             Filtros
-            <span class="filters-count" *ngIf="activeFilterCount() > 0">{{ activeFilterCount() }}</span>
+            @if (activeFilterCount() > 0) {
+              <span class="filters-count">{{ activeFilterCount() }}</span>
+            }
           </span>
           <ng-icon
             [name]="filtersCollapsed() ? 'heroChevronDown' : 'heroChevronUp'"
@@ -109,74 +117,83 @@
           </ng-icon>
         </div>
 
-        <div class="filter-body" *ngIf="!filtersCollapsed()">
-          <div class="filter-grid">
+        @if (!filtersCollapsed()) {
+          <div class="filter-body">
+            <div class="filter-grid">
 
-            <!-- ESTADO -->
-            <div class="field">
-              <label for="filterEstado">Estado</label>
-              <select
-                id="filterEstado"
-                [value]="estadoSel()"
-                (change)="estadoSel.set($any($event.target).value); municipioSel.set('')">
-                <option value="">Todos</option>
-                <option *ngFor="let e of estados()" [value]="e">{{ e }}</option>
-              </select>
+              <!-- ESTADO -->
+              <div class="field">
+                <label for="filterEstado">Estado</label>
+                <select
+                  id="filterEstado"
+                  [value]="estadoSel()"
+                  (change)="estadoSel.set($any($event.target).value); municipioSel.set('')">
+                  <option value="">Todos</option>
+                  @for (e of estados(); track e) {
+                    <option [value]="e">{{ e }}</option>
+                  }
+                </select>
+              </div>
+
+              <!-- MUNICIPIO -->
+              <div class="field">
+                <label for="filterMunicipio">Municipio</label>
+                <select
+                  id="filterMunicipio"
+                  [disabled]="!estadoSel()"
+                  [value]="municipioSel()"
+                  (change)="municipioSel.set($any($event.target).value)">
+                  <option value="">Todos</option>
+                  @for (m of municipios(); track m) {
+                    <option [value]="m">{{ m }}</option>
+                  }
+                </select>
+              </div>
+
+              <!-- TIPO DE SITIO -->
+              <div class="field">
+                <label for="filterTipo">Tipo de sitio</label>
+                <select
+                  id="filterTipo"
+                  [value]="tipoSel()"
+                  (change)="tipoSel.set($any($event.target).value)">
+                  <option value="">Todos</option>
+                  @for (t of tiposSitio; track t) {
+                    <option [value]="t">{{ t }}</option>
+                  }
+                </select>
+              </div>
+
+              <!-- STATUS -->
+              <div class="field">
+                <label for="filterStatus">Status</label>
+                <select
+                  id="filterStatus"
+                  [value]="statusSel()"
+                  (change)="statusSel.set($any($event.target).value)">
+                  <option value="">Todos</option>
+                  <option value="ok">Operando</option>
+                  <option value="no-flow">Sin gasto</option>
+                  <option value="no-signal">Sin comunicación</option>
+                  <option value="pending">Pendiente</option>
+                  <option value="obra">En obra</option>
+                </select>
+              </div>
+
+              <div class="tool-actions">
+                <button
+                  class="btn btn-outline btn-sm"
+                  (click)="resetFiltros()"
+                  [disabled]="activeFilterCount() === 0"
+                  aria-label="Limpiar filtros">
+                  <ng-icon name="heroArrowPath" size="14"></ng-icon>
+                  Limpiar
+                </button>
+              </div>
+
             </div>
-
-            <!-- MUNICIPIO -->
-            <div class="field">
-              <label for="filterMunicipio">Municipio</label>
-              <select
-                id="filterMunicipio"
-                [disabled]="!estadoSel()"
-                [value]="municipioSel()"
-                (change)="municipioSel.set($any($event.target).value)">
-                <option value="">Todos</option>
-                <option *ngFor="let m of municipios()" [value]="m">{{ m }}</option>
-              </select>
-            </div>
-
-            <!-- TIPO DE SITIO -->
-            <div class="field">
-              <label for="filterTipo">Tipo de sitio</label>
-              <select
-                id="filterTipo"
-                [value]="tipoSel()"
-                (change)="tipoSel.set($any($event.target).value)">
-                <option value="">Todos</option>
-                <option *ngFor="let t of tiposSitio" [value]="t">{{ t }}</option>
-              </select>
-            </div>
-
-            <!-- STATUS -->
-            <div class="field">
-              <label for="filterStatus">Status</label>
-              <select
-                id="filterStatus"
-                [value]="statusSel()"
-                (change)="statusSel.set($any($event.target).value)">
-                <option value="">Todos</option>
-                <option value="ok">Operando</option>
-                <option value="no-flow">Sin gasto</option>
-                <option value="no-signal">Sin comunicación</option>
-                <option value="pending">Pendiente</option>
-              </select>
-            </div>
-
-            <div class="tool-actions">
-              <button
-                class="btn btn-outline btn-sm"
-                (click)="resetFiltros()"
-                [disabled]="activeFilterCount() === 0"
-                aria-label="Limpiar filtros">
-                <ng-icon name="heroArrowPath" size="14"></ng-icon>
-                Limpiar
-              </button>
-            </div>
-
           </div>
-        </div>
+        }
       </div>
 
       <!-- GRID CONTENIDO -->
@@ -199,17 +216,18 @@
             </button>
 
             <!-- Sin estado: muestra lista de estados -->
-            <ng-container *ngIf="!estadoSel()">
-              <button class="tree-item"
-                *ngFor="let e of estados()"
-                (click)="estadoSel.set(e); municipioSel.set('')">
-                <span>{{ e }}</span>
-                <ng-icon name="heroChevronRight" size="14" class="tree-arrow"></ng-icon>
-              </button>
-            </ng-container>
+            @if (!estadoSel()) {
+              @for (e of estados(); track e) {
+                <button class="tree-item"
+                  (click)="estadoSel.set(e); municipioSel.set('')">
+                  <span>{{ e }}</span>
+                  <ng-icon name="heroChevronRight" size="14" class="tree-arrow"></ng-icon>
+                </button>
+              }
+            }
 
             <!-- Con estado: muestra municipios -->
-            <ng-container *ngIf="estadoSel()">
+            @if (estadoSel()) {
               <button class="tree-item tree-item--back"
                 (click)="estadoSel.set(''); municipioSel.set('')">
                 <ng-icon name="heroArrowLeft" size="14"></ng-icon>
@@ -221,18 +239,19 @@
                   [class.active]="municipioSel() === ''"
                   (click)="municipioSel.set('')">
                   <span>Todos los municipios</span>
-                  <span class="tree-count">{{ sites().length }}</span>
+                  <span class="tree-count">{{ estadoSiteCount() }}</span>
                 </button>
 
-                <button class="tree-item"
-                  *ngFor="let m of municipios()"
-                  [class.active]="municipioSel() === m"
-                  (click)="municipioSel.set(m)">
-                  <span>{{ m }}</span>
-                  <span class="tree-count">{{ countByMunicipio(m) }}</span>
-                </button>
+                @for (m of municipios(); track m) {
+                  <button class="tree-item"
+                    [class.active]="municipioSel() === m"
+                    (click)="municipioSel.set(m)">
+                    <span>{{ m }}</span>
+                    <span class="tree-count">{{ municipioCounts().get(m) ?? 0 }}</span>
+                  </button>
+                }
               </div>
-            </ng-container>
+            }
 
           </div>
         </aside>
@@ -240,136 +259,148 @@
         <!-- TABLA -->
         <div class="tables">
 
-          <app-loading-spinner
-            *ngIf="loading()"
-            label="Cargando sitios..."
-            mode="fullpage">
-          </app-loading-spinner>
+          @if (loading()) {
+            <app-loading-spinner
+              label="Cargando sitios..."
+              mode="fullpage">
+            </app-loading-spinner>
+          }
 
-          <div class="table-wrap" *ngIf="!loading()">
-            <div class="table-title">
-              <span>Listado de sitios</span>
-              <span class="muted">({{ sitesFiltrados().length }} de {{ sites().length }})</span>
-            </div>
+          @if (!loading()) {
+            <div class="table-wrap">
+              <div class="table-title">
+                <span>Listado de sitios</span>
+                <span class="muted">({{ sitesFiltrados().length }} de {{ sites().length }})</span>
+              </div>
 
-            <div class="table-scroll">
-              <table class="table" role="grid">
-                <thead>
-                  <tr>
-                    <th scope="col">Sitio</th>
-                    <th scope="col">Tipo</th>
-                    <th scope="col">Zona</th>
-                    <th scope="col" class="col-numeric">Valor</th>
-                    <th scope="col">Unidad</th>
-                    <th scope="col">Status</th>
-                    <th scope="col" class="col-signal">Señal</th>
-                    <th scope="col" class="col-date">Última lectura</th>
-                    <th scope="col" class="col-actions">Acciones</th>
-                  </tr>
-                </thead>
+              <div class="table-scroll">
+                <table class="table" role="grid">
+                  <thead>
+                    <tr>
+                      <th scope="col">Sitio</th>
+                      <th scope="col">Tipo</th>
+                      <th scope="col">Zona</th>
+                      <th scope="col" class="col-numeric">Valor</th>
+                      <th scope="col">Status</th>
+                      <th scope="col" class="col-signal">Señal</th>
+                      <th scope="col" class="col-date">Última lectura</th>
+                      @if (canEdit()) {
+                        <th scope="col" class="col-actions">Acciones</th>
+                      }
+                    </tr>
+                  </thead>
 
-                <tbody>
-                  <tr *ngFor="let site of sitesFiltrados(); let i = index; let odd = odd"
-                    [class.row-alt]="odd"
-                    class="row-clickable"
-                    (click)="goToSiteDetail(site, $event)">
-                    <td>
-                      <span class="cell-name">
-                        <span class="site-dot"
-                          [class.site-dot--ok]="site.status === 'ok'"
-                          [class.site-dot--warn]="site.status === 'no-flow'"
-                          [class.site-dot--danger]="site.status === 'no-signal'"
-                          [class.site-dot--pending]="site.status === 'pending'"
-                          aria-hidden="true">
-                        </span>
-                        {{ site.name }}
-                      </span>
-                    </td>
-                    <td>
-                      <span class="type-badge">{{ site.type }}</span>
-                    </td>
-                    <td>{{ site.zone }}</td>
-                    <td class="mono col-numeric">{{ site.value }}</td>
-                    <td class="mono-unit">{{ site.unit }}</td>
-                    <td>
-                      <span class="pill"
-                        [ngClass]="{
-                          'pill--ok':      site.status === 'ok',
-                          'pill--warn':    site.status === 'no-flow',
-                          'pill--danger':  site.status === 'no-signal',
-                          'pill--pending': site.status === 'pending'
-                        }">
-                        <span class="pill-dot" aria-hidden="true"></span>
-                        {{ site.status === 'ok' ? 'Operando' : site.status === 'no-signal' ? 'Sin com.' : site.status === 'pending' ? 'Pendiente' : 'Sin gasto' }}
-                      </span>
-                    </td>
-                    <td class="col-signal">
-                      <div class="signal-cell" *ngIf="site.signalPct != null; else noSignal">
-                        <div class="signal-bar-track">
-                          <div class="signal-bar-fill"
-                            [style.width.%]="site.signalPct"
-                            [class.signal--good]="signalLevel(site.signalPct) === 'good'"
-                            [class.signal--fair]="signalLevel(site.signalPct) === 'fair'"
-                            [class.signal--poor]="signalLevel(site.signalPct) === 'poor'">
+                  <tbody>
+                    @for (site of sitesFiltrados(); track site.devEUI; let odd = $odd) {
+                      <tr
+                        [class.row-alt]="odd"
+                        class="row-clickable"
+                        (click)="goToSiteDetail(site, $event)">
+                        <td>
+                          <span class="cell-name">
+                            <span class="site-dot"
+                              [class.site-dot--ok]="site.status === 'ok'"
+                              [class.site-dot--warn]="site.status === 'no-flow'"
+                              [class.site-dot--danger]="site.status === 'no-signal'"
+                              [class.site-dot--pending]="site.status === 'pending'"
+                              [class.site-dot--obra]="site.status === 'obra'"
+                              aria-hidden="true">
+                            </span>
+                            {{ site.name }}
+                          </span>
+                        </td>
+                        <td>
+                          <span class="type-badge">{{ site.type }}</span>
+                        </td>
+                        <td>{{ site.zone }}</td>
+                        <td class="mono col-numeric">{{ site.value }} <span class="unit-inline">{{ site.unit }}</span></td>
+                        <td>
+                          <span class="pill"
+                            [ngClass]="{
+                              'pill--ok':      site.status === 'ok',
+                              'pill--warn':    site.status === 'no-flow',
+                              'pill--danger':  site.status === 'no-signal',
+                              'pill--pending': site.status === 'pending',
+                              'pill--obra':    site.status === 'obra'
+                            }">
+                            <span class="pill-dot" aria-hidden="true"></span>
+                            {{ statusLabel(site.status) }}
+                          </span>
+                        </td>
+                        <td class="col-signal">
+                          @if (site.signalPct != null) {
+                            <div class="signal-cell">
+                              <div class="signal-bar-track">
+                                <div class="signal-bar-fill"
+                                  [style.width.%]="site.signalPct"
+                                  [class.signal--good]="signalLevel(site.signalPct) === 'good'"
+                                  [class.signal--fair]="signalLevel(site.signalPct) === 'fair'"
+                                  [class.signal--poor]="signalLevel(site.signalPct) === 'poor'">
+                                </div>
+                              </div>
+                              <span class="signal-pct"
+                                [class.signal--good]="signalLevel(site.signalPct) === 'good'"
+                                [class.signal--fair]="signalLevel(site.signalPct) === 'fair'"
+                                [class.signal--poor]="signalLevel(site.signalPct) === 'poor'">
+                                {{ site.signalPct }}%
+                              </span>
+                            </div>
+                          } @else {
+                            <span class="signal-na">—</span>
+                          }
+                        </td>
+                        <td class="mono cell-date">{{ site.timestamp }}</td>
+                        @if (canEdit()) {
+                          <td>
+                            <div class="col-actions-cell">
+                              <button
+                                class="btn-action btn-action--chart"
+                                (click)="openAdvancedCharts(site); $event.stopPropagation()"
+                                title="Ver gráficas"
+                                aria-label="Ver gráficas de {{ site.name }}">
+                                <ng-icon name="heroChartBarSquare" size="16"></ng-icon>
+                              </button>
+
+                              <button
+                                class="btn-action btn-action--edit"
+                                (click)="editarSitio(site); $event.stopPropagation()"
+                                title="Editar sitio"
+                                aria-label="Editar {{ site.name }}">
+                                <ng-icon name="heroPencilSquare" size="16"></ng-icon>
+                              </button>
+
+                              <button
+                                class="btn-action btn-action--delete"
+                                (click)="eliminarSitio(site); $event.stopPropagation()"
+                                title="Eliminar sitio"
+                                aria-label="Eliminar {{ site.name }}">
+                                <ng-icon name="heroTrash" size="16"></ng-icon>
+                              </button>
+                            </div>
+                          </td>
+                        }
+                      </tr>
+                    }
+
+                    @if (sitesFiltrados().length === 0) {
+                      <tr>
+                        <td [attr.colspan]="canEdit() ? 8 : 7" class="empty">
+                          <div class="empty-state">
+                            <ng-icon name="heroMagnifyingGlass" size="32"></ng-icon>
+                            <p class="empty-title">Sin resultados</p>
+                            <p class="empty-desc">No hay sitios para los filtros seleccionados</p>
+                            <button class="btn btn-outline btn-sm" (click)="resetFiltros()">
+                              Limpiar filtros
+                            </button>
                           </div>
-                        </div>
-                        <span class="signal-pct"
-                          [class.signal--good]="signalLevel(site.signalPct) === 'good'"
-                          [class.signal--fair]="signalLevel(site.signalPct) === 'fair'"
-                          [class.signal--poor]="signalLevel(site.signalPct) === 'poor'">
-                          {{ site.signalPct }}%
-                        </span>
-                      </div>
-                      <ng-template #noSignal>
-                        <span class="signal-na">—</span>
-                      </ng-template>
-                    </td>
-                    <td class="mono cell-date">{{ site.timestamp }}</td>
-                    <td>
-                      <div class="col-actions-cell">
-                        <button
-                          class="btn-action btn-action--chart"
-                          (click)="openAdvancedCharts(site); $event.stopPropagation()"
-                          title="Ver gráficas"
-                          aria-label="Ver gráficas de {{ site.name }}">
-                          <ng-icon name="heroChartBarSquare" size="16"></ng-icon>
-                        </button>
-
-                        <button
-                          class="btn-action btn-action--edit"
-                          (click)="editarSitio(site); $event.stopPropagation()"
-                          title="Editar sitio"
-                          aria-label="Editar {{ site.name }}">
-                          <ng-icon name="heroPencilSquare" size="16"></ng-icon>
-                        </button>
-
-                        <button
-                          class="btn-action btn-action--delete"
-                          (click)="eliminarSitio(site); $event.stopPropagation()"
-                          title="Eliminar sitio"
-                          aria-label="Eliminar {{ site.name }}">
-                          <ng-icon name="heroTrash" size="16"></ng-icon>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-
-                  <tr *ngIf="sitesFiltrados().length === 0">
-                    <td colspan="9" class="empty">
-                      <div class="empty-state">
-                        <ng-icon name="heroMagnifyingGlass" size="32"></ng-icon>
-                        <p class="empty-title">Sin resultados</p>
-                        <p class="empty-desc">No hay sitios para los filtros seleccionados</p>
-                        <button class="btn btn-outline btn-sm" (click)="resetFiltros()">
-                          Limpiar filtros
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          }
 
         </div>
 

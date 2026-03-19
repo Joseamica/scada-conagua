@@ -446,7 +446,7 @@ router.get('/sinopticos/:id', isAuth, async (req: Request, res: Response) => {
 
 // PUT /sinopticos/:id — save canvas (owner, admin, canEditSinopticos perm, or 'edit' share required)
 router.put('/sinopticos/:id', isAuth, async (req: Request, res: Response) => {
-    const { name, description, canvas, canvas_width, canvas_height, thumbnail } = req.body;
+    const { name, description, canvas, canvas_width, canvas_height, canvas_bg, thumbnail } = req.body;
 
     try {
         const user = req.user!;
@@ -489,11 +489,12 @@ router.put('/sinopticos/:id', isAuth, async (req: Request, res: Response) => {
                  canvas = COALESCE($3, canvas),
                  canvas_width = COALESCE($4, canvas_width),
                  canvas_height = COALESCE($5, canvas_height),
-                 thumbnail = COALESCE($6, thumbnail),
+                 canvas_bg = COALESCE($6, canvas_bg),
+                 thumbnail = COALESCE($7, thumbnail),
                  version = version + 1,
                  updated_at = NOW()
-             WHERE id = $7 RETURNING id, version, updated_at`,
-            [name?.trim(), description, canvas ? JSON.stringify(canvas) : null, canvas_width, canvas_height, thumbnail, req.params.id]
+             WHERE id = $8 RETURNING id, version, updated_at`,
+            [name?.trim(), description, canvas ? JSON.stringify(canvas) : null, canvas_width, canvas_height, canvas_bg ?? null, thumbnail, req.params.id]
         );
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Sinoptico no encontrado.' });

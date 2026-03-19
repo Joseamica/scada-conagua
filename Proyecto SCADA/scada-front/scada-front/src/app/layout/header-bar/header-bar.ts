@@ -294,6 +294,11 @@ export class HeaderBarComponent implements OnInit, OnDestroy {
     this.router.navigate(['/perfil']);
   }
 
+  goToAlarmas() {
+    this.closeAll();
+    this.router.navigate(['/alarmas']);
+  }
+
   logout() {
     this.auditService.logAction('LOGOUT', {}).subscribe({
       complete: () => this.authService.logout(),

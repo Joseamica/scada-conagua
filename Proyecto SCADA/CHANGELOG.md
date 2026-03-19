@@ -13,6 +13,10 @@ Todos los cambios notables del proyecto se documentan aquí.
 - **fix:** `GET /alarms` — added scope filtering (Municipal/Estatal/Federal) so operators only see alarms for their sites; added `LEFT JOIN scada.inventory` to return `site_name` and `municipality` per alarm
 - **feat:** `PUT /alarms/:id` — added audit log entry (`ALARM_UPDATED`) with changed fields
 
+### scada-query-api (sinoptico canvas_bg persistence)
+- **fix:** migration 039 — adds `canvas_bg VARCHAR(50)` column to `scada.sinopticos` (missing column caused background color to never be saved)
+- **fix:** `PUT /sinopticos/:id` — added `canvas_bg` to destructuring and UPDATE query (was silently dropped on every save)
+
 ### scada-front (date-range-picker — popover clipping fix)
 - **fix:** date-range-picker popover changed from `position: absolute` to `position: fixed` — prevents clipping by parent containers with `overflow: hidden` (was causing picker to appear cut off in gerencia-municipio and other pages)
 - **fix:** popover position now calculated via `getBoundingClientRect()` on open; clamps right-edge to prevent left viewport overflow

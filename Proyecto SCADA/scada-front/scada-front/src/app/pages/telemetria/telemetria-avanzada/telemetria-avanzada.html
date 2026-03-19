@@ -50,14 +50,34 @@
                 {{ sitesDisponibles().length === 0 ? 'Cargando sitios...' : 'Sin resultados' }}
               </div>
             }
-            @for (s of filteredSites(); track s.devEUI) {
-              <label class="site-item" [class.checked]="selectedSites().includes(s.devEUI)">
-                <input type="checkbox"
-                       [checked]="selectedSites().includes(s.devEUI)"
-                       (change)="toggleSite(s.devEUI)">
-                <span class="site-check"></span>
-                <span class="site-name">{{ s.name }}</span>
-              </label>
+            @for (group of groupedFilteredSites(); track group.municipality) {
+              <div class="muni-header" (click)="toggleMuni(group.municipality)"
+                   [class.muni-header--collapsed]="isMuniCollapsed(group.municipality)">
+                <svg class="muni-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+                <span class="muni-name">{{ group.municipality }}</span>
+                <span class="muni-badge" [class.muni-badge--active]="selectedInGroup(group) > 0">
+                  @if (selectedInGroup(group) > 0) {
+                    <span class="muni-sel">{{ selectedInGroup(group) }}</span>
+                    <span class="muni-sep">/</span>
+                  }
+                  {{ group.sites.length }}
+                </span>
+              </div>
+              @if (!isMuniCollapsed(group.municipality)) {
+                <div class="muni-sites">
+                  @for (s of group.sites; track s.devEUI) {
+                    <label class="site-item" [class.checked]="selectedSites().includes(s.devEUI)">
+                      <input type="checkbox"
+                             [checked]="selectedSites().includes(s.devEUI)"
+                             (change)="toggleSite(s.devEUI)">
+                      <span class="site-check"></span>
+                      <span class="site-name">{{ s.name }}</span>
+                    </label>
+                  }
+                </div>
+              }
             }
           </div>
         </div>

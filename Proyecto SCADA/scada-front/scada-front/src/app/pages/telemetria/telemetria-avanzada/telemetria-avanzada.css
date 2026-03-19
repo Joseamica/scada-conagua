@@ -257,7 +257,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0;
 }
 
 .sites-empty {
@@ -265,6 +265,119 @@
   color: var(--text-secondary);
   font-size: 12px;
   padding: 20px 8px;
+}
+
+/* ===== MUNICIPALITY STICKY HEADERS ===== */
+.muni-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 8px 4px;
+  background: var(--bg-card);
+  border-left: 2px solid var(--accent);
+  margin-top: 6px;
+  cursor: pointer;
+  user-select: none;
+  gap: 4px;
+}
+.muni-header:first-of-type { margin-top: 0; }
+.muni-header:hover { background: var(--bg-card-hover); }
+
+.muni-chevron {
+  width: 12px;
+  height: 12px;
+  color: var(--accent);
+  flex-shrink: 0;
+  transition: transform 0.22s cubic-bezier(.34,1.56,.64,1);
+}
+.muni-header--collapsed .muni-chevron {
+  transform: rotate(-90deg);
+}
+
+.muni-sites {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  animation: sites-reveal 0.18s ease;
+}
+@keyframes sites-reveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.muni-name {
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  margin-right: 6px;
+}
+
+.muni-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-card-hover);
+  padding: 2px 6px;
+  border-radius: 999px;
+  min-width: 22px;
+  justify-content: center;
+  transition: background 0.25s cubic-bezier(.34,1.56,.64,1), color 0.2s;
+  flex-shrink: 0;
+}
+.muni-badge--active {
+  background: var(--accent);
+  color: #fff;
+  animation: badge-pop 0.3s cubic-bezier(.34,1.56,.64,1);
+}
+.muni-sel {
+  animation: num-flip 0.2s ease;
+}
+.muni-sep {
+  opacity: 0.7;
+  font-weight: 400;
+}
+
+@keyframes badge-pop {
+  0%   { transform: scale(0.75); }
+  60%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+@keyframes num-flip {
+  0%   { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Spring check animation */
+@keyframes spring-check {
+  0%   { transform: scale(1); }
+  25%  { transform: scale(0.72); }
+  55%  { transform: scale(1.28); }
+  75%  { transform: scale(0.92); }
+  90%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+.site-item.checked .site-check {
+  animation: spring-check 0.38s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-item.checked .site-check { animation: none; }
+  .muni-badge--active { animation: none; }
+  .muni-sel { animation: none; }
+  .muni-sites { animation: none; }
+  .muni-chevron { transition: none; }
 }
 
 .site-item {

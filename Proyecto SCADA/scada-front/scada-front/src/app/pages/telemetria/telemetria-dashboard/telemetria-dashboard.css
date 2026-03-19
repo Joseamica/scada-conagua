@@ -34,8 +34,8 @@
    ========================= */
 .kpi-strip {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
   margin-bottom: 16px;
 }
 
@@ -48,7 +48,14 @@
   align-items: center;
   gap: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s;
+  cursor: pointer;
+  user-select: none;
+}
+
+.kpi-card--active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-light);
 }
 
 .kpi-card:hover {
@@ -65,10 +72,11 @@
   flex-shrink: 0;
 }
 
-.kpi-icon--total { background: var(--accent-light); color: var(--accent); }
-.kpi-icon--ok    { background: var(--success-bg); color: var(--success); }
-.kpi-icon--warn  { background: var(--warning-bg); color: var(--warning); }
-.kpi-icon--info  { background: var(--info-bg); color: var(--info); }
+.kpi-icon--total  { background: var(--accent-light); color: var(--accent); }
+.kpi-icon--ok     { background: var(--success-bg); color: var(--success); }
+.kpi-icon--warn   { background: var(--warning-bg); color: var(--warning); }
+.kpi-icon--danger { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+.kpi-icon--info   { background: var(--info-bg); color: var(--info); }
 
 .kpi-body {
   display: flex;
@@ -587,6 +595,11 @@
   box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.15);
 }
 
+.site-dot--obra {
+  background: #eab308;
+  box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.15);
+}
+
 /* Cell: Type badge */
 .type-badge {
   font-size: 12px;
@@ -728,6 +741,11 @@
 .pill--pending { background: rgba(107, 114, 128, 0.1); border-color: #6b7280; color: #6b7280; }
 .pill--pending .pill-dot { background: #6b7280; }
 
+.pill--obra { background: rgba(234, 179, 8, 0.1); border-color: #eab308; color: #a16207; }
+.pill--obra .pill-dot { background: #eab308; }
+
+.unit-inline { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+
 .pill--bad  { background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger); }
 .pill--bad .pill-dot { background: #ef4444; }
 
@@ -867,7 +885,7 @@
    RESPONSIVE
    ========================= */
 @media (max-width: 1200px) {
-  .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  .kpi-strip { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 1024px) {

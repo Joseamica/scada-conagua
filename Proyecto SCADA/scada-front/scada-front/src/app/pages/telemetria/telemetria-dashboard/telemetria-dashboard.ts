@@ -1,6 +1,8 @@
-import { Component, signal, computed, OnInit } from '@angular/core';
+import { Component, signal, computed, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
@@ -24,16 +26,42 @@ import {
   heroArrowLeft,
   heroMapPin,
   heroMagnifyingGlass,
-  heroTrash
+  heroTrash,
+  heroXCircle,
+  heroWifi,
 } from '@ng-icons/heroicons/outline';
 
 import { TelemetryService } from '../../../core/services/telemetry';
 import { AuthService } from '../../../core/services/auth.service';
 import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner';
 
-// JSON Estados / Municipios
-import estadosJson from '../../../../assets/data/estados.json';
+// Shared constant for COMM LOSS detection
+const COMM_LOSS_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
 
+
+// Status labels and colors
+const STATUS_LABELS: Record<string, string> = {
+  'ok': 'Operando',
+  'no-flow': 'Sin gasto',
+  'no-signal': 'Sin com.',
+  'pending': 'Pendiente',
+  'obra': 'En obra',
+};
+
+interface DashboardSite {
+  devEUI: string;
+  name: string;
+  type: string;
+  estado: string;
+  municipio: string;
+  zone: string;
+  value: string;
+  unit: string;
+  status: string;
+  rssi: number | null;
+  signalPct: number | null;
+  timestamp: string;
+}
 
 @Component({
   selector: 'app-telemetria-dashboard',
@@ -64,32 +92,32 @@ import estadosJson from '../../../../assets/data/estados.json';
       heroArrowLeft,
       heroMapPin,
       heroMagnifyingGlass,
-      heroTrash
+      heroTrash,
+      heroXCircle,
+      heroWifi,
     })
   ],
   templateUrl: './telemetria-dashboard.html',
   styleUrls: ['./telemetria-dashboard.css']
 })
-export class TelemetriaDashboard implements OnInit {
+export class TelemetriaDashboard implements OnInit, OnDestroy {
+  private destroyRef = inject(DestroyRef);
 
   // =========================
-  // FILTROS (signals)
+  // FILTROS (signals) — all use '' for "no filter"
   // =========================
   estadoSel = signal<string>('');
   municipioSel = signal<string>('');
-  tipoSel = signal<string | null>(null);
+  tipoSel = signal<string>('');
   statusSel = signal<string>('');
   busqueda = signal<string>('');
   filtersCollapsed = signal(false);
 
   loading = signal(true);
-  sitios: any[] = [];
 
   // =========================
   // CATÁLOGOS
   // =========================
-
-  // Derived from actual site data — only show states/municipios with wells
   estados = computed(() => {
     const unique = [...new Set(this.sites().map(s => s.estado))];
     return unique.filter(e => e).sort();
@@ -115,19 +143,27 @@ export class TelemetriaDashboard implements OnInit {
   ];
 
   // =========================
-  // SITIOS ACTIVOS
+  // SITIOS
   // =========================
-  sites = signal<any[]>([]);
+  sites = signal<DashboardSite[]>([]);
 
   // =========================
-  // KPI COMPUTED (react to filters)
+  // KPI COMPUTED — react to filters, separated by status
   // =========================
-  sitesActivos = computed(() =>
+  sitesOperando = computed(() =>
     this.sitesFiltrados().filter(s => s.status === 'ok').length
   );
 
   sitesSinGasto = computed(() =>
-    this.sitesFiltrados().filter(s => s.status === 'no-flow' || s.status === 'no-signal').length
+    this.sitesFiltrados().filter(s => s.status === 'no-flow').length
+  );
+
+  sitesSinCom = computed(() =>
+    this.sitesFiltrados().filter(s => s.status === 'no-signal').length
+  );
+
+  sitesPendientes = computed(() =>
+    this.sitesFiltrados().filter(s => s.status === 'pending').length
   );
 
   // =========================
@@ -143,10 +179,6 @@ export class TelemetriaDashboard implements OnInit {
     return count;
   });
 
-  private normalize(v: string) {
-    return v.toUpperCase().replace(/\s+/g, ' ').trim();
-  }
-
   sitesFiltrados = computed(() => {
     const q = this.busqueda().toLowerCase().trim();
 
@@ -157,11 +189,37 @@ export class TelemetriaDashboard implements OnInit {
       if (this.statusSel() && site.status !== this.statusSel()) return false;
 
       if (q) {
-        return site.name.toLowerCase().includes(q);
+        return site.name.toLowerCase().includes(q) || site.devEUI.toLowerCase().includes(q);
       }
 
       return true;
     });
+  });
+
+  // Pre-computed municipio counts (replaces O(n*m) countByMunicipio method)
+  municipioCounts = computed(() => {
+    const counts = new Map<string, number>();
+    for (const s of this.sites()) {
+      counts.set(s.municipio, (counts.get(s.municipio) || 0) + 1);
+    }
+    return counts;
+  });
+
+  // Count of sites for the selected estado (used in tree "Todos los municipios")
+  estadoSiteCount = computed(() => {
+    const est = this.estadoSel();
+    if (!est) return this.sites().length;
+    return this.sites().filter(s => s.estado === est).length;
+  });
+
+  // =========================
+  // PERMISSIONS
+  // =========================
+  canEdit = computed(() => {
+    const user = this.authService.currentUser();
+    if (!user) return false;
+    if (user.role_id === 1) return true;
+    return user.role_id <= 3; // Admin, Supervisor, Operador
   });
 
   // =========================
@@ -177,6 +235,7 @@ export class TelemetriaDashboard implements OnInit {
   }
 
   embed = signal(false);
+  private refreshInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -189,12 +248,24 @@ export class TelemetriaDashboard implements OnInit {
 
   ngOnInit(): void {
     this.loadSites();
+    // Auto-refresh every 60 seconds
+    this.refreshInterval = setInterval(() => this.loadSites(), 60_000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
+    }
   }
 
   private loadSites(): void {
-    this.telemetryService.getSites().subscribe({
+    this.telemetryService.getSites().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (apiSites) => {
-        const mapped = apiSites.map(s => {
+        const now = Date.now();
+        const mapped: DashboardSite[] = apiSites.map(s => {
           const siteType = s.site_type
             ? s.site_type.charAt(0).toUpperCase() + s.site_type.slice(1).toLowerCase()
             : 'Pozo';
@@ -202,12 +273,15 @@ export class TelemetriaDashboard implements OnInit {
           const flow = s.last_flow_value != null ? Number(s.last_flow_value) : null;
           const hasTelemetry = s.last_updated_at != null;
           const hasFlow = flow != null && flow > 0.01;
+          const estatus = ((s as any).estatus || 'activo').toLowerCase();
 
-          // Detect COMM LOSS: has telemetry record but last update >15 min ago
-          const isStale = hasTelemetry && (Date.now() - new Date(s.last_updated_at!).getTime() > 15 * 60 * 1000);
+          // Detect COMM LOSS
+          const isStale = hasTelemetry && (now - new Date(s.last_updated_at!).getTime() > COMM_LOSS_THRESHOLD_MS);
 
           let status: string;
-          if (!hasTelemetry) {
+          if (estatus === 'obra') {
+            status = 'obra';
+          } else if (!hasTelemetry) {
             status = 'pending';
           } else if (isStale) {
             status = 'no-signal';
@@ -229,12 +303,10 @@ export class TelemetriaDashboard implements OnInit {
             status,
             rssi: s.rssi ?? null,
             signalPct: this.rssiToPercent(s.rssi),
-            timestamp: hasTelemetry ? this.formatTimestamp(s.last_updated_at!) : 'Esperando primera lectura',
+            timestamp: hasTelemetry ? this.formatTimestamp(s.last_updated_at!) : 'Sin lectura',
           };
         });
 
-        // Scope filtering is handled by the backend (municipio_id scope in GET /sites)
-        // No client-side filtering needed — avoids name mismatch bugs
         this.sites.set(mapped);
         this.lastUpdated.set(this.formatNow());
         this.loading.set(false);
@@ -260,8 +332,8 @@ export class TelemetriaDashboard implements OnInit {
   // HELPERS
   // =========================
 
-  countByMunicipio(municipio: string): number {
-    return this.sites().filter(s => s.municipio === municipio).length;
+  statusLabel(status: string): string {
+    return STATUS_LABELS[status] || status;
   }
 
   /** Convert RSSI (dBm) to 0–100 % (LoRaWAN typical range: -120 dBm = 0%, -30 dBm = 100%) */
@@ -285,16 +357,29 @@ export class TelemetriaDashboard implements OnInit {
   resetFiltros() {
     this.estadoSel.set('');
     this.municipioSel.set('');
-    this.tipoSel.set(null);
+    this.tipoSel.set('');
     this.statusSel.set('');
     this.busqueda.set('');
+  }
+
+  // Quick-filter from KPI card click
+  filterByStatus(status: string) {
+    if (this.statusSel() === status) {
+      this.statusSel.set(''); // toggle off
+    } else {
+      this.statusSel.set(status);
+    }
+  }
+
+  refreshData() {
+    this.loadSites();
   }
 
   goToAdvancedCharts() {
     this.router.navigate(['/telemetria/avanzadas']);
   }
 
-  openAdvancedCharts(site: any) {
+  openAdvancedCharts(site: DashboardSite) {
     this.router.navigate(['/telemetria/avanzadas'], {
       queryParams: { devEUI: site.devEUI }
     });
@@ -308,14 +393,13 @@ export class TelemetriaDashboard implements OnInit {
     });
   }
 
-  editarSitio(site: any) {
+  editarSitio(site: DashboardSite) {
     if (site.devEUI) {
       this.router.navigate(['/sitios/editar', site.devEUI]);
     }
   }
 
-  goToSiteDetail(site: any, event: MouseEvent) {
-    // Don't navigate if user clicked an action button
+  goToSiteDetail(site: DashboardSite, event: MouseEvent) {
     const target = event.target as HTMLElement;
     if (target.closest('.col-actions-cell')) return;
     if (site.devEUI) {
@@ -323,7 +407,7 @@ export class TelemetriaDashboard implements OnInit {
     }
   }
 
-  eliminarSitio(site: any) {
+  eliminarSitio(site: DashboardSite) {
     if (!site.devEUI) return;
     if (!confirm(`¿Eliminar el sitio "${site.name}"? Esta acción no se puede deshacer.`)) return;
 
