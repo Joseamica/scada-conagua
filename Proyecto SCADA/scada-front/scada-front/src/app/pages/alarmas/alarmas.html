@@ -22,7 +22,7 @@
         <ng-icon name="heroClockSolid" size="16"></ng-icon>
         Historial
       </button>
-      <button class="btn-primary" (click)="goConfig()">
+      <button class="btn-primary" (click)="goConfig()" *ngIf="canConfigAlarms()">
         <ng-icon name="heroCog6Tooth" size="16"></ng-icon>
         Configuracion
       </button>

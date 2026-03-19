@@ -13,6 +13,7 @@ import {
   heroClockSolid,
 } from '@ng-icons/heroicons/solid';
 import { AlarmService, ActiveAlarm } from '../../core/services/alarm.service';
+import { AuthService } from '../../core/services/auth.service';
 import { HeaderBarComponent } from '../../layout/header-bar/header-bar';
 import { FooterTabsComponent } from '../../layout/footer-tabs/footer-tabs';
 
@@ -59,8 +60,15 @@ export class Alarmas implements OnInit, OnDestroy {
 
   private pollInterval: any = null;
 
+  // Alarm config: Admin (1), Supervisor (2), Operador (3) per CONAGUA
+  canConfigAlarms = computed(() => {
+    const user = this.authService.currentUser();
+    return user ? user.role_id <= 3 : false;
+  });
+
   constructor(
     private alarmService: AlarmService,
+    private authService: AuthService,
     private router: Router,
   ) {}
 

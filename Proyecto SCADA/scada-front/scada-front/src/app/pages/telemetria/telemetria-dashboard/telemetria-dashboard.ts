@@ -233,22 +233,8 @@ export class TelemetriaDashboard implements OnInit {
           };
         });
 
-        // Municipal scope isolation
-        const user = this.authService.currentUser();
-        if (user?.scope === 'Municipal' && user.estado_id && user.scope_id) {
-          const estadoEntry = (estadosJson as any)[String(user.estado_id)];
-          if (estadoEntry?.municipios) {
-            const userMunicipio = estadoEntry.municipios[String(user.scope_id)];
-            if (userMunicipio) {
-              const normalizedUserMunicipio = this.normalize(userMunicipio);
-              this.sites.set(mapped.filter(s => this.normalize(s.municipio) === normalizedUserMunicipio));
-              this.lastUpdated.set(this.formatNow());
-              this.loading.set(false);
-              return;
-            }
-          }
-        }
-
+        // Scope filtering is handled by the backend (municipio_id scope in GET /sites)
+        // No client-side filtering needed — avoids name mismatch bugs
         this.sites.set(mapped);
         this.lastUpdated.set(this.formatNow());
         this.loading.set(false);
