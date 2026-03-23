@@ -203,11 +203,13 @@
                       (click)="selectUser(u.id)"
                       [class.selected]="selectedUserId() === u.id"
                       [class.row-alt]="odd">
-                    <td class="cell-name">
-                      <div class="user-avatar-sm" [class.user-avatar-sm--blocked]="u.is_blocked">
-                        {{ getInitials(u.full_name) }}
+                    <td>
+                      <div class="cell-name">
+                        <div class="user-avatar-sm" [class.user-avatar-sm--blocked]="u.is_blocked">
+                          {{ getInitials(u.full_name) }}
+                        </div>
+                        <span>{{ u.full_name }}</span>
                       </div>
-                      <span>{{ u.full_name }}</span>
                     </td>
                     <td class="mono">{{ u.email }}</td>
                     <td>
@@ -308,4 +310,4 @@
     </section>
   </main>
 
-<app-footer-tabs></app-footer-tabs>
+<app-sidebar-nav></app-sidebar-nav>

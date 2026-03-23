@@ -4,13 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
 import { heroArrowDownTray, heroFunnel } from '@ng-icons/heroicons/outline';
 import { AlarmService, AlarmHistoryEntry } from '../../../core/services/alarm.service';
-import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../../layout/sidebar-nav/sidebar-nav';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 
 @Component({
   selector: 'app-alarm-history',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgIconComponent, FooterTabsComponent, HeaderBarComponent],
+  imports: [CommonModule, FormsModule, NgIconComponent, SidebarNavComponent, HeaderBarComponent],
   providers: [provideIcons({ heroArrowDownTray, heroFunnel })],
   template: `
     <app-header-bar />
@@ -75,7 +75,7 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
         <button class="btn-sm" (click)="nextPage()" [disabled]="page() >= totalPages()">Siguiente</button>
       </div>
     </div>
-    <app-footer-tabs />
+    <app-sidebar-nav></app-sidebar-nav>
   `,
   styles: [`
     :host { display: block; font-family: 'Inter', system-ui, sans-serif; }

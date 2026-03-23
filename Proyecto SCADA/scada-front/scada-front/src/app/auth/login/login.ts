@@ -1,7 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
 import {
@@ -36,6 +36,8 @@ export class Login {
   isLoading = false;
   showPassword = false;
 
+  private route = inject(ActivatedRoute);
+
   constructor(
     private authService: AuthService,
     private router: Router
@@ -50,15 +52,17 @@ export class Login {
 
     this.authService.login(this.username, this.password).subscribe({
       next: (res) => {
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
         if (res.requires2FA) {
           sessionStorage.setItem('pending_email', this.username);
           sessionStorage.setItem('2fa_method', res.method || 'email');
           if (res.tempToken) {
             sessionStorage.setItem('2fa_temp_token', res.tempToken);
           }
+          if (returnUrl) sessionStorage.setItem('returnUrl', returnUrl);
           this.router.navigate(['/auth/login/token']);
         } else {
-          this.router.navigate(['/dashboard']);
+          this.router.navigateByUrl(returnUrl || '/dashboard');
         }
       },
       error: (err) => {

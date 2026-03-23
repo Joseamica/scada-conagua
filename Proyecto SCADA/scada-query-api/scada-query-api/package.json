@@ -23,6 +23,8 @@
   "license": "ISC",
   "dependencies": {
     "@influxdata/influxdb-client": "^1.33.0",
+    "@tensorflow/tfjs": "^4.22.0",
+    "adm-zip": "^0.5.16",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -37,6 +39,7 @@
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/expr-eval": "^1.0.2",

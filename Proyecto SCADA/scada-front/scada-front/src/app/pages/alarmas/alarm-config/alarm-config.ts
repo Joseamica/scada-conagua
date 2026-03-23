@@ -13,14 +13,14 @@ import {
   heroXMark,
 } from '@ng-icons/heroicons/outline';
 import { AlarmService, AlarmGroup, Alarm } from '../../../core/services/alarm.service';
-import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../../layout/sidebar-nav/sidebar-nav';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 import { AlarmFormDialogComponent } from './alarm-form-dialog';
 
 @Component({
   selector: 'app-alarm-config',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgIconComponent, FooterTabsComponent, HeaderBarComponent, AlarmFormDialogComponent],
+  imports: [CommonModule, FormsModule, NgIconComponent, SidebarNavComponent, HeaderBarComponent, AlarmFormDialogComponent],
   providers: [provideIcons({ heroPlus, heroTrash, heroPencilSquare, heroFolderOpen, heroBellAlert, heroChevronRight, heroXMark })],
   template: `
     <app-header-bar />
@@ -132,7 +132,7 @@ import { AlarmFormDialogComponent } from './alarm-form-dialog';
       />
     }
 
-    <app-footer-tabs />
+    <app-sidebar-nav></app-sidebar-nav>
   `,
   styles: [`
     :host { display: block; font-family: 'Inter', system-ui, sans-serif; }

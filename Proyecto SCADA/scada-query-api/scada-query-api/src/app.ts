@@ -19,6 +19,10 @@ import gisRoutes from './routes/gis-routes';
 import sinopticoRoutes from './routes/sinoptico-routes';
 import variableRoutes from './routes/variable-routes';
 import alarmRoutes from './routes/alarm-routes';
+import gisDrawingRoutes from './routes/gis-drawing-routes';
+import gisViewRoutes from './routes/gis-view-routes';
+import rainRoutes from './routes/rain-routes';
+import analyticsRoutes from './routes/analytics-routes';
 
 // --- Render uploads config ---
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads', 'renders');
@@ -160,6 +164,15 @@ app.use('/api/v1/entities', entityRoutes);
 
 // Ruta para gestión de capas GIS (GeoServer)
 app.use('/api/v1/gis', gisRoutes);
+
+// Dibujos GIS: anotaciones de usuario en el mapa
+app.use('/api/v1/gis/drawings', gisDrawingRoutes);
+// Vistas GIS: snapshots completos del mapa (red social de vistas)
+app.use('/api/v1/gis/views', gisViewRoutes);
+// Monitoreo de lluvias (pluviómetros)
+app.use('/api/v1/rain', rainRoutes);
+// Analíticas: tendencias, anomalías, predicciones, limpieza de datos
+app.use('/api/v1/analytics', analyticsRoutes);
 
 // Sinopticos: proyectos, canvas, compartir, actividad
 app.use('/api/v1/sinopticos', sinopticoRoutes);

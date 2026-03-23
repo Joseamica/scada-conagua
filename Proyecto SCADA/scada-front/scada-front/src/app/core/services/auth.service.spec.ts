@@ -85,6 +85,6 @@ describe('AuthService.clearSessionAndRedirect', () => {
     expect(localStorage.getItem('scada_token')).toBeNull();
     expect(localStorage.getItem('scada_user_data')).toBeNull();
     expect(setUserSpy).toHaveBeenCalledWith(null);
-    expect(navigateSpy).toHaveBeenCalledWith(['/login']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/login'], {});
   });
 });

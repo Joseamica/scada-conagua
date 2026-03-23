@@ -1,7 +1,7 @@
 import { Component, computed, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
-import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../../layout/sidebar-nav/sidebar-nav';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
 import {
   heroArrowPath,
@@ -23,7 +23,7 @@ import { DateRangePickerComponent, DateRangeOutput } from '../../../shared/date-
   imports: [
     CommonModule,
     HeaderBarComponent,
-    FooterTabsComponent,
+    SidebarNavComponent,
     NgIconComponent,
     DateRangePickerComponent
   ],

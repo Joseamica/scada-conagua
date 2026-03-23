@@ -8,7 +8,7 @@ import { forkJoin } from 'rxjs';
 import * as echarts from 'echarts';
 
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
-import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../../layout/sidebar-nav/sidebar-nav';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
 import {
   heroArrowLeftStartOnRectangle, heroPresentationChartLine, heroChartBar,
@@ -96,7 +96,7 @@ const RADAR_SNR_MAX_DB = 20;
 @Component({
   selector: 'app-telemetria-avanzada',
   standalone: true,
-  imports: [CommonModule, HeaderBarComponent, FooterTabsComponent, NgIconComponent, DateRangePickerComponent],
+  imports: [CommonModule, HeaderBarComponent, SidebarNavComponent, NgIconComponent, DateRangePickerComponent],
   providers: [
     provideIcons({
       heroArrowLeftStartOnRectangle, heroPresentationChartLine, heroChartBar,

@@ -17,7 +17,7 @@ import {
 
 import { HttpErrorResponse } from '@angular/common/http';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
-import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../../layout/sidebar-nav/sidebar-nav';
 import { TelemetryService } from '../../../core/services/telemetry';
 
 const estadosJson = require('../../../../assets/data/estados.json');
@@ -30,7 +30,7 @@ interface EstadoMunicipio {
 @Component({
   standalone: true,
   selector: 'app-sitio-form',
-  imports: [ReactiveFormsModule, HeaderBarComponent, FooterTabsComponent, CommonModule, NgIconComponent],
+  imports: [ReactiveFormsModule, HeaderBarComponent, SidebarNavComponent, CommonModule, NgIconComponent],
   providers: [
     provideIcons({
       heroArrowLeft,

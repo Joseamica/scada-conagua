@@ -1,0 +1,89 @@
+<nav
+  class="sidebar"
+  [class.sidebar--expanded]="expanded()"
+  (mouseenter)="expanded.set(true)"
+  (mouseleave)="expanded.set(false)"
+  aria-label="Navegacion principal"
+>
+  <!-- Nav sections -->
+  <div class="sidebar-scroll">
+    @for (section of sections(); track section.title) {
+      <div class="sidebar-section">
+        <span class="sidebar-section-title">{{ section.title }}</span>
+        @for (item of section.items; track item.route) {
+          <a
+            class="sidebar-item"
+            [class.sidebar-item--active]="isActive(item)"
+            [routerLink]="item.route"
+            [attr.aria-current]="isActive(item) ? 'page' : null"
+            [title]="expanded() ? '' : item.label"
+          >
+            <ng-icon [name]="item.icon" size="20" class="sidebar-icon"></ng-icon>
+            <span class="sidebar-label">{{ item.label }}</span>
+          </a>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Bottom area: notifications + theme + profile -->
+  <div class="sidebar-footer">
+    <!-- Alerts -->
+    <a
+      class="sidebar-item"
+      [class.sidebar-item--alert]="alertCount() > 0"
+      routerLink="/alarmas"
+      [title]="expanded() ? '' : alertLabel()"
+    >
+      <span class="sidebar-icon-wrap">
+        <ng-icon [name]="alertCount() > 0 ? 'heroBellAlertSolid' : 'heroBellAlert'" size="20" class="sidebar-icon"></ng-icon>
+        @if (alertCount() > 0) {
+          <span class="sidebar-badge">{{ alertCount() }}</span>
+        }
+      </span>
+      <span class="sidebar-label">{{ alertLabel() }}</span>
+    </a>
+
+    <!-- Messages -->
+    <a
+      class="sidebar-item"
+      routerLink="/alarmas"
+      [title]="expanded() ? '' : 'Mensajes'"
+    >
+      <ng-icon name="heroEnvelopeSolid" size="20" class="sidebar-icon"></ng-icon>
+      <span class="sidebar-label">Mensajes</span>
+    </a>
+
+    <!-- Theme toggle -->
+    <button
+      class="sidebar-item"
+      (click)="toggleTheme(); $event.stopPropagation()"
+      [title]="expanded() ? '' : themeLabel()"
+    >
+      <ng-icon [name]="themeIcon()" size="20" class="sidebar-icon"></ng-icon>
+      <span class="sidebar-label">{{ themeLabel() }}</span>
+    </button>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- Profile -->
+    <a
+      class="sidebar-item sidebar-profile"
+      [class.sidebar-item--active]="isActive({ label: 'Perfil', icon: '', route: '/perfil', exact: true })"
+      routerLink="/perfil"
+      title="Mi perfil"
+    >
+      <span class="sidebar-avatar">{{ userInitials() }}</span>
+      <span class="sidebar-label sidebar-user-info">
+        <span class="sidebar-user-name">{{ userName() }}</span>
+        <span class="sidebar-user-role">{{ userRole() }}</span>
+      </span>
+    </a>
+
+    <!-- Logout -->
+    <button class="sidebar-item sidebar-logout" (click)="logout()" title="Cerrar sesion">
+      <ng-icon name="heroArrowRightOnRectangle" size="20" class="sidebar-icon"></ng-icon>
+      <span class="sidebar-label">Salir</span>
+    </button>
+  </div>
+</nav>

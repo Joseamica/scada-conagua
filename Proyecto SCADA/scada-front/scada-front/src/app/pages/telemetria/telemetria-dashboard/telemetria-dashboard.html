@@ -37,7 +37,7 @@
         </div>
       </div>
 
-      <div class="kpi-card" [class.kpi-card--active]="statusSel() === 'no-signal'" (click)="filterByStatus('no-signal')">
+      <div class="kpi-card" [class.kpi-card--active]="statusSel() === 'no-signal'" [class.kpi-card--alert]="sitesSinCom() > 0" (click)="filterByStatus('no-signal')">
         <div class="kpi-icon kpi-icon--danger">
           <ng-icon name="heroXCircle" size="20"></ng-icon>
         </div>
@@ -79,7 +79,7 @@
             />
           </div>
 
-          <button class="updated-badge" title="Actualizar datos" (click)="refreshData()">
+          <button class="updated-badge" [class.updated-badge--stale]="lastUpdatedStale()" title="Actualizar datos" (click)="refreshData()">
             <ng-icon name="heroArrowPath" size="14"></ng-icon>
             {{ lastUpdated() }}
           </button>
@@ -295,6 +295,11 @@
                       <tr
                         [class.row-alt]="odd"
                         class="row-clickable"
+                        [class.row-status-ok]="site.status === 'ok'"
+                        [class.row-status-no-flow]="site.status === 'no-flow'"
+                        [class.row-status-no-signal]="site.status === 'no-signal'"
+                        [class.row-status-pending]="site.status === 'pending'"
+                        [class.row-status-obra]="site.status === 'obra'"
                         (click)="goToSiteDetail(site, $event)">
                         <td>
                           <span class="cell-name">
@@ -411,5 +416,5 @@
 </div>
 
 @if (!embed()) {
-  <app-footer-tabs></app-footer-tabs>
+  <app-sidebar-nav></app-sidebar-nav>
 }

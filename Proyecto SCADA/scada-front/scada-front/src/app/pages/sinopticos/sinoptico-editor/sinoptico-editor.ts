@@ -1164,11 +1164,11 @@ export class SinopticoEditor implements OnInit, OnDestroy {
   async exportPNG(): Promise<void> {
     const el = this.canvasInner?.nativeElement;
     if (!el) return;
-    const { default: html2canvas } = await import('html2canvas');
-    const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#fff' });
+    const { toPng } = await import('html-to-image');
+    const dataUrl = await toPng(el, { pixelRatio: 2, backgroundColor: '#ffffff' });
     const a = document.createElement('a');
     a.download = `${this.sinoptico()?.name || 'sinoptico'}.png`;
-    a.href = canvas.toDataURL('image/png');
+    a.href = dataUrl;
     a.click();
   }
 }

@@ -1,0 +1,251 @@
+<app-header-bar></app-header-bar>
+
+<div class="an-container">
+  <!-- KPI Bar -->
+  @if (dashboard(); as d) {
+    <div class="an-kpis">
+      <div class="an-kpi">
+        <span class="an-kpi-value">{{ d.totalSites }}</span>
+        <span class="an-kpi-label">Sitios totales</span>
+      </div>
+      <div class="an-kpi">
+        <span class="an-kpi-value">{{ d.sitesWithTelemetry }}</span>
+        <span class="an-kpi-label">Con telemetria</span>
+      </div>
+      <div class="an-kpi">
+        <span class="an-kpi-value an-kpi--warn">{{ d.sitesWithAnomalies }}</span>
+        <span class="an-kpi-label">Anomalias</span>
+      </div>
+      <div class="an-kpi">
+        <span class="an-kpi-value an-kpi--danger">{{ d.sitesWithNegativeTrend }}</span>
+        <span class="an-kpi-label">Tendencia negativa</span>
+      </div>
+    </div>
+  }
+
+  <!-- Tabs -->
+  <div class="an-tabs">
+    <button class="an-tab" [class.an-tab--active]="activeTab() === 'tendencias'" (click)="onTabChange('tendencias')">Tendencias</button>
+    <button class="an-tab" [class.an-tab--active]="activeTab() === 'anomalias'" (click)="onTabChange('anomalias')">Anomalias</button>
+    <button class="an-tab" [class.an-tab--active]="activeTab() === 'predicciones'" (click)="onTabChange('predicciones')">Predicciones</button>
+    <button class="an-tab" [class.an-tab--active]="activeTab() === 'limpieza'" (click)="onTabChange('limpieza')">Limpieza</button>
+  </div>
+
+  <!-- Selectors -->
+  <div class="an-selectors">
+    <div class="an-sel-group">
+      <label>Sitio</label>
+      <select [ngModel]="selectedSite()" (ngModelChange)="selectedSite.set($event); analyze()">
+        <option value="" disabled>Seleccionar sitio...</option>
+        @for (s of sites(); track s.dev_eui) {
+          <option [value]="s.dev_eui">{{ s.site_name }} ({{ s.municipality }})</option>
+        }
+      </select>
+    </div>
+    <div class="an-sel-group">
+      <label>Variable</label>
+      <select [ngModel]="selectedMeasurement()" (ngModelChange)="selectedMeasurement.set($event); analyze()">
+        @for (m of measurements; track m.key) {
+          <option [value]="m.key">{{ m.label }}</option>
+        }
+      </select>
+    </div>
+    <div class="an-sel-group">
+      <label>Rango</label>
+      <select [ngModel]="selectedRange()" (ngModelChange)="selectedRange.set($event); analyze()">
+        @for (r of ranges; track r.key) {
+          <option [value]="r.key">{{ r.label }}</option>
+        }
+      </select>
+    </div>
+    @if (activeTab() === 'predicciones') {
+      <div class="an-sel-group">
+        <label>Metodo</label>
+        <select [ngModel]="predictionMethod()" (ngModelChange)="predictionMethod.set($event); analyze()">
+          <option value="neural">Red Neuronal (MLP)</option>
+          <option value="statistical">Estadistico</option>
+        </select>
+      </div>
+      <div class="an-sel-group">
+        <label>Horizonte</label>
+        <select [ngModel]="predictionHorizon()" (ngModelChange)="predictionHorizon.set($event); analyze()">
+          <option value="24h">24 horas</option>
+          <option value="7d">7 dias</option>
+          <option value="30d">30 dias</option>
+        </select>
+      </div>
+    }
+    <button class="an-btn-analyze" (click)="analyze()" [disabled]="!selectedSite() || loading()">
+      {{ loading() ? 'Procesando...' : 'Analizar' }}
+    </button>
+  </div>
+
+  <!-- Chart -->
+  <div class="an-chart-wrapper">
+    @if (loading()) {
+      <div class="an-chart-loading">
+        <app-loading-spinner label="Procesando datos..." mode="inline"></app-loading-spinner>
+      </div>
+    }
+    <div id="analytics-chart" class="an-chart"></div>
+  </div>
+
+  <!-- Insights Panel -->
+  <div class="an-insights">
+    <!-- Trend insights -->
+    @if (activeTab() === 'tendencias' && trendResult()?.trend; as t) {
+      <div class="an-insight-card">
+        <div class="an-insight-header">
+          <span class="an-insight-icon" [class]="'an-insight-icon--' + (trendResult()?.trend?.direction || 'stable')">{{ directionIcon(trendResult()?.trend?.direction || 'stable') }}</span>
+          <span class="an-insight-title">Tendencia: {{ directionLabel(trendResult()?.trend?.direction || 'stable') }}</span>
+        </div>
+        <div class="an-insight-body">
+          <div class="an-insight-stat">
+            <span class="an-insight-stat-value">{{ t.slopePerDay >= 0 ? '+' : '' }}{{ t.slopePerDay?.toFixed(4) }}</span>
+            <span class="an-insight-stat-label">cambio/dia</span>
+          </div>
+          <div class="an-insight-stat">
+            <span class="an-insight-stat-value">{{ t.r2?.toFixed(3) }}</span>
+            <span class="an-insight-stat-label">R² (ajuste)</span>
+          </div>
+          @if (trendResult()?.stats) {
+            <div class="an-insight-stat">
+              <span class="an-insight-stat-value">{{ trendResult()!.stats.mean?.toFixed(2) }}</span>
+              <span class="an-insight-stat-label">Promedio</span>
+            </div>
+            <div class="an-insight-stat">
+              <span class="an-insight-stat-value">{{ trendResult()!.stats.stddev?.toFixed(2) }}</span>
+              <span class="an-insight-stat-label">Desv. est.</span>
+            </div>
+          }
+          <div class="an-insight-stat">
+            <span class="an-insight-stat-value">{{ trendResult()?.dataPoints }}</span>
+            <span class="an-insight-stat-label">Puntos</span>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Anomaly insights -->
+    @if (activeTab() === 'anomalias' && anomalyResult(); as a) {
+      <div class="an-insight-card">
+        <div class="an-insight-header">
+          <span class="an-insight-icon an-insight-icon--warn">!</span>
+          <span class="an-insight-title">{{ a.anomalyCount }} anomalia(s) detectada(s)</span>
+        </div>
+        @if (a.anomalies.length > 0) {
+          <div class="an-anomaly-list">
+            @for (an of a.anomalies.slice(0, 10); track an.timestamp) {
+              <div class="an-anomaly-row" [class]="'an-anomaly-row--' + an.severity">
+                <span class="an-anomaly-time">{{ an.timestamp | date:'short' }}</span>
+                <span class="an-anomaly-val">{{ an.value.toFixed(2) }}</span>
+                <span class="an-anomaly-z">Z={{ an.zscore }}</span>
+                <span class="an-anomaly-sev">{{ an.severity }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Prediction insights -->
+    @if (activeTab() === 'predicciones' && predictionResult(); as p) {
+      <div class="an-insight-card">
+        <div class="an-insight-header">
+          <span class="an-insight-icon an-insight-icon--ok">🧠</span>
+          <span class="an-insight-title">
+            @if (neuralResult()?.method === 'neural_network' && predictionMethod() === 'neural') {
+              Red Neuronal — {{ neuralResult().architecture }}
+            } @else {
+              Prediccion estadistica
+            }
+          </span>
+        </div>
+        <div class="an-insight-body">
+          @if (neuralResult()?.method === 'neural_network' && predictionMethod() === 'neural') {
+            <div class="an-insight-stat">
+              <span class="an-insight-stat-value">{{ neuralResult().loss }}</span>
+              <span class="an-insight-stat-label">Loss (MSE)</span>
+            </div>
+            <div class="an-insight-stat">
+              <span class="an-insight-stat-value">{{ neuralResult().epochs }}</span>
+              <span class="an-insight-stat-label">Epochs</span>
+            </div>
+            <div class="an-insight-stat">
+              <span class="an-insight-stat-value">{{ neuralResult().trainingTimeMs }}ms</span>
+              <span class="an-insight-stat-label">Entrenamiento</span>
+            </div>
+          }
+          @if (p.predicted?.length) {
+            <div class="an-insight-stat">
+              <span class="an-insight-stat-value">{{ p.predicted[p.predicted.length - 1].value.toFixed(2) }}</span>
+              <span class="an-insight-stat-label">Valor proyectado</span>
+            </div>
+            @if (p.confidence?.upper?.length) {
+              <div class="an-insight-stat">
+                <span class="an-insight-stat-value">{{ p.confidence.upper[p.confidence.upper.length - 1].value.toFixed(2) }}</span>
+                <span class="an-insight-stat-label">Limite superior</span>
+              </div>
+            }
+            @if (p.confidence?.lower?.length) {
+              <div class="an-insight-stat">
+                <span class="an-insight-stat-value">{{ p.confidence.lower[p.confidence.lower.length - 1].value.toFixed(2) }}</span>
+                <span class="an-insight-stat-label">Limite inferior</span>
+              </div>
+            }
+          }
+        </div>
+        @if (predictionConfidenceLabel()) {
+          <div class="an-confidence-label" [class.an-confidence--low]="predictionHorizon() === '30d'">
+            Confianza: {{ predictionConfidenceLabel() }}
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Clean insights -->
+    @if (activeTab() === 'limpieza' && cleanResult(); as c) {
+      <div class="an-insight-card">
+        <div class="an-insight-header">
+          <span class="an-insight-icon an-insight-icon--ok">🧹</span>
+          <span class="an-insight-title">Limpieza de datos</span>
+        </div>
+        <div class="an-insight-body">
+          <div class="an-insight-stat">
+            <span class="an-insight-stat-value">{{ c.spikesRemoved }}</span>
+            <span class="an-insight-stat-label">Picos eliminados</span>
+          </div>
+          <div class="an-insight-stat">
+            <span class="an-insight-stat-value">{{ c.percentCleaned }}%</span>
+            <span class="an-insight-stat-label">Datos limpiados</span>
+          </div>
+          <div class="an-insight-stat">
+            <span class="an-insight-stat-value">{{ c.original.length }}</span>
+            <span class="an-insight-stat-label">Total puntos</span>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Top anomalies from dashboard -->
+    @if (dashboard()?.topAnomalies?.length) {
+      <div class="an-insight-card an-insight-card--alerts">
+        <div class="an-insight-header">
+          <span class="an-insight-icon an-insight-icon--danger">⚠</span>
+          <span class="an-insight-title">Sitios con posibles problemas</span>
+        </div>
+        <div class="an-anomaly-list">
+          @for (a of dashboard()!.topAnomalies; track a.devEUI) {
+            <div class="an-anomaly-row an-anomaly-row--medium">
+              <span class="an-anomaly-time">{{ a.site }}</span>
+              <span class="an-anomaly-val">{{ a.municipality }}</span>
+              <span class="an-anomaly-sev">{{ a.issue }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+<app-sidebar-nav></app-sidebar-nav>

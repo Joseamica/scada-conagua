@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterModule } from '@angular/router';
 
 import { HeaderBarComponent } from '../layout/header-bar/header-bar';
-import { FooterTabsComponent } from '../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../layout/sidebar-nav/sidebar-nav';
 import { AuthService } from '../core/services/auth.service';
 
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
@@ -27,7 +27,7 @@ import {
     RouterModule,
     NgIconComponent,
     HeaderBarComponent,
-    FooterTabsComponent
+    SidebarNavComponent
   ],
   providers: [
     provideIcons({

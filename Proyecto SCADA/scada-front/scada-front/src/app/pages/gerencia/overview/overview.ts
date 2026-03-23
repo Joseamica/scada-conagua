@@ -12,7 +12,7 @@ import {
   heroSquares2x2, heroBars3
 } from '@ng-icons/heroicons/outline';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
-import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../../layout/sidebar-nav/sidebar-nav';
 import { TelemetryService } from '../../../core/services/telemetry';
 import { AuthService } from '../../../core/services/auth.service';
 import { ThemeService } from '../../../core/services/theme.service';
@@ -52,7 +52,7 @@ const CHART_TYPE_OPTIONS: { key: ChartType; label: string; icon: string }[] = [
 @Component({
   selector: 'overview',
   standalone: true,
-  imports: [HeaderBarComponent, FooterTabsComponent, CommonModule, NgIconComponent, DateRangePickerComponent],
+  imports: [HeaderBarComponent, SidebarNavComponent, CommonModule, NgIconComponent, DateRangePickerComponent],
   providers: [
     provideIcons({
       heroArrowLeft, heroBeaker, heroCheckCircle, heroMapPin,

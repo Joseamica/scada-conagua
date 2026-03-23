@@ -36,7 +36,7 @@ import {
   TagBrowser,
   TagSelection,
 } from '../../sinopticos/shared/tag-browser/tag-browser';
-import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../../layout/sidebar-nav/sidebar-nav';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 
 @Component({
@@ -47,7 +47,7 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
     FormsModule,
     NgIconComponent,
     TagBrowser,
-    FooterTabsComponent,
+    SidebarNavComponent,
     HeaderBarComponent,
   ],
   providers: [

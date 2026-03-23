@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, computed, OnInit, OnDestroy, effect } from '@angular/core';
+import { Component, ElementRef, HostListener, computed, signal, OnInit, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavigationEnd, ActivatedRoute, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -51,6 +51,12 @@ export class HeaderBarComponent implements OnInit, OnDestroy {
   menuOpen = false;
   alertsOpen = false;
   inboxOpen = false;
+
+  // ======================
+  // RELOJ EN VIVO
+  // ======================
+  liveClock = signal('');
+  private clockInterval: ReturnType<typeof setInterval> | null = null;
 
   // ======================
   // ALARMAS (datos reales)
@@ -153,11 +159,25 @@ export class HeaderBarComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.alarmService.startPolling(15000);
+    this.updateClock();
+    this.clockInterval = setInterval(() => this.updateClock(), 1000);
+  }
+
+  private updateClock() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2, '0');
+    const m = now.getMinutes().toString().padStart(2, '0');
+    const s = now.getSeconds().toString().padStart(2, '0');
+    this.liveClock.set(`${h}:${m}:${s}`);
   }
 
   ngOnDestroy() {
     this.alarmService.stopPolling();
     this.stopAlarmSound();
+    if (this.clockInterval) {
+      clearInterval(this.clockInterval);
+      this.clockInterval = null;
+    }
   }
 
   private getAudioCtx(): AudioContext | null {

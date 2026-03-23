@@ -12,7 +12,7 @@ import {
 } from '@ng-icons/heroicons/outline';
 
 import { HeaderBarComponent } from '../../layout/header-bar/header-bar';
-import { FooterTabsComponent } from '../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../layout/sidebar-nav/sidebar-nav';
 import { TelemetryService } from '../../core/services/telemetry';
 import { ThemeService } from '../../core/services/theme.service';
 import { getEChartsColors } from '../../core/utils/echarts-theme';
@@ -48,7 +48,7 @@ const CHART_TYPE_OPTIONS: { key: ChartType; label: string; icon: string }[] = [
 @Component({
   selector: 'gerencia-municipio',
   standalone: true,
-  imports: [HeaderBarComponent, FooterTabsComponent, CommonModule, NgIconComponent, DateRangePickerComponent],
+  imports: [HeaderBarComponent, SidebarNavComponent, CommonModule, NgIconComponent, DateRangePickerComponent],
   templateUrl: './gerencia-municipio.html',
   styleUrl: './gerencia-municipio.css',
   viewProviders: [

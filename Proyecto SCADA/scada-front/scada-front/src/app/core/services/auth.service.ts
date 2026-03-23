@@ -62,11 +62,14 @@ export class AuthService {
   }
 
   /** Limpia sesión sin llamar al backend (para tokens inválidos/expirados) */
-  clearSessionAndRedirect() {
+  clearSessionAndRedirect(returnUrl?: string) {
     localStorage.removeItem('scada_token');
     localStorage.removeItem('scada_user_data');
     this.currentUser.set(null);
-    this.router.navigate(['/login']);
+    const extras = returnUrl && returnUrl !== '/' && returnUrl !== '/dashboard'
+      ? { queryParams: { returnUrl } }
+      : {};
+    this.router.navigate(['/login'], extras);
   }
 
   private loadSession() {

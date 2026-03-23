@@ -4,13 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
 import { heroPlus, heroTrash, heroPencilSquare, heroUserGroup } from '@ng-icons/heroicons/outline';
 import { AlarmService, AlarmRecipient, RecipientCollection } from '../../../core/services/alarm.service';
-import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../../layout/sidebar-nav/sidebar-nav';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 
 @Component({
   selector: 'app-recipients',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgIconComponent, FooterTabsComponent, HeaderBarComponent],
+  imports: [CommonModule, FormsModule, NgIconComponent, SidebarNavComponent, HeaderBarComponent],
   providers: [provideIcons({ heroPlus, heroTrash, heroPencilSquare, heroUserGroup })],
   template: `
     <app-header-bar />
@@ -112,7 +112,7 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
       </div>
     </div>
 
-    <app-footer-tabs />
+    <app-sidebar-nav></app-sidebar-nav>
   `,
   styles: [`
     :host { display: block; font-family: 'Inter', system-ui, sans-serif; }

@@ -8,7 +8,8 @@
    ========================= */
 .shell {
   font-family: 'Inter', system-ui, sans-serif;
-  height: calc(100vh - 56px - 60px);
+  height: calc(100vh - var(--header-height, 56px));
+  margin-left: var(--sidebar-width, 48px);
   background: var(--bg-app);
   padding-bottom: 0;
   overflow: hidden;
@@ -18,8 +19,6 @@
 
 .page {
   padding: 16px 16px 0;
-  max-width: 1440px;
-  margin: 0 auto;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -56,6 +55,18 @@
 .kpi-card--active {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-light);
+}
+
+/* Urgent KPI: Sin com pulses when > 0 */
+.kpi-card--alert {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.04);
+  animation: kpi-pulse 2s ease-in-out infinite;
+}
+.kpi-card--alert .kpi-value { color: #ef4444; font-weight: 700; }
+@keyframes kpi-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12); }
 }
 
 .kpi-card:hover {
@@ -202,7 +213,11 @@
   border: 1px solid var(--border-default);
   border-radius: 8px;
   white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
 }
+.updated-badge:hover { border-color: var(--accent); color: var(--accent); }
+.updated-badge--stale { border-color: #f59e0b; color: #f59e0b; background: rgba(245, 158, 11, 0.06); }
 
 /* =========================
    ACCIONES
@@ -274,6 +289,16 @@
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 .filter-grid {
@@ -435,6 +460,7 @@
   border-left: 2px solid var(--border-default);
   display: flex;
   flex-direction: column;
+  animation: slideInRight 0.2s ease;
   gap: 2px;
   margin-top: 2px;
 }
@@ -445,6 +471,7 @@
   color: var(--accent);
   gap: 6px;
   border-bottom: 1px solid var(--border-default);
+  animation: slideInLeft 0.2s ease;
   border-radius: 0;
   padding: 8px 10px 9px;
   margin-bottom: 2px;
@@ -552,10 +579,18 @@
 
 .table tbody tr:hover td { background: var(--table-hover); }
 
-.row-clickable { cursor: pointer; }
+.row-clickable { cursor: pointer; transition: background 0.1s; }
+.row-clickable:hover td { background: var(--table-hover); }
 
 .row-alt td { background: var(--table-stripe); }
 .row-alt:hover td { background: var(--table-hover) !important; }
+
+/* Left border accent per status — scannable at speed */
+.row-status-ok td:first-child { border-left: 3px solid #10b981; }
+.row-status-no-flow td:first-child { border-left: 3px solid #f59e0b; }
+.row-status-no-signal td:first-child { border-left: 3px solid #ef4444; }
+.row-status-pending td:first-child { border-left: 3px solid #d1d5db; }
+.row-status-obra td:first-child { border-left: 3px solid #eab308; }
 
 /* Cell: Site name with dot */
 .cell-name {
@@ -933,5 +968,17 @@
   @keyframes slideDown {
     from { opacity: 1; transform: none; }
     to   { opacity: 1; transform: none; }
+  }
+  @keyframes slideInRight {
+    from { opacity: 1; transform: none; }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes slideInLeft {
+    from { opacity: 1; transform: none; }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes kpi-pulse {
+    from { box-shadow: none; }
+    to   { box-shadow: none; }
   }
 }

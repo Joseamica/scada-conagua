@@ -11,13 +11,13 @@ import {
   heroCalculator,
 } from '@ng-icons/heroicons/outline';
 import { VariableService, VariableView, VariableFolder } from '../../../core/services/variable.service';
-import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../../layout/sidebar-nav/sidebar-nav';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 
 @Component({
   selector: 'app-variable-explorer',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgIconComponent, FooterTabsComponent, HeaderBarComponent],
+  imports: [CommonModule, FormsModule, NgIconComponent, SidebarNavComponent, HeaderBarComponent],
   providers: [provideIcons({ heroPlus, heroFolder, heroTrash, heroTableCells, heroCalculator })],
   template: `
     <app-header-bar />
@@ -91,7 +91,7 @@ import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
       </div>
     </div>
 
-    <app-footer-tabs />
+    <app-sidebar-nav></app-sidebar-nav>
   `,
   styles: [`
     :host { display: block; font-family: 'Inter', system-ui, sans-serif; }

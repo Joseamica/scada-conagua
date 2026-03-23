@@ -4,7 +4,7 @@ import { Component, computed, signal, ViewChild, ElementRef, AfterViewInit, OnIn
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
-import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../../layout/sidebar-nav/sidebar-nav';
 import { POZOS_LAYOUT } from '../pozos-layout';
 import { TIME_RANGES, TimeRange } from '../../../shared/time-ranges';
 import { TelemetryService } from '../../../core/services/telemetry';
@@ -98,7 +98,7 @@ const CHART_TYPE_OPTIONS: { key: ChartType; label: string; icon: string }[] = [
 @Component({
   selector: 'app-pozo-detalle',
   standalone: true,
-  imports: [CommonModule, HeaderBarComponent, FooterTabsComponent, NgIconComponent, DateRangePickerComponent, LoadingSpinnerComponent],
+  imports: [CommonModule, HeaderBarComponent, SidebarNavComponent, NgIconComponent, DateRangePickerComponent, LoadingSpinnerComponent],
   providers: [
     provideIcons({
       heroChartBarSquare, heroBolt, heroBeaker, heroChartBar,

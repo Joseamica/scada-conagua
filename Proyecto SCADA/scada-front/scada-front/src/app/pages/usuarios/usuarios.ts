@@ -1,7 +1,7 @@
 import { Component, computed, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HeaderBarComponent } from '../../layout/header-bar/header-bar';
-import { FooterTabsComponent } from '../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../layout/sidebar-nav/sidebar-nav';
 import { Router } from '@angular/router';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
 import {
@@ -34,7 +34,7 @@ type UserStatus = 'ACTIVO' | 'INACTIVO' | 'BLOQUEADO';
   imports: [
     CommonModule,
     HeaderBarComponent,
-    FooterTabsComponent,
+    SidebarNavComponent,
     NgIconComponent
   ],
   providers: [

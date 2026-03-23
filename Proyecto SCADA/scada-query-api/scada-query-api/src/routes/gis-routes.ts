@@ -24,7 +24,7 @@ fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const upload = multer({
     dest: UPLOAD_DIR,
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB max
+    limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB max
     fileFilter: (_req, file, cb) => {
         const ext = path.extname(file.originalname).toLowerCase();
         if (ext === '.zip') {
@@ -107,17 +107,17 @@ router.post('/layers', isAdmin, (req: Request, res: Response, next: Function) =>
         fs.unlinkSync(req.file.path);
 
         if (result.success) {
+            const publishedLayers = result.layers || [layerName];
             await auditLog(
                 req.user!.id,
                 'GIS_LAYER_PUBLISHED',
-                { layer_name: layerName, original_file: req.file.originalname },
+                { layers: publishedLayers, original_file: req.file.originalname },
                 req.ip!
             );
             res.status(201).json({
-                message: `Capa '${layerName}' publicada exitosamente.`,
-                layer_name: layerName,
+                message: `${publishedLayers.length} capa(s) publicada(s): ${publishedLayers.join(', ')}`,
+                layers: publishedLayers,
                 wms_url: getWmsUrl(),
-                wms_layer: `scada:${layerName}`,
             });
         } else {
             res.status(500).json({ error: result.error || 'Error al publicar capa en GeoServer.' });

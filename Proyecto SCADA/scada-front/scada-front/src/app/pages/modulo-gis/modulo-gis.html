@@ -4,100 +4,327 @@
 
 <div class="gis-container" [class.embed-mode]="embed()">
 
-  <!-- ── Barra de leyenda ── -->
-  <div class="gis-legend-wrapper">
 
-    <!-- Tipos de sitio -->
-    <div class="gis-legend-section">
-      <h4>Sitios</h4>
-      <div class="legend-item">
-        <img src="assets/icons/map/well.svg" alt="Pozo" />
-        <span>Pozo</span>
-      </div>
-      <div class="legend-item">
-        <img src="assets/icons/map/block-water.svg" alt="Agua en bloque" />
-        <span>Agua en bloque</span>
-      </div>
-      <div class="legend-item">
-        <img src="assets/icons/map/tank.svg" alt="Estanque" />
-        <span>Estanque</span>
-      </div>
-      <div class="legend-item">
-        <img src="assets/icons/map/drainage.svg" alt="Drenaje" />
-        <span>Drenaje</span>
-      </div>
-      <div class="legend-item">
-        <img src="assets/icons/map/rain-gauge.svg" alt="Pluviómetro" />
-        <span>Pluviómetro</span>
-      </div>
-    </div>
-
-    <!-- Estado operativo -->
-    <div class="gis-legend-section">
-      <h4>Estado</h4>
-      <div class="legend-item">
-        <span class="legend-dot green"></span>
-        <span>Operando</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-dot amber"></span>
-        <span>Sin gasto</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-dot red"></span>
-        <span>Sin comunicacion</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-dot yellow"></span>
-        <span>En obra</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-dot red"></span>
-        <span>Inactivo</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-dot gray"></span>
-        <span>No integrado</span>
-      </div>
-    </div>
-
-    <!-- Acción -->
-    <div class="gis-legend-section">
-      <button class="btn btn-primary" (click)="goToOverview()">
-        <ng-icon name="heroPresentationChartLine" size="18"></ng-icon>
-        Resumen gasto
+  <!-- ── GIS Toolbar Row ── -->
+  <div class="ft" [class.ft--loading]="mapLoading()" role="toolbar" aria-label="Herramientas GIS">
+    <!-- View toggle (always visible) -->
+    <div class="ft-view-toggle">
+      <button class="ft-btn" [class.ft-btn--active]="viewMode() === 'cards'" (click)="toggleViewMode()" [attr.data-tooltip]="viewMode() === 'map' ? 'Ver tarjetas' : 'Ver mapa'" [attr.aria-label]="viewMode() === 'map' ? 'Ver tarjetas' : 'Ver mapa'">
+        @if (viewMode() === 'map') {
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+        } @else {
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
+          </svg>
+        }
       </button>
+      <span class="ft-divider"></span>
     </div>
 
+    <!-- Scrollable tools (hidden in cards view) -->
+    <div class="ft-bar" [class.ft-bar--hidden]="viewMode() === 'cards'">
+      <!-- Medir -->
+      <div class="ft-group">
+        <button class="ft-btn" [class.ft-btn--active]="activeTool() === 'measure-distance'" (click)="startTool('measure-distance')" data-tooltip="Medir distancia (D)" aria-label="Medir distancia (D)" [attr.aria-pressed]="activeTool() === 'measure-distance'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0z"/>
+            <path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/>
+          </svg>
+        </button>
+        <button class="ft-btn" [class.ft-btn--active]="activeTool() === 'measure-area'" (click)="startTool('measure-area')" data-tooltip="Medir area (A)" aria-label="Medir area (A)" [attr.aria-pressed]="activeTool() === 'measure-area'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/>
+          </svg>
+        </button>
+      </div>
+
+      <span class="ft-divider"></span>
+
+      <!-- Dibujar -->
+      <div class="ft-group">
+        <button class="ft-btn" [class.ft-btn--active]="activeTool() === 'draw-polygon'" (click)="startTool('draw-polygon')" data-tooltip="Dibujar poligono (P)" aria-label="Dibujar poligono (P)" [attr.aria-pressed]="activeTool() === 'draw-polygon'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/>
+          </svg>
+        </button>
+        <button class="ft-btn" [class.ft-btn--active]="activeTool() === 'draw-line'" (click)="startTool('draw-line')" data-tooltip="Dibujar linea (L)" aria-label="Dibujar linea (L)" [attr.aria-pressed]="activeTool() === 'draw-line'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="5" y1="19" x2="19" y2="5"/>
+            <circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/>
+          </svg>
+        </button>
+        <button class="ft-btn" [class.ft-btn--active]="activeTool() === 'draw-point'" (click)="startTool('draw-point')" data-tooltip="Colocar punto (M)" aria-label="Colocar punto (M)" [attr.aria-pressed]="activeTool() === 'draw-point'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8" stroke-dasharray="4 3"/>
+          </svg>
+        </button>
+        <button class="ft-btn" (click)="addTextLabel()" data-tooltip="Agregar texto (T)" aria-label="Agregar texto (T)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Color picker -->
+      <div class="ft-group ft-color-picker-wrap">
+        <button class="ft-btn ft-color-trigger" (click)="colorPickerOpen.set(!colorPickerOpen())" data-tooltip="Color" aria-label="Color" aria-haspopup="true" [attr.aria-expanded]="colorPickerOpen()">
+          <span class="ft-color-preview" [style.background]="drawColor()"></span>
+          <svg class="ft-color-chevron" [class.open]="colorPickerOpen()" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m6 9 6 6 6-6"/>
+          </svg>
+        </button>
+        @if (colorPickerOpen()) {
+          <div class="ft-color-backdrop" (click)="colorPickerOpen.set(false)" role="presentation"></div>
+          <div class="ft-color-dropdown">
+            @for (c of drawColorOptions; track c) {
+              <button
+                class="ft-color-swatch"
+                [class.ft-color-active]="drawColor() === c"
+                [style.background]="c"
+                (click)="drawColor.set(c); changeSelectedLayerColor(c); colorPickerOpen.set(false)">
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <span class="ft-divider"></span>
+
+      <!-- Datos -->
+      <div class="ft-group">
+        <label class="ft-btn" data-tooltip="Importar GeoJSON" aria-label="Importar GeoJSON">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <input type="file" accept=".geojson,.json,.kml" (change)="importGeoJSON($event)" hidden />
+        </label>
+        <button class="ft-btn" (click)="exportDrawnItems()" [disabled]="drawnItems.getLayers().length === 0" data-tooltip="Exportar geometrias" aria-label="Exportar geometrias">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </button>
+      </div>
+
+      <span class="ft-divider"></span>
+
+      <!-- Edit/Delete -->
+      <div class="ft-group">
+        <button class="ft-btn" [class.ft-btn--active]="activeTool() === 'edit'" (click)="startEditMode()" [disabled]="drawnItems.getLayers().length === 0" data-tooltip="Editar geometrias (E)" aria-label="Editar geometrias (E)" [attr.aria-pressed]="activeTool() === 'edit'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+          </svg>
+        </button>
+        <button class="ft-btn" [class.ft-btn--active]="activeTool() === 'delete-shape'" (click)="startDeleteMode()" [disabled]="drawnItems.getLayers().length === 0" data-tooltip="Eliminar geometria (X)" aria-label="Eliminar geometria (X)" [attr.aria-pressed]="activeTool() === 'delete-shape'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>
+          </svg>
+        </button>
+        <button class="ft-btn" [class.ft-btn--active]="layersPanelVisible()" (click)="layersPanelVisible.set(!layersPanelVisible())" data-tooltip="Capas dibujadas" aria-label="Capas dibujadas" [attr.aria-pressed]="layersPanelVisible()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+          </svg>
+        </button>
+      </div>
+
+      <span class="ft-divider"></span>
+
+      <!-- Buffer -->
+      <div class="ft-group">
+        <button class="ft-btn" [class.ft-btn--active]="bufferPanelOpen()" (click)="toggleBufferPanel()" [disabled]="drawnItems.getLayers().length === 0" data-tooltip="Area de influencia" aria-label="Area de influencia" [attr.aria-pressed]="bufferPanelOpen()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8" stroke-dasharray="4 3"/>
+          </svg>
+        </button>
+      </div>
+
+      <span class="ft-divider"></span>
+
+      <!-- Map utilities -->
+      <div class="ft-group">
+        <button class="ft-btn" (click)="exportMapPNG()" data-tooltip="Exportar mapa" aria-label="Exportar mapa">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>
+          </svg>
+        </button>
+        <button class="ft-btn" (click)="shareView()" data-tooltip="Compartir vista" aria-label="Compartir vista">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/>
+          </svg>
+        </button>
+        <button class="ft-btn" [class.ft-btn--active]="gisViewsPanelOpen()" (click)="gisViewsPanelOpen.set(!gisViewsPanelOpen())" data-tooltip="Vistas guardadas" aria-label="Vistas guardadas" [attr.aria-pressed]="gisViewsPanelOpen()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+          </svg>
+        </button>
+      </div>
+
+      <span class="ft-divider"></span>
+
+      <!-- Limpiar -->
+      <div class="ft-group">
+        <button class="ft-btn ft-btn--danger" (click)="clearDrawnItems()" [disabled]="drawnItems.getLayers().length === 0 && !measureResult()" data-tooltip="Limpiar todo" aria-label="Limpiar todo">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Atajos de teclado (outside scroll container so dropdown isn't clipped) -->
+    <div class="ft-shortcuts-wrap">
+      <span class="ft-divider"></span>
+      <button class="ft-btn" [class.ft-btn--active]="shortcutsPanelOpen()" (click)="shortcutsPanelOpen.set(!shortcutsPanelOpen())" data-tooltip="Atajos de teclado" aria-label="Atajos de teclado" [attr.aria-pressed]="shortcutsPanelOpen()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01"/><path d="M10 8h.01"/><path d="M14 8h.01"/><path d="M18 8h.01"/><path d="M6 12h.01"/><path d="M18 12h.01"/><path d="M8 16h8"/>
+        </svg>
+      </button>
+      @if (shortcutsPanelOpen()) {
+        <div class="ft-shortcuts-panel">
+          <div class="ft-shortcuts-header">
+            <span>Atajos de teclado</span>
+            <button class="ft-query-close" (click)="shortcutsPanelOpen.set(false)" aria-label="Cerrar atajos de teclado">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="ft-shortcuts-body">
+            <div class="ft-sc-section">Herramientas</div>
+            <div class="ft-sc-row"><kbd>P</kbd> <span>Dibujar poligono</span></div>
+            <div class="ft-sc-row"><kbd>L</kbd> <span>Dibujar linea</span></div>
+            <div class="ft-sc-row"><kbd>M</kbd> <span>Colocar punto</span></div>
+            <div class="ft-sc-row"><kbd>T</kbd> <span>Agregar texto</span></div>
+            <div class="ft-sc-row"><kbd>D</kbd> <span>Medir distancia</span></div>
+            <div class="ft-sc-row"><kbd>A</kbd> <span>Medir area</span></div>
+            <div class="ft-sc-row"><kbd>E</kbd> <span>Editar geometrias</span></div>
+            <div class="ft-sc-row"><kbd>X</kbd> <span>Eliminar geometria</span></div>
+            <div class="ft-sc-section">Edicion</div>
+            <div class="ft-sc-row"><kbd>⌘Z</kbd> <span>Deshacer</span></div>
+            <div class="ft-sc-row"><kbd>⌘⇧Z</kbd> <span>Rehacer</span></div>
+            <div class="ft-sc-row"><kbd>Enter</kbd> <span>Terminar/Guardar</span></div>
+            <div class="ft-sc-row"><kbd>Esc</kbd> <span>Cancelar herramienta</span></div>
+            <div class="ft-sc-section">Navegacion</div>
+            <div class="ft-sc-row"><kbd>⌥ + Arrastrar</kbd> <span>Rotar mapa</span></div>
+            <div class="ft-sc-row"><kbd>Click derecho</kbd> <span>Menu contextual</span></div>
+            <div class="ft-sc-row"><kbd>Doble click</kbd> <span>Editar forma/texto</span></div>
+            <div class="ft-sc-row"><kbd>Scroll</kbd> <span>Zoom</span></div>
+          </div>
+        </div>
+      }
+    </div>
   </div>
 
+  <!-- ── Cards View ── -->
+  @if (viewMode() === 'cards') {
+    <div class="cards-wrapper">
+      <div class="cards-header">
+        <span class="cards-count">{{ cardSites().length }} sitios</span>
+      </div>
+      <div class="cards-grid">
+        @for (site of cardSites(); track site.devEUI) {
+          <div class="site-card" [class]="'site-card site-card--' + site.status" (click)="goToSiteDetail(site.devEUI)" (keydown.enter)="goToSiteDetail(site.devEUI)" tabindex="0" role="button">
+            <div class="site-card-header">
+              <span class="site-card-dot" [class]="'site-card-dot site-card-dot--' + site.status"></span>
+              <span class="site-card-name">{{ site.name }}</span>
+              <span class="site-card-badge">{{ cardStatusLabel(site.status) }}</span>
+            </div>
+            <div class="site-card-body">
+              <div class="site-card-metric">
+                <span class="site-card-value">{{ site.flow != null ? site.flow.toFixed(2) : 'N/A' }}</span>
+                <span class="site-card-unit">{{ site.unit }}</span>
+              </div>
+              <div class="site-card-meta">
+                <span class="site-card-type">{{ site.type }}</span>
+                <span class="site-card-sep">·</span>
+                <span class="site-card-mun">{{ site.municipality }}</span>
+              </div>
+            </div>
+            <div class="site-card-footer">
+              @if (site.signalPct != null) {
+                <div class="site-card-signal">
+                  <div class="site-card-signal-track">
+                    <div class="site-card-signal-fill"
+                      [style.width.%]="site.signalPct"
+                      [class.signal--good]="site.signalPct >= 60"
+                      [class.signal--fair]="site.signalPct >= 30 && site.signalPct < 60"
+                      [class.signal--poor]="site.signalPct < 30">
+                    </div>
+                  </div>
+                  <span class="site-card-signal-pct">{{ site.signalPct }}%</span>
+                </div>
+              }
+              <span class="site-card-ts">{{ site.timestamp }}</span>
+            </div>
+          </div>
+        } @empty {
+          <div class="cards-empty">No hay sitios disponibles</div>
+        }
+      </div>
+    </div>
+  }
+
   <!-- ── Mapa ── -->
-  <div class="gis-map-wrapper">
+  <div class="gis-map-wrapper" [class.gis-map-hidden]="viewMode() === 'cards'" (contextmenu)="onMapContextMenu($event)">
 
     <!-- Buscador flotante + filtros -->
     <div class="gis-search">
       <div class="gis-search-inner">
         <span class="gis-search-icon">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
           </svg>
         </span>
         <input
           type="text"
-          placeholder="Buscar municipio o pozo…"
+          placeholder="Buscar sitio, municipio o direccion..."
+          [value]="searchQuery()"
           (input)="searchGlobal($any($event.target).value)"
+          (blur)="closeSearchDropdown()"
+          (keydown.escape)="searchDropdownOpen.set(false)"
+          aria-label="Buscar sitio, municipio o direccion"
+          autocomplete="off"
         />
         <button
           class="gis-filter-toggle"
           [class.gis-filter-active]="filterPanelOpen() || filterMunicipio() > 0 || filterSiteType() || filterMinFlow() > 0 || filterOnlyAlarm()"
           (click)="filterPanelOpen.set(!filterPanelOpen())"
           title="Filtros rapidos"
+          aria-label="Filtros rapidos"
+          [attr.aria-pressed]="filterPanelOpen()"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
           </svg>
         </button>
       </div>
+
+      <!-- Search dropdown results -->
+      @if (searchDropdownOpen() && searchResults().length > 0) {
+        <div class="gis-search-dropdown">
+          @for (r of searchResults(); track r.label + r.type) {
+            <div class="gis-search-result" (mousedown)="selectSearchResult(r)">
+              <span class="gis-search-result-icon">
+                @switch (r.type) {
+                  @case ('municipio') {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+                  }
+                  @case ('sitio') {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  }
+                  @case ('direccion') {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  }
+                }
+              </span>
+              <div class="gis-search-result-text">
+                <span class="gis-search-result-label">{{ r.label }}</span>
+                <span class="gis-search-result-sub">{{ r.sub }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
 
       @if (filterPanelOpen()) {
         <div class="gis-filter-panel">
@@ -131,6 +358,7 @@
                   class="gf-pill"
                   [class.gf-pill-active]="filterSiteType() === t.key"
                   (click)="filterSiteType.set(t.key); applyFilters()"
+                  [attr.aria-pressed]="filterSiteType() === t.key"
                 >{{ t.label }}</button>
               }
             </div>
@@ -165,11 +393,11 @@
       }
     </div>
 
-    <div id="map" class="gis-map"></div>
+    <div id="map" class="gis-map" aria-label="Mapa GIS"></div>
 
     <!-- Alarm overlay badge -->
     @if (alarmCount() > 0) {
-      <div class="alarm-badge">
+      <div class="alarm-badge" role="alert" aria-live="assertive">
         <span class="alarm-badge-dot"></span>
         <span class="alarm-badge-text">
           {{ alarmCount() }} {{ alarmCount() === 1 ? 'sitio' : 'sitios' }} sin comunicacion
@@ -177,11 +405,366 @@
       </div>
     }
 
+
+
+    <!-- ── Inline text input (replaces prompt()) ── -->
+    @if (inlineTextInput(); as inp) {
+      <div class="ft-inline-text"
+           [style.left.px]="inp.pixel.x"
+           [style.top.px]="inp.pixel.y">
+        <input
+          #inlineInput
+          type="text"
+          class="ft-inline-text-input"
+          [value]="inlineTextValue()"
+          (input)="inlineTextValue.set($any($event.target).value)"
+          (keydown.enter)="confirmInlineTextOrEdit()"
+          (keydown.escape)="cancelInlineText()"
+          (blur)="confirmInlineTextOrEdit()"
+          placeholder="Escribe el texto..."
+          aria-label="Texto de etiqueta"
+          autofocus
+        />
+      </div>
+    }
+
+    <!-- ── Active tool border glow ── -->
+    @if (activeTool() !== 'none') {
+      <div class="ft-map-glow"></div>
+    }
+
+    <!-- ── Contextual hint bar ── -->
+    @if (activeTool() !== 'none') {
+      <div class="ft-hint">
+        <span class="ft-hint-text">{{ toolHintText() }}</span>
+        <div class="ft-hint-actions">
+          <button class="ft-pill ft-pill--finish" (click)="finishTool()">Terminar</button>
+          <button class="ft-pill ft-pill--cancel" (click)="cancelTool()">Cancelar</button>
+        </div>
+      </div>
+    }
+
+    <!-- ── Right-click context menu ── -->
+    @if (contextMenu(); as ctx) {
+      <div class="gis-ctx-menu"
+           [style.left.px]="ctx.x"
+           [style.top.px]="ctx.y"
+           (mouseleave)="closeContextMenu()"
+           role="menu">
+        @if (ctx.devEUI) {
+          <div class="gis-ctx-site-name">{{ ctx.name }}</div>
+          <button class="gis-ctx-item" (click)="ctxViewDetail()" role="menuitem">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            Ver detalle
+          </button>
+          <button class="gis-ctx-item" (click)="ctxViewTrend()" role="menuitem">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Ver tendencia
+          </button>
+          <div class="gis-ctx-sep"></div>
+        }
+        <button class="gis-ctx-item" (click)="ctxZoomTo()" role="menuitem">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          Zoom aqui
+        </button>
+        <button class="gis-ctx-item" (click)="ctxCopyCoords()" role="menuitem">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copiar coordenadas
+        </button>
+        <div class="gis-ctx-sep"></div>
+        <button class="gis-ctx-item" (click)="startTool('draw-polygon'); closeContextMenu()" role="menuitem">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+          Dibujar poligono
+        </button>
+        <button class="gis-ctx-item" (click)="startTool('measure-distance'); closeContextMenu()" role="menuitem">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0z"/></svg>
+          Medir distancia
+        </button>
+      </div>
+    }
+
+    <!-- ── Real-time Measurement HUD ── -->
+    @if (measureResult() || liveMeasure()) {
+      <div class="ft-hud">
+        <span class="ft-hud-value">{{ liveMeasure() || measureResult() }}</span>
+        @if (measureResult() && activeTool() === 'none') {
+          <button class="ft-hud-dismiss" (click)="measureResult.set('')" title="Cerrar" aria-label="Cerrar medicion">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- ── Compass Rose (drag to rotate, click to reset north) ── -->
+    <div class="gis-compass"
+         (click)="resetNorth()"
+         (mousedown)="onCompassDragStart($event)"
+         title="Arrastra para rotar · Click para volver al norte · Alt/Option + Arrastrar en el mapa">
+      <svg viewBox="0 0 100 100" width="56" height="56" [style.transform]="'rotate(' + (-mapBearing()) + 'deg)'" aria-hidden="true">
+        <!-- Outer ring -->
+        <circle cx="50" cy="50" r="46" fill="none" stroke="var(--border-default, #cbd5e1)" stroke-width="1.5" opacity="0.5"/>
+        <!-- Cardinal ticks -->
+        <line x1="50" y1="6" x2="50" y2="14" stroke="var(--text-secondary, #94a3b8)" stroke-width="1.5"/>
+        <line x1="50" y1="86" x2="50" y2="94" stroke="var(--text-secondary, #94a3b8)" stroke-width="1.5"/>
+        <line x1="6" y1="50" x2="14" y2="50" stroke="var(--text-secondary, #94a3b8)" stroke-width="1.5"/>
+        <line x1="86" y1="50" x2="94" y2="50" stroke="var(--text-secondary, #94a3b8)" stroke-width="1.5"/>
+        <!-- North needle (red) -->
+        <polygon points="50,10 44,50 56,50" fill="#dc2626" opacity="0.9"/>
+        <!-- South needle (dark) -->
+        <polygon points="50,90 44,50 56,50" fill="var(--text-secondary, #64748b)" opacity="0.5"/>
+        <!-- Center dot -->
+        <circle cx="50" cy="50" r="4" fill="var(--surface, #fff)" stroke="var(--text-secondary, #94a3b8)" stroke-width="1.5"/>
+        <!-- N label -->
+        <text x="50" y="24" text-anchor="middle" font-size="11" font-weight="700" fill="#dc2626" font-family="Inter, system-ui">N</text>
+      </svg>
+    </div>
+
+    <!-- ── Mini-map ── -->
+    @if (miniMapVisible()) {
+      <div id="gis-minimap" class="gis-minimap"></div>
+    }
+
+    <!-- ── Cursor Coordinates ── -->
+    @if (cursorCoords()) {
+      <div class="ft-coords">{{ cursorCoords() }}</div>
+    }
+
+    <!-- ── Query Results Bottom Sheet ── -->
+    @if (queryPanelOpen()) {
+      <div class="ft-query">
+        <div class="ft-query-header">
+          <span class="ft-query-count">{{ queryResults().length }} sitios en el area</span>
+          <button class="ft-query-close" (click)="queryPanelOpen.set(false)" aria-label="Cerrar resultados">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="ft-query-body">
+          @for (site of queryResults(); track site.devEUI || site.name) {
+            <div class="ft-query-item" (click)="goToSiteDetail(site.devEUI)">
+              <span class="ft-query-dot" [class]="'ft-query-dot ft-query-dot--' + site.status"></span>
+              <span class="ft-query-name">{{ site.name }}</span>
+              <span class="ft-query-flow">{{ site.flow != null ? site.flow.toFixed(2) + ' L/s' : '---' }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ── Buffer Panel ── -->
+    @if (bufferPanelOpen()) {
+      <div class="ft-buffer-panel">
+        <div class="ft-buffer-header">
+          <span>Area de influencia</span>
+          <button class="ft-query-close" (click)="bufferPanelOpen.set(false)" aria-label="Cerrar area de influencia">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="ft-buffer-body">
+          <label class="ft-buffer-label">Radio: {{ bufferRadius() }} km</label>
+          <input type="range" min="0.1" max="10" step="0.1" [value]="bufferRadius()" (input)="bufferRadius.set(+$any($event.target).value)" class="ft-buffer-range" />
+          <button class="ft-pill ft-pill--finish" (click)="applyBuffer()">Aplicar buffer</button>
+        </div>
+      </div>
+    }
+
+    <!-- ── Saved Drawings Panel ── -->
+    @if (savedDrawingsPanelOpen()) {
+      <div class="ft-saved-panel">
+        <div class="ft-saved-header">
+          <span>Dibujos guardados</span>
+          <button class="ft-query-close" (click)="savedDrawingsPanelOpen.set(false)" aria-label="Cerrar dibujos guardados">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="ft-saved-body">
+          <!-- Save current -->
+          @if (drawnItems.getLayers().length > 0) {
+            <div class="ft-save-form">
+              <input type="text" placeholder="Nombre del dibujo..." [value]="saveDrawingName()" (input)="saveDrawingName.set($any($event.target).value)" class="ft-save-input" aria-label="Nombre del dibujo" />
+              <button class="ft-pill ft-pill--finish" [disabled]="!saveDrawingName()" (click)="saveCurrentDrawing()">Guardar</button>
+            </div>
+          }
+          <!-- List -->
+          @for (d of savedDrawings(); track d.id) {
+            <div class="ft-saved-item">
+              <span class="ft-saved-name" (click)="loadDrawing(d)">{{ d.name }}</span>
+              <button class="ft-saved-delete" (click)="deleteSavedDrawing(d.id)" title="Eliminar" aria-label="Eliminar dibujo">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          } @empty {
+            <div class="ft-saved-empty">No hay dibujos guardados</div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ── GIS Views Panel (social network of saved views) ── -->
+    @if (gisViewsPanelOpen()) {
+      <div class="gv-panel">
+        <div class="gv-header">
+          <span>Vistas GIS</span>
+          <button class="ft-query-close" (click)="gisViewsPanelOpen.set(false)" aria-label="Cerrar vistas GIS">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="gv-tabs">
+          <button class="gv-tab" [class.gv-tab--active]="gisViewsTab() === 'mine'" (click)="gisViewsTab.set('mine')" [attr.aria-pressed]="gisViewsTab() === 'mine'">Mis Vistas</button>
+          @if (isAdmin()) {
+            <button class="gv-tab" [class.gv-tab--active]="gisViewsTab() === 'all'" (click)="gisViewsTab.set('all')" [attr.aria-pressed]="gisViewsTab() === 'all'">Todas</button>
+          }
+        </div>
+        <div class="gv-save-form">
+          <input type="text" placeholder="Nombre de la vista..." [value]="saveViewName()" (input)="saveViewName.set($any($event.target).value)" class="gv-input" aria-label="Nombre de la vista" />
+          <input type="text" placeholder="Descripcion (opcional)..." [value]="saveViewDesc()" (input)="saveViewDesc.set($any($event.target).value)" class="gv-input" aria-label="Descripcion de la vista" />
+          <div class="gv-save-row">
+            <label class="gv-toggle">
+              <input type="checkbox" [checked]="saveViewPublic()" (change)="saveViewPublic.set($any($event.target).checked)" />
+              <span>Publica</span>
+            </label>
+            <button class="ft-pill ft-pill--finish" [disabled]="!saveViewName()" (click)="saveCurrentView()">Guardar</button>
+          </div>
+        </div>
+        <div class="gv-list">
+          @for (v of (gisViewsTab() === 'mine' ? myViews() : gisViews()); track v.id) {
+            <div class="gv-card" [class.gv-card--active]="activeViewId() === v.id" (click)="restoreGisView(v)">
+              <div class="gv-card-top">
+                <span class="gv-card-name">{{ v.name }}</span>
+                <span class="gv-card-badge" [class.gv-card-badge--public]="v.is_public">{{ v.is_public ? 'Publica' : 'Privada' }}</span>
+              </div>
+              @if (v.description) {
+                <div class="gv-card-desc">{{ v.description }}</div>
+              }
+              <div class="gv-card-meta">
+                @if (v.owner_name) {
+                  <span class="gv-card-owner">{{ v.owner_name }}</span>
+                }
+                <span class="gv-card-time">{{ v.updated_at | date:'short' }}</span>
+              </div>
+              <div class="gv-card-actions">
+                @if (activeViewId() === v.id) {
+                  <button class="gv-action" (click)="updateGisView(v.id); $event.stopPropagation()" title="Actualizar con la vista actual">Actualizar</button>
+                }
+                <button class="gv-action gv-action--danger" (click)="deleteGisView(v.id); $event.stopPropagation()" title="Eliminar vista">Eliminar</button>
+              </div>
+            </div>
+          } @empty {
+            <div class="gv-empty">No hay vistas guardadas</div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ── Drawn Layers Panel (Figma-style) ── -->
+    @if (layersPanelVisible()) {
+      <div class="ft-layers-panel">
+        <div class="ft-layers-header">
+          <span>Capas dibujadas</span>
+          <button class="ft-query-close" (click)="layersPanelVisible.set(false)" aria-label="Cerrar capas dibujadas">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="ft-layers-body">
+          @for (item of getDrawnLayersList(); track item.id) {
+            <div class="ft-layer-row"
+                 [class.ft-layer-row--selected]="selectedLayer() === item.layer"
+                 (click)="selectLayer(item.layer)"
+                 draggable="true"
+                 (dragstart)="onLayerDragStart($event, item.id)"
+                 (dragover)="onLayerDragOver($event)"
+                 (dragenter)="onLayerDragEnter($event, item.id)"
+                 (dragleave)="onLayerDragLeave($event)"
+                 (drop)="onLayerDrop($event, item.id)"
+                 (dragend)="onLayerDragEnd($event)">
+              <!-- Drag handle -->
+              <span class="ft-layer-drag-handle" title="Arrastrar para reordenar">
+                <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden="true">
+                  <circle cx="3" cy="2" r="1.2"/><circle cx="7" cy="2" r="1.2"/>
+                  <circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/>
+                  <circle cx="3" cy="12" r="1.2"/><circle cx="7" cy="12" r="1.2"/>
+                </svg>
+              </span>
+              <!-- Type icon -->
+              <span class="ft-layer-icon">
+                @switch (item.type) {
+                  @case ('polygon') {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+                  }
+                  @case ('area') {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                  }
+                  @case ('distance') {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0z"/></svg>
+                  }
+                  @case ('line') {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 19L19 5"/></svg>
+                  }
+                  @case ('point') {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/></svg>
+                  }
+                  @case ('text') {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                  }
+                  @case ('buffer') {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke-dasharray="4 3"/></svg>
+                  }
+                  @default {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
+                  }
+                }
+              </span>
+              <!-- Name -->
+              @if (editingLayerId() === item.id) {
+                <input
+                  class="ft-layer-name-input"
+                  [value]="editingLayerValue()"
+                  (input)="editingLayerValue.set($any($event.target).value)"
+                  (keydown.enter)="confirmRenameLayer(item.layer)"
+                  (keydown.escape)="cancelRenameLayer()"
+                  (blur)="confirmRenameLayer(item.layer)"
+                  (click)="$event.stopPropagation()"
+                  autofocus
+                />
+              } @else {
+                <span class="ft-layer-name" (dblclick)="startRenameLayer(item.layer); $event.stopPropagation()" title="Doble click para renombrar">{{ item.name }}</span>
+              }
+              <!-- Actions -->
+              <div class="ft-layer-actions">
+                <button class="ft-layer-action" (click)="moveLayerUp(item.layer); $event.stopPropagation()" title="Traer al frente" aria-label="Traer al frente">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>
+                </button>
+                <button class="ft-layer-action" (click)="moveLayerDown(item.layer); $event.stopPropagation()" title="Enviar atras" aria-label="Enviar atras">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <button class="ft-layer-action" (click)="toggleLayerVisibility(item.layer); $event.stopPropagation()" [title]="item.visible ? 'Ocultar' : 'Mostrar'" [attr.aria-label]="item.visible ? 'Ocultar capa' : 'Mostrar capa'">
+                  @if (item.visible) {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  } @else {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17.9 17.9A10.1 10.1 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.1-5.9"/><path d="M1 1l22 22"/></svg>
+                  }
+                </button>
+                <button class="ft-layer-action ft-layer-action--danger" (click)="removeDrawnLayer(item.layer); $event.stopPropagation()" title="Eliminar" aria-label="Eliminar capa">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+            </div>
+          } @empty {
+            <div class="ft-layers-empty">Sin geometrias dibujadas</div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ── Share Toast ── -->
+    @if (shareToast()) {
+      <div class="ft-toast" role="status" aria-live="polite">Enlace copiado al portapapeles</div>
+    }
+
     <!-- Custom Layer Control Panel -->
     <div class="lc" [class.lc-open]="layerPanelOpen()">
       <!-- Toggle button -->
-      <button class="lc-toggle" (click)="layerPanelOpen.set(!layerPanelOpen())" title="Capas del mapa">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <button class="lc-toggle" (click)="layerPanelOpen.set(!layerPanelOpen())" title="Capas del mapa" aria-label="Capas del mapa" [attr.aria-pressed]="layerPanelOpen()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
         </svg>
       </button>
@@ -208,6 +791,7 @@
                   class="lc-base-btn"
                   [class.lc-base-active]="activeBase() === opt.key"
                   (click)="switchBase($any(opt.key))"
+                  [attr.aria-pressed]="activeBase() === opt.key"
                 >{{ opt.label }}</button>
               }
             </div>
@@ -266,6 +850,37 @@
             </div>
           </div>
 
+          <!-- Visualization layers -->
+          <div class="lc-section">
+            <span class="lc-section-title">Visualizacion</span>
+            <div class="lc-layers">
+              <label class="lc-layer">
+                <input type="checkbox" [checked]="heatmapVisible()" (change)="toggleHeatmap()" />
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="lc-icon-svg" style="color: #ef4444" aria-hidden="true">
+                  <path d="M12 12c-2-2.96-6-5.7-6-8.74a6 6 0 0 1 12 0C18 6.3 14 9.04 12 12"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+                <span class="lc-layer-name">Mapa de calor</span>
+              </label>
+              <label class="lc-layer">
+                <input type="checkbox" [checked]="miniMapVisible()" (change)="toggleMiniMap()" />
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="lc-icon-svg" aria-hidden="true">
+                  <rect x="2" y="2" width="20" height="20" rx="2"/><rect x="12" y="12" width="10" height="10" rx="1" fill="currentColor" opacity="0.15"/>
+                </svg>
+                <span class="lc-layer-name">Mini mapa</span>
+              </label>
+              <label class="lc-layer">
+                <input type="checkbox" [checked]="rainStationsVisible()" (change)="toggleRainStations()" />
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="lc-icon-svg" style="color: #3b82f6" aria-hidden="true">
+                  <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                </svg>
+                <span class="lc-layer-name">Pluviometros</span>
+                @if (rainStationsCount() > 0) {
+                  <span class="lc-count">{{ rainStationsCount() }}</span>
+                }
+              </label>
+            </div>
+          </div>
+
           <!-- Infrastructure layers -->
           <div class="lc-section">
             <span class="lc-section-title">Infraestructura</span>
@@ -290,6 +905,40 @@
               </label>
             </div>
           </div>
+
+          <!-- GeoServer layers -->
+          @if (geoLayers().length > 0 || isAdmin()) {
+            <div class="lc-section">
+              <span class="lc-section-title">Capas GeoServer</span>
+              <div class="lc-layers lc-layers--geo">
+                @for (gl of geoLayers(); track gl.name) {
+                  <label class="lc-layer">
+                    <input type="checkbox" [checked]="gl.visible" (change)="toggleGeoLayer(gl.name)" />
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="lc-icon-svg" aria-hidden="true">
+                      <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/>
+                    </svg>
+                    <span class="lc-layer-name">{{ gl.name }}</span>
+                    @if (isAdmin()) {
+                      <button class="lc-delete-btn" (click)="deleteGeoLayer(gl.name); $event.preventDefault(); $event.stopPropagation()" title="Eliminar capa" aria-label="Eliminar capa">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    }
+                  </label>
+                } @empty {
+                  <span class="lc-empty">Sin capas publicadas</span>
+                }
+              </div>
+              @if (isAdmin()) {
+                <label class="lc-upload-btn" [class.lc-uploading]="geoUploading()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  {{ geoUploading() ? 'Subiendo...' : 'Subir shapefile (.zip)' }}
+                  <input type="file" accept=".zip" (change)="uploadShapefile($event)" hidden [disabled]="geoUploading()" />
+                </label>
+              }
+            </div>
+          }
         </div>
       }
     </div>
@@ -301,8 +950,7 @@
     }
   </div>
 
+  @if (!embed()) {
+    <app-sidebar-nav></app-sidebar-nav>
+  }
 </div>
-
-@if (!embed()) {
-  <app-footer-tabs></app-footer-tabs>
-}

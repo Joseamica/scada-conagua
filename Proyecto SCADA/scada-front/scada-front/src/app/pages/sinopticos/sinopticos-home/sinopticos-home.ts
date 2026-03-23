@@ -15,13 +15,13 @@ import {
 } from '@ng-icons/heroicons/outline';
 import { SinopticoService, SinopticoProject, Sinoptico } from '../../../core/services/sinoptico.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../../layout/sidebar-nav/sidebar-nav';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
 
 @Component({
   selector: 'app-sinopticos-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgIconComponent, FooterTabsComponent, HeaderBarComponent],
+  imports: [CommonModule, FormsModule, NgIconComponent, SidebarNavComponent, HeaderBarComponent],
   providers: [
     provideIcons({ heroPlus, heroFolder, heroTrash, heroPencilSquare, heroGlobeAlt, heroLockClosed, heroShare, heroEye }),
   ],

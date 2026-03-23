@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
-import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../../layout/sidebar-nav/sidebar-nav';
 import { AuthService } from '../../../core/services/auth.service';
 import { ROLE_MAP } from '../../../core/constants/roles';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
@@ -33,7 +33,7 @@ import {
     CommonModule,
     FormsModule,
     HeaderBarComponent,
-    FooterTabsComponent,
+    SidebarNavComponent,
     NgIconComponent
   ],
   providers: [

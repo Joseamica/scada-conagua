@@ -1,16 +1,14 @@
 /* =========================
-   FUENTE PROFESIONAL
-========================= */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-/* =========================
    CONTENEDOR GENERAL
 ========================= */
 .gis-container {
   font-family: 'Inter', system-ui, sans-serif;
   background: var(--bg-app);
-  min-height: 100vh;
-  padding-bottom: 80px;
+  height: calc(100dvh - var(--header-height, 56px));
+  margin-left: var(--sidebar-width, 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* =========================
@@ -20,12 +18,12 @@
   display: flex;
   align-items: center;
   gap: 0;
-  padding: 0 20px;
+  padding: 0 clamp(10px, 1.2vw, 20px);
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-default);
   box-shadow: var(--shadow-sm);
-  min-height: 52px;
-  flex-wrap: wrap;
+  min-height: 44px;
+  flex-wrap: nowrap;
   position: relative;
   z-index: 10;
 }
@@ -33,20 +31,21 @@
 .gis-legend-section {
   display: flex;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 10px 20px 10px 0;
+  gap: clamp(6px, 0.9vw, 16px);
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  padding: 10px clamp(10px, 1.2vw, 20px) 10px 0;
 }
 
 /* Separador vertical entre secciones */
 .gis-legend-section + .gis-legend-section {
   border-left: 1px solid var(--border-default);
-  padding-left: 20px;
+  padding-left: clamp(10px, 1.2vw, 20px);
 }
 
 .gis-legend-section h4 {
   margin: 0;
-  font-size: 11px;
+  font-size: clamp(9px, 0.72vw, 11px);
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -57,36 +56,149 @@
 .legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: clamp(3px, 0.35vw, 6px);
+  font-size: clamp(11px, 0.85vw, 13px);
   font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
   cursor: default;
 }
 
+/* Label text inside legend items — hidden at narrow widths, icons/dots speak alone */
+.legend-item > span:not(.legend-dot) {
+  transition: opacity 0.15s ease;
+}
+
 .legend-item img {
-  width: 22px;
-  height: 22px;
+  width: clamp(16px, 1.35vw, 22px);
+  height: clamp(16px, 1.35vw, 22px);
 }
 
 /* =========================
    DOTS DE ESTADO
 ========================= */
 .legend-dot {
-  width: 9px;
-  height: 9px;
+  width: clamp(7px, 0.55vw, 9px);
+  height: clamp(7px, 0.55vw, 9px);
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
 }
 
-.legend-dot.blue   { background: #3b82f6; box-shadow: 0 0 0 2px #bfdbfe; }
-.legend-dot.green  { background: #22c55e; box-shadow: 0 0 0 2px #bbf7d0; }
-.legend-dot.amber  { background: #f59e0b; box-shadow: 0 0 0 2px #fde68a; }
-.legend-dot.yellow { background: #f59e0b; box-shadow: 0 0 0 2px #fde68a; }
-.legend-dot.red    { background: #ef4444; box-shadow: 0 0 0 2px #fecaca; }
-.legend-dot.gray   { background: #94a3b8; box-shadow: 0 0 0 2px #e2e8f0; }
+/* ── Progressive density: hide site-type text below 1100px — icons speak alone ── */
+@media (max-width: 1100px) {
+  .gis-legend-section:not(.gis-legend-actions):not(.status-legend-wrap) .legend-item > span:not(.legend-dot) {
+    display: none;
+  }
+  .gis-legend-section:not(.gis-legend-actions):not(.status-legend-wrap) {
+    gap: clamp(6px, 1vw, 12px);
+  }
+}
+
+.legend-dot.blue   { background: var(--info); box-shadow: 0 0 0 2px color-mix(in srgb, var(--info) 25%, transparent); }
+.legend-dot.green  { background: var(--status-online); box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-online) 25%, transparent); }
+.legend-dot.amber  { background: var(--warning); box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning) 25%, transparent); }
+.legend-dot.yellow { background: var(--warning); box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning) 25%, transparent); }
+.legend-dot.red    { background: var(--danger); box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 25%, transparent); }
+.legend-dot.gray   { background: var(--text-muted); box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-muted) 25%, transparent); }
+
+/* =========================
+   STATUS LEGEND DROPDOWN
+========================= */
+.gis-legend-wrapper > .status-legend-wrap {
+  position: relative;
+  padding: 0;
+}
+
+.status-legend-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px clamp(10px, 1.2vw, 20px);
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text-primary);
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.status-legend-trigger:hover {
+  background: var(--bg-card-hover);
+}
+
+.status-legend-trigger h4 {
+  margin: 0;
+  font-size: clamp(9px, 0.72vw, 11px);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.status-dots-preview {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-dots-preview .legend-dot {
+  width: 8px;
+  height: 8px;
+  box-shadow: none;
+}
+
+.status-chevron {
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.status-chevron.open {
+  transform: rotate(180deg);
+}
+
+.status-legend-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+}
+
+.status-legend-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  padding: 8px 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 11;
+  min-width: 170px;
+  animation: statusDropIn 0.15s ease;
+}
+
+.status-legend-dropdown .legend-item {
+  font-size: 12px;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background 0.1s ease;
+}
+
+.status-legend-dropdown .legend-item:hover {
+  background: var(--bg-card-hover);
+}
+
+@keyframes statusDropIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 /* =========================
    BOTÓN RESUMEN
@@ -134,6 +246,58 @@
   position: relative;
   display: flex;
   align-items: center;
+}
+
+/* ── Search Dropdown ── */
+.gis-search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 1200;
+  animation: gfSlideIn 0.12s ease;
+}
+.gis-search-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.gis-search-result:hover {
+  background: var(--bg-card-hover, #f1f5f9);
+}
+.gis-search-result:first-child { border-radius: 10px 10px 0 0; }
+.gis-search-result:last-child { border-radius: 0 0 10px 10px; }
+.gis-search-result-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.gis-search-result-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.gis-search-result-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gis-search-result-sub {
+  font-size: 10px;
+  color: var(--text-secondary, #94a3b8);
 }
 
 .gis-search-icon {
@@ -199,17 +363,22 @@
 }
 
 .gis-filter-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
   margin-top: 6px;
   background: var(--bg-card);
-  border: 1.5px solid var(--border-default);
-  border-radius: 10px;
-  box-shadow: var(--shadow-md);
-  padding: 8px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
   animation: gfSlideIn 0.12s ease;
-  width: 250px;
+  width: 280px;
+  z-index: 1100;
+  box-sizing: border-box;
 }
 
 @keyframes gfSlideIn {
@@ -220,11 +389,11 @@
 .gf-row {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
 }
 
 .gf-label {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -233,41 +402,42 @@
 
 .gf-select {
   width: 100%;
-  padding: 4px 6px;
-  border-radius: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
   border: 1px solid var(--border-default);
   background: var(--bg-card);
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: 12px;
   font-family: 'Inter', system-ui, sans-serif;
   font-weight: 500;
   outline: none;
   cursor: pointer;
-  transition: border-color 0.12s;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
 }
 .gf-select:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(109, 0, 43, 0.1);
 }
 
 .gf-pills {
   display: flex;
-  gap: 3px;
+  gap: 4px;
   flex-wrap: wrap;
 }
 
 .gf-pill {
-  padding: 2px 8px;
-  border-radius: 10px;
+  padding: 4px 10px;
+  border-radius: 16px;
   border: 1px solid var(--border-default);
   background: var(--bg-card);
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   font-family: 'Inter', system-ui, sans-serif;
   cursor: pointer;
   transition: all 0.12s;
   white-space: nowrap;
-  line-height: 1.5;
 }
 .gf-pill:hover {
   border-color: var(--accent);
@@ -275,21 +445,22 @@
 }
 .gf-pill-active {
   background: var(--accent);
-  color: var(--text-on-accent);
+  color: var(--text-on-accent, #fff);
   border-color: var(--accent);
 }
 
 .gf-range-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .gf-range {
   flex: 1;
+  min-width: 0; /* prevent overflow */
   -webkit-appearance: none;
   appearance: none;
-  height: 3px;
+  height: 4px;
   border-radius: 2px;
   background: var(--border-default);
   outline: none;
@@ -297,23 +468,24 @@
 }
 .gf-range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: var(--accent);
   border: 2px solid var(--bg-card);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   cursor: pointer;
 }
 
 .gf-range-value {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
   font-family: ui-monospace, monospace;
-  min-width: 58px;
+  min-width: 52px;
   text-align: right;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .gf-check {
@@ -361,18 +533,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 2px;
+  padding-top: 8px;
   border-top: 1px solid var(--border-default);
   margin-top: 2px;
 }
 
 .gf-clear {
-  padding: 2px 8px;
+  padding: 4px 10px;
   border: none;
   border-radius: 6px;
-  background: var(--bg-card-hover);
+  background: var(--bg-card-hover, #f1f5f9);
   color: var(--accent);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   font-family: 'Inter', system-ui, sans-serif;
   cursor: pointer;
@@ -388,17 +560,14 @@
 ========================= */
 .gis-map-wrapper {
   position: relative;
-  margin: 12px 16px 0;
-  border-radius: 12px;
+  flex: 1;
   overflow: hidden;
-  box-shadow: var(--shadow-md);
-  border: 1px solid var(--border-default);
+  /* Full bleed — no margin, no border-radius, no border */
 }
 
 .gis-map {
   width: 100%;
-  height: calc(100vh - 168px);
-  min-height: 400px;
+  height: 100%;
 }
 
 .gis-map-loading-overlay {
@@ -417,7 +586,7 @@
    POPUP DEL MAPA
 ========================= */
 .scada-popup {
-  width: 240px;
+  width: min(240px, 85vw);
   font-family: 'Inter', system-ui, sans-serif;
   font-size: 12px;
   line-height: 1.5;
@@ -532,8 +701,13 @@
   position: absolute;
   top: 12px;
   right: 12px;
+  bottom: 12px;
   z-index: 1000;
   font-family: 'Inter', system-ui, sans-serif;
+  pointer-events: none;
+}
+.lc > * {
+  pointer-events: auto;
 }
 
 .lc-toggle {
@@ -570,12 +744,14 @@
   position: absolute;
   top: 44px;
   right: 0;
-  width: 240px;
+  width: min(240px, 90vw);
+  max-height: calc(100% - 44px);
   background: var(--bg-card);
   border: 1px solid var(--border-default);
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   animation: lcSlideIn 0.15s ease;
 }
 
@@ -667,6 +843,11 @@
   gap: 2px;
 }
 
+.lc-layers--geo {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
 .lc-layer {
   display: flex;
   align-items: center;
@@ -685,32 +866,28 @@
 .lc-layer input[type='checkbox'] {
   appearance: none;
   -webkit-appearance: none;
+  -moz-appearance: none;
   width: 16px;
   height: 16px;
+  min-width: 16px;
   border: 1.5px solid var(--border-default);
   border-radius: 4px;
-  background: var(--bg-card);
+  background: var(--bg-input, #fff);
   cursor: pointer;
   flex-shrink: 0;
   position: relative;
   transition: background 0.12s, border-color 0.12s;
+  margin: 0;
+  padding: 0;
 }
 
 .lc-layer input[type='checkbox']:checked {
-  background: var(--accent);
+  background-color: var(--accent);
   border-color: var(--accent);
-}
-
-.lc-layer input[type='checkbox']:checked::after {
-  content: '';
-  position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 5px;
-  height: 9px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 0 1 0 1.414l-5 5a1 1 0 0 1-1.414 0l-2.5-2.5a1 1 0 0 1 1.414-1.414L6.5 9.086l4.293-4.293a1 1 0 0 1 1.414 0z'/%3E%3C/svg%3E");
+  background-size: 12px;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .lc-dot {
@@ -720,16 +897,16 @@
   flex-shrink: 0;
 }
 
-.lc-dot-blue   { background: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
-.lc-dot-yellow { background: #f59e0b; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2); }
-.lc-dot-red    { background: #ef4444; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2); }
-.lc-dot-gray   { background: #94a3b8; box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.2); }
+.lc-dot-blue   { background: var(--info); box-shadow: 0 0 0 2px color-mix(in srgb, var(--info) 20%, transparent); }
+.lc-dot-yellow { background: var(--warning); box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning) 20%, transparent); }
+.lc-dot-red    { background: var(--danger); box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 20%, transparent); }
+.lc-dot-gray   { background: var(--text-muted); box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-muted) 20%, transparent); }
 
 .lc-icon {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
-  opacity: 0.7;
+  opacity: 0.75; /* de-emphasize inactive icons */
 }
 
 .lc-layer-name {
@@ -751,8 +928,8 @@
 .lc-layer-parent { font-weight: 600; }
 .lc-layer-child { padding-left: 28px; }
 
-.lc-dot-green  { background: #22c55e; box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2); }
-.lc-dot-amber  { background: #f59e0b; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2); }
+.lc-dot-green  { background: var(--status-online); box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-online) 20%, transparent); }
+.lc-dot-amber  { background: var(--warning); box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning) 20%, transparent); }
 
 /* Dimmed when empty */
 .lc-layer-empty {
@@ -761,6 +938,64 @@
 
 .lc-layer-empty .lc-count {
   color: var(--text-muted);
+}
+
+/* GeoServer layers in panel */
+.lc-icon-svg {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+.lc-empty {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  padding: 4px 0;
+  font-style: italic;
+}
+.lc-delete-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+.lc-layer:hover .lc-delete-btn {
+  opacity: 1;
+}
+.lc-delete-btn:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+.lc-upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent, #6d002b);
+  background: var(--bg-secondary, #f8fafc);
+  border: 1px dashed var(--border-default, #d1d5db);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.lc-upload-btn:hover {
+  background: var(--bg-tertiary, #f1f5f9);
+  border-color: var(--accent, #6d002b);
+}
+.lc-upload-btn.lc-uploading {
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 /* Hide native Leaflet layers control (fully replaced) */
@@ -858,6 +1093,7 @@
   border-radius: 50%;
   animation: mk-pulse 3s ease-in-out infinite;
   z-index: 1;
+  will-change: transform, opacity;
 }
 
 /* Blue pulse — operating OK */
@@ -914,8 +1150,8 @@
   animation: mk-blink 1.8s ease-in-out infinite;
 }
 @keyframes mk-blink {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.85); }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 @keyframes mk-nosignal-fade {
   0%, 100% { opacity: 0.7; }
@@ -935,11 +1171,53 @@
 }
 
 /* =========================
+   ICON SCALING BY ZOOM TIER
+   (replaces JS icon-rebuild loop — ~648 DOM mutations → 1 class toggle)
+   Base size = ICON_BASE 22px (tier md). CSS scales from there.
+   Tiers: xs(<=8)=10px, sm(<=10)=16px, md(<=12)=22px, lg(<=14)=30px, xl(>14)=38px
+========================= */
+
+/* Only target OUR markers — never Leaflet.draw vertices */
+.scada-marker {
+  transition: transform 0.2s ease;
+  will-change: transform;
+}
+
+.zoom-tier-xs .scada-marker { transform: scale(0.45); transform-origin: center center; }
+.zoom-tier-sm .scada-marker { transform: scale(0.73); transform-origin: center center; }
+.zoom-tier-md .scada-marker { transform: scale(1); }
+.zoom-tier-lg .scada-marker { transform: scale(1.36); transform-origin: center center; }
+.zoom-tier-xl .scada-marker { transform: scale(1.73); transform-origin: center center; }
+
+.zoom-tier-xs .scada-marker.mk-always-visible,
+.zoom-tier-sm .scada-marker.mk-always-visible {
+  transform: scale(1) !important;
+}
+
+/* KPI badge: hide at low zoom (show only at lg+ which covers zoom >= 13) */
+.zoom-tier-xs .mk-kpi,
+.zoom-tier-sm .mk-kpi,
+.zoom-tier-md .mk-kpi {
+  display: none;
+}
+
+/* No-signal overlay: hide at xs zoom (show at sm+ which covers zoom >= 9) */
+.zoom-tier-xs .mk-nosignal {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scada-marker {
+    transition: none;
+  }
+}
+
+/* =========================
    ALARM OVERLAY BADGE
 ========================= */
 .alarm-badge {
   position: absolute;
-  bottom: 24px;
+  bottom: 28px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
@@ -1028,32 +1306,15 @@
 /* =========================
    RESPONSIVE
 ========================= */
+@media (max-width: 900px) {
+  .ft {
+    top: 68px;
+  }
+}
+
 @media (max-width: 768px) {
-  .gis-legend-wrapper {
-    gap: 0;
-    padding: 0 12px;
-  }
-
-  .gis-legend-section {
-    gap: 12px;
-    padding: 8px 12px 8px 0;
-  }
-
-  .gis-legend-section + .gis-legend-section {
-    padding-left: 12px;
-  }
-
   .gis-search input {
     width: 220px;
-  }
-
-  .gis-map-wrapper {
-    margin: 8px 8px 0;
-    border-radius: 10px;
-  }
-
-  .gis-map {
-    height: calc(100vh - 180px);
   }
 }
 
@@ -1068,6 +1329,1599 @@
 }
 
 /* =========================
+   PIPE FLOW ANIMATION
+========================= */
+.pipe-flow-animated {
+  animation: pipe-flow 1.2s linear infinite;
+}
+.pipe-flow--secondary {
+  animation-duration: 1.6s;
+}
+@keyframes pipe-flow {
+  to { stroke-dashoffset: -20; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pipe-flow-animated,
+  .pipe-flow--secondary { animation: none; }
+}
+
+/* =========================
+   VIEW TOGGLE BUTTON
+========================= */
+.gis-legend-actions {
+  display: flex;
+  gap: clamp(4px, 0.5vw, 8px);
+  align-items: center;
+  flex-shrink: 0;
+}
+.btn-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(3px, 0.4vw, 5px);
+  font-size: clamp(10px, 0.9vw, 12px);
+  font-weight: 600;
+  padding: clamp(5px, 0.5vw, 7px) clamp(8px, 0.8vw, 12px);
+  border-radius: 8px;
+  border: 1px solid var(--border-default, #d1d5db);
+  background: var(--bg-card, #fff);
+  color: var(--text-primary, #1e293b);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-view-toggle:hover {
+  background: var(--bg-card-hover, #f1f5f9);
+  border-color: var(--accent, #6d002b);
+  color: var(--accent, #6d002b);
+}
+
+/* Hide map (but don't destroy it) */
+.gis-map-hidden {
+  position: absolute;
+  left: -9999px;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* =========================
+   CARDS VIEW
+========================= */
+.cards-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--bg, #f8fafc);
+}
+.cards-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.cards-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.site-card {
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.site-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border-color: var(--accent, #6d002b);
+}
+
+/* Status left accent */
+.site-card--ok      { border-left: 3px solid #22c55e; }
+.site-card--no-flow { border-left: 3px solid #f59e0b; }
+.site-card--no-signal { border-left: 3px solid #ef4444; }
+.site-card--pending { border-left: 3px solid #94a3b8; }
+.site-card--obra    { border-left: 3px solid #eab308; }
+
+.site-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.site-card-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.site-card-dot--ok      { background: #22c55e; }
+.site-card-dot--no-flow { background: #f59e0b; }
+.site-card-dot--no-signal { background: #ef4444; animation: blink 1s infinite; }
+.site-card-dot--pending { background: #94a3b8; }
+.site-card-dot--obra    { background: #eab308; }
+
+@keyframes blink {
+  50% { opacity: 0.3; }
+}
+
+.site-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-card-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.site-card--ok .site-card-badge      { background: #dcfce7; color: #166534; }
+.site-card--no-flow .site-card-badge { background: #fef3c7; color: #92400e; }
+.site-card--no-signal .site-card-badge { background: #fee2e2; color: #991b1b; }
+.site-card--pending .site-card-badge { background: #f1f5f9; color: #475569; }
+.site-card--obra .site-card-badge    { background: #fef9c3; color: #854d0e; }
+
+.site-card-body {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.site-card-metric {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.site-card-value {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  line-height: 1;
+}
+.site-card-unit {
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+}
+.site-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary, #94a3b8);
+  flex-shrink: 0;
+}
+.site-card-sep {
+  opacity: 0.5;
+}
+
+.site-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-light, #f1f5f9);
+}
+
+.site-card-signal {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  max-width: 140px;
+}
+.site-card-signal-track {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-tertiary, #e2e8f0);
+  overflow: hidden;
+}
+.site-card-signal-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+.site-card-signal-fill.signal--good { background: #22c55e; }
+.site-card-signal-fill.signal--fair { background: #f59e0b; }
+.site-card-signal-fill.signal--poor { background: #ef4444; }
+.site-card-signal-pct {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  min-width: 28px;
+}
+
+.site-card-ts {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--text-tertiary, #94a3b8);
+  white-space: nowrap;
+}
+
+.cards-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--text-secondary, #94a3b8);
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================
+   FLOATING GIS TOOLBAR
+========================= */
+.ft {
+  display: flex;
+  align-items: center;
+  padding: 0 clamp(10px, 1.2vw, 20px);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-default);
+  min-height: 40px;
+  flex-shrink: 0;
+}
+
+.ft--hidden {
+  display: none;
+}
+.ft-view-toggle {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.ft-bar--hidden {
+  display: none;
+}
+.ft--loading {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+
+/* Scrollable tool buttons */
+.ft-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  scrollbar-width: none;
+}
+.ft-bar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Shortcuts wrapper — pinned right, outside scroll */
+.ft-shortcuts-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+
+.ft-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Color picker dropdown */
+.ft-color-picker-wrap {
+  position: relative;
+}
+
+.ft-color-trigger {
+  gap: 4px !important;
+  padding: 5px 6px !important;
+}
+
+.ft-color-preview {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.ft-color-chevron {
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+.ft-color-chevron.open {
+  transform: rotate(180deg);
+}
+
+.ft-color-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+}
+
+.ft-color-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  margin-left: -57px; /* half of dropdown width (~114px) */
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: var(--shadow-md);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  z-index: 20;
+  animation: colorDropIn 0.12s ease both;
+}
+
+@keyframes colorDropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.ft-color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.1s;
+  padding: 0;
+}
+
+.ft-color-swatch:hover {
+  transform: scale(1.15);
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+.ft-color-swatch.ft-color-active {
+  border-color: var(--text-primary, #1e293b);
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px var(--bg-card, #fff);
+}
+
+/* Text labels on map */
+.gis-text-label {
+  background: none !important;
+  border: none !important;
+}
+.gis-text-label span {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 8px;
+  background: var(--bg-card, rgba(255,255,255,0.92));
+  border: 2px solid currentColor;
+  border-radius: 6px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  cursor: grab;
+}
+.gis-text-label span:hover {
+  box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+}
+
+.ft-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-default, #e2e8f0);
+  margin: 0 4px;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+/* Toolbar buttons */
+.ft-btn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #64748b);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s, box-shadow 0.12s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.ft-btn:hover {
+  background: var(--bg-card-hover, rgba(241, 245, 249, 0.8));
+  color: var(--text-primary, #1e293b);
+}
+
+.ft-btn--active {
+  background: var(--accent, #6d002b);
+  color: #fff;
+  box-shadow: 0 0 0 2px rgba(109, 0, 43, 0.25), 0 2px 8px rgba(109, 0, 43, 0.3);
+}
+.ft-btn--active:hover {
+  background: var(--accent-hover, #5a0024);
+  color: #fff;
+}
+
+.ft-btn--danger:not([disabled]) {
+  color: #ef4444;
+}
+.ft-btn--danger:not([disabled]):hover {
+  background: var(--danger-bg, #fef2f2);
+  color: var(--danger, #dc2626);
+}
+
+.ft-btn[disabled] {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.ft-btn[disabled]:hover {
+  background: transparent;
+  color: var(--text-secondary, #64748b);
+}
+
+/* ── Map glow when tool is active ── */
+.ft-map-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  border: 2px solid var(--accent, #6d002b);
+  box-shadow: inset 0 0 12px rgba(109, 0, 43, 0.12);
+  pointer-events: none;
+  z-index: 1060;
+  animation: ftGlowPulse 2s ease-in-out infinite;
+}
+
+@keyframes ftGlowPulse {
+  0%, 100% { border-color: var(--accent, #6d002b); box-shadow: inset 0 0 12px rgba(109, 0, 43, 0.12); }
+  50% { border-color: rgba(109, 0, 43, 0.5); box-shadow: inset 0 0 20px rgba(109, 0, 43, 0.08); }
+}
+
+/* ── Contextual hint bar ── */
+.ft-hint {
+  position: absolute;
+  top: 108px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1055;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px 6px 14px;
+  border-radius: 20px;
+  background: var(--bg-card, rgba(255, 255, 255, 0.9));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-default, rgba(226, 232, 240, 0.6));
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  pointer-events: auto;
+  animation: ftHintIn 0.2s ease both;
+  white-space: nowrap;
+}
+
+@keyframes ftHintIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.ft-hint-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary, #64748b);
+}
+
+.ft-hint-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.ft-pill {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Inter', system-ui, sans-serif;
+  cursor: pointer;
+  border: none;
+  transition: background 0.12s, box-shadow 0.12s;
+}
+
+.ft-pill--finish {
+  background: #22c55e;
+  color: #fff;
+}
+.ft-pill--finish:hover {
+  background: #16a34a;
+  box-shadow: 0 2px 6px rgba(34, 197, 94, 0.3);
+}
+
+.ft-pill--cancel {
+  background: var(--bg-card-hover, #f1f5f9);
+  color: var(--text-secondary, #64748b);
+}
+.ft-pill--cancel:hover {
+  background: var(--border-default, #e2e8f0);
+  color: var(--text-primary, #1e293b);
+}
+
+/* ── Real-time Measurement HUD ── */
+.ft-hud {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1055;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: var(--bg-card, rgba(255, 255, 255, 0.88));
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  border: 1px solid var(--border-default, rgba(226, 232, 240, 0.7));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  pointer-events: auto;
+  animation: ftHudIn 0.2s ease both;
+}
+
+@keyframes ftHudIn {
+  from { opacity: 0; transform: translateX(-50%) scale(0.92); }
+  to   { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+.ft-hud-value {
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent, #6d002b);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.ft-hud-dismiss {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-card-hover, #f1f5f9);
+  color: var(--text-secondary, #94a3b8);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+.ft-hud-dismiss:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+/* ── Cursor Coordinates ── */
+.ft-coords {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  z-index: 800;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary, #1e293b);
+  background: var(--bg-card, rgba(255, 255, 255, 0.82));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default, rgba(226, 232, 240, 0.6));
+  pointer-events: none;
+  letter-spacing: 0.01em;
+}
+
+/* ── Query Results Bottom Sheet ── */
+.ft-query {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1055;
+  width: 360px;
+  max-width: calc(100% - 32px);
+  max-height: 300px;
+  background: var(--bg-card, rgba(255, 255, 255, 0.92));
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  border: 1px solid var(--border-default, rgba(226, 232, 240, 0.7));
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  pointer-events: auto;
+  animation: ftQueryIn 0.25s ease both;
+}
+
+@keyframes ftQueryIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.ft-query-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-default, rgba(226, 232, 240, 0.5));
+}
+
+.ft-query-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary, #1e293b);
+}
+
+.ft-query-close {
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: var(--bg-card-hover, #f1f5f9);
+  color: var(--text-secondary, #94a3b8);
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+}
+.ft-query-close:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.ft-query-body {
+  overflow-y: auto;
+  padding: 4px 0;
+  max-height: 240px;
+}
+
+.ft-query-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.ft-query-item:hover {
+  background: var(--bg-card-hover, rgba(241, 245, 249, 0.7));
+}
+
+.ft-query-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ft-query-dot--ok { background: #22c55e; }
+.ft-query-dot--no-flow { background: #f59e0b; }
+.ft-query-dot--no-signal { background: #ef4444; }
+.ft-query-dot--pending { background: #94a3b8; }
+.ft-query-dot--obra { background: #eab308; }
+
+.ft-query-name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary, #1e293b);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ft-query-flow {
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  white-space: nowrap;
+}
+
+/* Leaflet draw tooltip (still needed by the plugin) */
+.measure-tooltip {
+  background: var(--accent, #6d002b);
+  color: #fff;
+  border: none;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+.measure-tooltip::before {
+  border-top-color: var(--accent, #6d002b);
+}
+
+/* Crosshair cursor when a tool is active */
+.leaflet-container.ft-crosshair {
+  cursor: crosshair !important;
+}
+.leaflet-container.ft-crosshair .leaflet-interactive {
+  cursor: crosshair !important;
+}
+
+/* ── Draw vertices: Figma-style circles ── */
+.leaflet-div-icon.leaflet-editing-icon {
+  background: #fff !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 50% !important;
+  width: 12px !important;
+  height: 12px !important;
+  margin-left: -6px !important;
+  margin-top: -6px !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25), 0 1px 3px rgba(0,0,0,0.2) !important;
+  cursor: pointer !important;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.leaflet-div-icon.leaflet-editing-icon:hover {
+  transform: scale(1.5);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4), 0 2px 8px rgba(0,0,0,0.3) !important;
+  border-color: #22c55e !important;
+}
+
+/* ── Drag cursor for drawn shapes ── */
+.leaflet-container.ft-grab {
+  cursor: grab !important;
+}
+.leaflet-container.ft-grab .leaflet-interactive {
+  cursor: grab !important;
+}
+.leaflet-container.ft-grabbing {
+  cursor: grabbing !important;
+}
+.leaflet-container.ft-grabbing .leaflet-interactive {
+  cursor: grabbing !important;
+}
+
+/* ── Toolbar button tooltips (0.5s delay, Figma-style) ── */
+.ft-btn {
+  position: relative;
+}
+.ft-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0s 0.15s;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.ft-btn[data-tooltip]::before {
+  content: '';
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-bottom-color: #1e293b;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0s 0.15s;
+  z-index: 9999;
+}
+.ft-btn[data-tooltip]:hover::after,
+.ft-btn[data-tooltip]:hover::before {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.15s ease 1s, visibility 0s 1s;
+}
+/* Hide tooltip for active/disabled buttons */
+.ft-btn--active::after,
+.ft-btn--active::before,
+.ft-btn[disabled]::after,
+.ft-btn[disabled]::before {
+  display: none;
+}
+
+/* ── Inline text input overlay (on map, replaces prompt()) ── */
+.ft-inline-text {
+  position: absolute;
+  z-index: 1100;
+  transform: translate(-4px, -16px);
+  pointer-events: auto;
+}
+.ft-inline-text-input {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+  background: var(--surface, #fff);
+  border: 2px solid var(--brand, #6d002b);
+  border-radius: 6px;
+  padding: 5px 10px;
+  min-width: 160px;
+  max-width: 320px;
+  outline: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 0 0 3px rgba(109, 0, 43, 0.12);
+  animation: ft-inline-pop 0.15s ease-out;
+}
+.ft-inline-text-input::placeholder {
+  color: var(--text-secondary, #94a3b8);
+  font-weight: 400;
+}
+@keyframes ft-inline-pop {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ── Right-click context menu ── */
+.gis-ctx-menu {
+  position: absolute;
+  z-index: 1200;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+  padding: 4px;
+  min-width: 180px;
+  animation: ctx-pop 0.12s ease-out;
+}
+@keyframes ctx-pop {
+  from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.gis-ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary, #1e293b);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background 0.1s;
+}
+.gis-ctx-item:hover {
+  background: var(--hover-bg, #f1f5f9);
+}
+.gis-ctx-item svg {
+  color: var(--text-secondary, #64748b);
+  flex-shrink: 0;
+}
+.gis-ctx-site-name {
+  padding: 6px 12px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.gis-ctx-sep {
+  height: 1px;
+  background: var(--border-default, #e2e8f0);
+  margin: 3px 8px;
+}
+
+/* ── Compass Rose ── */
+.gis-compass {
+  position: absolute;
+  bottom: 148px; /* above minimap (130px + 12px gap) */
+  left: 14px;
+  z-index: 800;
+  cursor: grab;
+  background: var(--surface, rgba(255,255,255,0.92));
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  padding: 4px;
+  transition: box-shadow 0.2s, transform 0.2s;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.gis-compass:hover {
+  box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+  transform: scale(1.08);
+}
+.gis-compass svg {
+  display: block;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Keyboard Shortcuts Panel ── */
+.ft-shortcuts-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 1200;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  width: min(260px, 90vw);
+  max-height: 400px;
+  overflow-y: auto;
+  animation: ctx-pop 0.15s ease-out;
+}
+.ft-shortcuts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-primary, #1e293b);
+  border-bottom: 1px solid var(--border-default, #e2e8f0);
+}
+.ft-shortcuts-body {
+  padding: 8px 0;
+}
+.ft-sc-section {
+  padding: 8px 14px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary, #94a3b8);
+}
+.ft-sc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 14px;
+  font-size: 12px;
+  color: var(--text-primary, #1e293b);
+}
+.ft-sc-row kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  padding: 2px 6px;
+  background: var(--bg-card-hover, #f8fafc);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  box-shadow: 0 1px 0 var(--border-default, #e2e8f0);
+}
+.ft-sc-row span {
+  flex: 1;
+  color: var(--text-secondary, #64748b);
+}
+
+/* ── GIS Views Panel ── */
+.gv-panel {
+  position: absolute;
+  top: 100px;
+  right: 16px;
+  width: 300px;
+  max-height: calc(100% - 180px);
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: ctx-pop 0.15s ease-out;
+}
+.gv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-primary, #1e293b);
+  border-bottom: 1px solid var(--border-default, #e2e8f0);
+  flex-shrink: 0;
+}
+.gv-tabs {
+  display: flex;
+  gap: 0;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-default, #e2e8f0);
+  flex-shrink: 0;
+}
+.gv-tab {
+  flex: 1;
+  padding: 5px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #64748b);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.12s;
+}
+.gv-tab:hover { background: var(--bg-card-hover, #f1f5f9); }
+.gv-tab--active { background: var(--accent, #6d002b); color: #fff; }
+.gv-save-form {
+  padding: 10px;
+  border-bottom: 1px solid var(--border-default, #e2e8f0);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.gv-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: inherit;
+  background: var(--bg-card, #fff);
+  color: var(--text-primary, #1e293b);
+  outline: none;
+  box-sizing: border-box;
+}
+.gv-input:focus { border-color: var(--accent, #6d002b); }
+.gv-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.gv-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary, #64748b);
+  cursor: pointer;
+}
+.gv-list { flex: 1; overflow-y: auto; padding: 6px; }
+.gv-card {
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s;
+  border: 1.5px solid transparent;
+  margin-bottom: 4px;
+}
+.gv-card:hover { background: var(--bg-card-hover, #f1f5f9); }
+.gv-card--active { border-color: var(--accent, #6d002b); background: rgba(109, 0, 43, 0.04); }
+.gv-card-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.gv-card-name { font-size: 12px; font-weight: 600; color: var(--text-primary, #1e293b); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.gv-card-badge { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 10px; background: var(--bg-card-hover, #f1f5f9); color: var(--text-secondary, #64748b); text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0; }
+.gv-card-badge--public { background: #dcfce7; color: #15803d; }
+.gv-card-desc { font-size: 11px; color: var(--text-secondary, #94a3b8); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gv-card-meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 10px; color: var(--text-muted, #94a3b8); }
+.gv-card-owner { font-weight: 600; }
+.gv-card-actions { display: flex; gap: 4px; margin-top: 6px; opacity: 0; transition: opacity 0.15s; }
+.gv-card:hover .gv-card-actions, .gv-card--active .gv-card-actions { opacity: 1; }
+.gv-action { padding: 2px 8px; border: none; border-radius: 4px; font-size: 10px; font-weight: 600; font-family: inherit; cursor: pointer; background: var(--bg-card-hover, #f1f5f9); color: var(--text-secondary, #64748b); transition: background 0.12s; }
+.gv-action:hover { background: var(--border-default, #e2e8f0); }
+.gv-action--danger { color: #dc2626; }
+.gv-action--danger:hover { background: #fee2e2; }
+.gv-empty { padding: 20px; text-align: center; font-size: 12px; color: var(--text-muted, #94a3b8); }
+
+/* ── Mini-map ── */
+.gis-minimap {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  width: 180px;
+  height: 130px;
+  border: 2px solid var(--border-default, #cbd5e1);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  overflow: hidden;
+  z-index: 800;
+  background: var(--surface, #fff);
+}
+.gis-minimap,
+.gis-minimap .leaflet-container { cursor: pointer !important; }
+.gis-minimap .leaflet-tile-pane { opacity: 0.85; }
+
+/* Hide leaflet-rotate's default compass control — we have our own */
+.leaflet-control-rotate { display: none !important; }
+
+/* ── Rain station markers ── */
+.rain-label-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6) !important;
+  padding: 0 !important;
+}
+.rain-label-tooltip::before { display: none !important; }
+
+/* ── Responsive: mobile ── */
+@media (max-width: 640px) {
+  .gis-minimap {
+    display: none;
+  }
+  .lc-body {
+    width: min(240px, calc(100vw - 60px));
+  }
+  .ft-hint {
+    top: auto;
+    bottom: 100px;
+    max-width: calc(100vw - 40px);
+    white-space: normal;
+  }
+  .ft-query {
+    width: calc(100% - 24px);
+    max-width: none;
+    bottom: 4px;
+  }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .status-legend-dropdown,
+  .gis-filter-panel,
+  .lc-body,
+  .mk-kpi,
+  .mk-ring,
+  .mk-ring-red,
+  .mk-nosignal,
+  .mk-op-nosignal img,
+  .alarm-badge,
+  .alarm-badge-dot,
+  .site-card-dot--no-signal,
+  .ft-bar,
+  .ft-color-dropdown,
+  .ft-hint,
+  .ft-hud,
+  .ft-query,
+  .ft-map-glow,
+  .ft-inline-text-input,
+  .gis-ctx-menu,
+  .ft-toast {
+    animation: none;
+  }
+  .ft-map-glow {
+    border-color: var(--accent, #6d002b);
+    box-shadow: inset 0 0 12px rgba(109, 0, 43, 0.12);
+  }
+}
+
+/* =========================
+   BUFFER PANEL
+========================= */
+.ft-buffer-panel {
+  position: absolute;
+  top: 140px;
+  left: 16px;
+  z-index: 900;
+  width: 220px;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  overflow: hidden;
+}
+.ft-buffer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-light, #f1f5f9);
+}
+.ft-buffer-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ft-buffer-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+}
+.ft-buffer-range {
+  width: 100%;
+  accent-color: var(--accent, #6d002b);
+}
+
+/* =========================
+   SAVED DRAWINGS PANEL
+========================= */
+.ft-saved-panel {
+  position: absolute;
+  top: 140px;
+  left: 16px;
+  z-index: 900;
+  width: min(260px, 90vw);
+  max-height: 360px;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.ft-saved-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-light, #f1f5f9);
+  flex-shrink: 0;
+}
+.ft-saved-body {
+  padding: 8px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ft-save-form {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-light, #f1f5f9);
+}
+.ft-save-input {
+  flex: 1;
+  padding: 5px 8px;
+  font-size: 12px;
+  border: 1px solid var(--border-default, #d1d5db);
+  border-radius: 6px;
+  background: var(--bg, #fff);
+  color: var(--text-primary);
+  outline: none;
+}
+.ft-save-input:focus {
+  border-color: var(--accent, #6d002b);
+}
+.ft-saved-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background 0.1s;
+}
+.ft-saved-item:hover {
+  background: var(--bg-secondary, #f1f5f9);
+}
+.ft-saved-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ft-saved-name:hover {
+  color: var(--accent, #6d002b);
+}
+.ft-saved-delete {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: var(--text-tertiary, #94a3b8);
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ft-saved-delete:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+.ft-saved-empty {
+  font-size: 12px;
+  color: var(--text-tertiary, #94a3b8);
+  text-align: center;
+  padding: 16px 8px;
+}
+
+/* =========================
+   SHARE TOAST
+========================= */
+.ft-toast {
+  position: absolute;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: #1e293b;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  animation: toastIn 0.2s ease;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* =========================
+   EXPORT MODE (hide UI for clean screenshot)
+========================= */
+.gis-exporting .ft-bar,
+.gis-exporting .ft-hint,
+.gis-exporting .ft-hud,
+.gis-exporting .ft-coords,
+.gis-exporting .ft-query,
+.gis-exporting .ft-buffer-panel,
+.gis-exporting .ft-saved-panel,
+.gis-exporting .lc,
+.gis-exporting .gis-search,
+.gis-exporting .alarm-badge,
+.gis-exporting .ft-map-glow {
+  display: none !important;
+}
+
+/* =========================
+   DRAWING LABEL TOOLTIP
+========================= */
+.drawing-label {
+  background: rgba(30, 41, 59, 0.85);
+  color: #fff;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+/* =========================
+   DRAWN LAYERS PANEL (Figma-style)
+========================= */
+/* Floating toggle for drawn layers panel */
+.ft-layers-toggle {
+  position: absolute;
+  top: 68px; /* same as toolbar */
+  right: 80px; /* right side, next to layer panel toggle */
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  background: var(--surface, rgba(255,255,255,0.92));
+  border: 1px solid var(--border-default, #cbd5e1);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  cursor: pointer;
+  color: var(--text-secondary, #64748b);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  transition: background 0.15s, color 0.15s;
+  backdrop-filter: blur(6px);
+}
+.ft-layers-toggle:hover {
+  background: var(--bg-card-hover, #f1f5f9);
+  color: var(--text-primary, #1e293b);
+}
+.ft-layers-toggle--active {
+  background: var(--accent, #6d002b);
+  color: #fff;
+  border-color: var(--accent, #6d002b);
+}
+.ft-layers-toggle-count {
+  background: var(--accent, #6d002b);
+  color: #fff;
+  border-radius: 10px;
+  padding: 0 5px;
+  font-size: 10px;
+  line-height: 16px;
+  min-width: 16px;
+  text-align: center;
+}
+.ft-layers-toggle--active .ft-layers-toggle-count {
+  background: rgba(255,255,255,0.3);
+}
+
+.ft-layers-panel {
+  position: absolute;
+  top: 96px;
+  left: 12px;
+  width: 260px;
+  max-height: 400px;
+  background: var(--bg-card, #fff);
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-default, #e2e8f0);
+}
+.ft-layers-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+  border-bottom: 1px solid var(--border-default, #e2e8f0);
+}
+.ft-layers-body {
+  overflow-y: auto;
+  max-height: 340px;
+  padding: 4px 0;
+}
+.ft-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-left: 2px solid transparent;
+}
+.ft-layer-row:hover {
+  background: var(--bg-card-hover, #f1f5f9);
+}
+.ft-layer-row--selected {
+  background: var(--accent-light);
+  border-left-color: var(--accent, #6d002b);
+}
+/* Drag handle */
+.ft-layer-drag-handle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  cursor: grab;
+  color: var(--text-secondary, #94a3b8);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.ft-layer-row:hover .ft-layer-drag-handle { opacity: 1; }
+.ft-layer-drag-handle:active { cursor: grabbing; }
+/* Drag states */
+.ft-layer-row--dragging {
+  opacity: 0.4;
+}
+.ft-layer-row--dragover {
+  border-top: 2px solid var(--accent, #6d002b);
+  background: var(--accent-light, rgba(109, 0, 43, 0.06));
+}
+.ft-layer-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary, #64748b);
+}
+.ft-layer-name {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-primary, #1e293b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  cursor: text;
+}
+/* Inline rename input in layers panel */
+.ft-layer-name-input {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-primary, #1e293b);
+  background: var(--surface, #fff);
+  border: 1.5px solid var(--brand, #6d002b);
+  border-radius: 4px;
+  padding: 1px 6px;
+  min-width: 0;
+  outline: none;
+  font-family: inherit;
+  box-shadow: 0 0 0 2px rgba(109, 0, 43, 0.15);
+}
+.ft-layer-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.ft-layer-row:hover .ft-layer-actions,
+.ft-layer-row--selected .ft-layer-actions {
+  opacity: 1;
+}
+.ft-layer-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  color: var(--text-secondary, #64748b);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  padding: 0;
+}
+.ft-layer-action:hover {
+  background: var(--bg-card-hover, #e2e8f0);
+  color: var(--text-primary, #1e293b);
+}
+.ft-layer-action--danger:hover {
+  background: var(--danger-bg, #fef2f2);
+  color: var(--danger, #ef4444);
+}
+.ft-layers-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-secondary, #94a3b8);
+  font-size: 12px;
+}
+
+/* Selected marker highlight */
+.ft-layer-selected {
+  filter: drop-shadow(0 0 6px rgba(109, 0, 43, 0.6)) drop-shadow(0 0 2px rgba(109, 0, 43, 0.8));
+}
+
+/* =========================
    EMBED MODE (iframe sin header/footer)
 ========================= */
 .gis-container.embed-mode {
@@ -1075,4 +2929,162 @@
 }
 .gis-container.embed-mode .gis-map {
   height: 100vh;
+}
+
+/* =========================
+   DARK MODE OVERRIDES
+========================= */
+
+/* Tooltip contrast — dark bg invisible against dark mode backgrounds */
+html[data-theme="dark"] .ft-btn[data-tooltip]::after {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+}
+html[data-theme="dark"] .ft-btn[data-tooltip]::before {
+  border-bottom-color: var(--bg-card);
+}
+
+/* KPI badge — invert for dark mode so light-on-dark stays readable */
+html[data-theme="dark"] .mk-kpi {
+  background: rgba(248, 250, 252, 0.9);
+  color: #0f172a;
+}
+
+/* =========================
+   DARK MODE — GIS OVERRIDES
+========================= */
+html[data-theme="dark"] .gis-minimap {
+  background: var(--bg-card);
+  border-color: var(--border-default);
+}
+
+html[data-theme="dark"] .gis-minimap .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg);
+  opacity: 0.7;
+}
+
+html[data-theme="dark"] .lc-body {
+  background: var(--bg-card);
+  border-color: var(--border-default);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme="dark"] .lc-base-group {
+  background: var(--bg-app);
+}
+
+html[data-theme="dark"] .lc-base-btn {
+  color: var(--text-secondary);
+}
+
+html[data-theme="dark"] .lc-base-active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme="dark"] .lc-layer:hover {
+  background: var(--bg-app);
+}
+
+html[data-theme="dark"] .lc-layer input[type='checkbox'] {
+  background: var(--bg-app);
+  border-color: var(--border-strong);
+}
+
+html[data-theme="dark"] .lc-layer input[type='checkbox']:checked {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+html[data-theme="dark"] .lc-upload-btn {
+  background: var(--bg-app);
+  border-color: var(--border-strong);
+  color: var(--accent);
+}
+
+html[data-theme="dark"] .lc-upload-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent);
+}
+
+html[data-theme="dark"] .lc-icon-svg {
+  opacity: 0.8;
+}
+
+html[data-theme="dark"] .lc-toggle {
+  background: var(--bg-card);
+  border-color: var(--border-default);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme="dark"] .lc-open .lc-toggle {
+  background: var(--accent);
+}
+
+html[data-theme="dark"] .ft-bar {
+  background: var(--bg-card);
+  border-color: var(--border-default);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme="dark"] .ft-btn {
+  color: var(--text-secondary);
+}
+
+html[data-theme="dark"] .ft-btn:hover {
+  background: var(--bg-app);
+  color: var(--text-primary);
+}
+
+html[data-theme="dark"] .ft-btn--active {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+html[data-theme="dark"] .ft-divider {
+  background: var(--border-default);
+}
+
+html[data-theme="dark"] .ft-color-preview {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+html[data-theme="dark"] .ft-color-dropdown {
+  background: var(--bg-card);
+  border-color: var(--border-default);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme="dark"] .gis-search input {
+  background: var(--bg-card);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+html[data-theme="dark"] .gis-filter-panel {
+  background: var(--bg-card);
+  border-color: var(--border-default);
+}
+
+html[data-theme="dark"] .gf-select {
+  background: var(--bg-app);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+html[data-theme="dark"] .alarm-badge {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme="dark"] .status-legend-dropdown {
+  background: var(--bg-card);
+  border-color: var(--border-default);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme="dark"] .gis-ctx-menu {
+  background: var(--bg-card);
+  border-color: var(--border-default);
 }

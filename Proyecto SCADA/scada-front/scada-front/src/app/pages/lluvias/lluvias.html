@@ -1,0 +1,162 @@
+<app-header-bar></app-header-bar>
+
+<div class="rain-container">
+  <!-- KPI Bar -->
+  <div class="rain-kpis">
+    <div class="rain-kpi">
+      <span class="rain-kpi-value">{{ totalStations() }}</span>
+      <span class="rain-kpi-label">Estaciones</span>
+    </div>
+    <div class="rain-kpi">
+      <span class="rain-kpi-value rain-kpi--active">{{ stationsWithRain() }}</span>
+      <span class="rain-kpi-label">Con lluvia</span>
+    </div>
+    <div class="rain-kpi">
+      <span class="rain-kpi-value">{{ maxRainfall().toFixed(2) }} mm</span>
+      <span class="rain-kpi-label">Max registrado</span>
+    </div>
+    <div class="rain-kpi rain-kpi-protocol">
+      <span class="rain-kpi-value">0.00 mm</span>
+      <span class="rain-kpi-label">Protocolo</span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="rain-tabs">
+    <button class="rain-tab" [class.rain-tab--active]="activeTab() === 'monitor'" (click)="activeTab.set('monitor')">Monitoreo</button>
+    <button class="rain-tab" [class.rain-tab--active]="activeTab() === 'corte'" (click)="activeTab.set('corte')">Corte Diario</button>
+    <button class="rain-tab" [class.rain-tab--active]="activeTab() === 'historico'" (click)="activeTab.set('historico')">Historico</button>
+  </div>
+
+  <!-- Tab: Monitoreo (cards grid) -->
+  @if (activeTab() === 'monitor') {
+    <div class="rain-monitor">
+      <!-- Controls -->
+      <div class="rain-controls">
+        <div class="rain-acum-group">
+          <span class="rain-controls-label">Acumulada:</span>
+          <button class="rain-acum-btn" [class.rain-acum-btn--active]="acumMode() === '6am'" (click)="acumMode.set('6am')">6AM</button>
+          <button class="rain-acum-btn" [class.rain-acum-btn--active]="acumMode() === '1h'" (click)="acumMode.set('1h')">1hr</button>
+          <button class="rain-acum-btn" [class.rain-acum-btn--active]="acumMode() === '6h'" (click)="acumMode.set('6h')">6hrs</button>
+        </div>
+        <select class="rain-filter-select" [value]="filterMunicipio()" (change)="filterMunicipio.set($any($event.target).value)">
+          <option value="">Todos los municipios</option>
+          @for (m of municipalities(); track m) {
+            <option [value]="m">{{ m }}</option>
+          }
+        </select>
+        <div class="rain-sort-group">
+          <span class="rain-controls-label">Ordenar:</span>
+          <button class="rain-sort-btn" [class.rain-sort-btn--active]="sortBy() === 'value'" (click)="sortBy.set('value')">Valor</button>
+          <button class="rain-sort-btn" [class.rain-sort-btn--active]="sortBy() === 'name'" (click)="sortBy.set('name')">Nombre</button>
+          <button class="rain-sort-btn" [class.rain-sort-btn--active]="sortBy() === 'code'" (click)="sortBy.set('code')">Codigo</button>
+        </div>
+      </div>
+
+      <!-- Cards grid -->
+      @if (loading()) {
+        <div class="rain-loading">
+          <app-loading-spinner label="Cargando estaciones..." mode="inline"></app-loading-spinner>
+        </div>
+      } @else {
+        <div class="rain-cards-grid">
+          @for (s of filteredStations(); track s.id) {
+            <div class="rain-card" [class]="'rain-card ' + getIntensityClass(s.last_value_mm)">
+              <div class="rain-card-header">
+                <span class="rain-card-code">{{ s.code }}</span>
+                <span class="rain-card-name">{{ s.name }}</span>
+              </div>
+              <div class="rain-card-address">{{ s.address || s.municipality }}</div>
+              <div class="rain-card-body">
+                <div class="rain-card-value">
+                  <span class="rain-card-mm">{{ s.last_value_mm.toFixed(2) }}</span>
+                  <span class="rain-card-unit">mm</span>
+                </div>
+                <span class="rain-card-time">{{ timeAgo(s.last_updated_at) }}</span>
+              </div>
+            </div>
+          } @empty {
+            <div class="rain-empty">No hay estaciones disponibles</div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Tab: Corte Diario -->
+  @if (activeTab() === 'corte') {
+    <div class="rain-corte">
+      <div class="rain-corte-header">
+        <h2>Corte de Lluvia</h2>
+        <div class="rain-corte-date">
+          <label>Dia consultado:</label>
+          <input type="date" [value]="cutDate()" (change)="onCutDateChange($any($event.target).value)" />
+        </div>
+      </div>
+
+      @if (cutLoading()) {
+        <div class="rain-loading">
+          <app-loading-spinner label="Cargando corte..." mode="inline"></app-loading-spinner>
+        </div>
+      } @else if (cutData(); as data) {
+        <div class="rain-corte-table-wrapper">
+          <table class="rain-corte-table">
+            <thead>
+              <tr>
+                <th class="rain-th-station">Estacion</th>
+                @for (h of cutHours; track h) {
+                  <th class="rain-th-hour">{{ h }}:00</th>
+                }
+                <th class="rain-th-total">Corte 6a6</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (mun of data.municipalities; track mun.municipality) {
+                <!-- Municipality header row -->
+                <tr class="rain-tr-mun">
+                  <td class="rain-td-mun-name">{{ mun.municipality }}</td>
+                  @for (h of cutHours; track h) {
+                    <td class="rain-td-mun-val" [class]="getIntensityClass(mun.totals['h' + h] || 0)">
+                      {{ (mun.totals['h' + h] || 0) > 0 ? (mun.totals['h' + h] | number:'1.0-2') : '0' }}
+                    </td>
+                  }
+                  <td class="rain-td-mun-total">{{ mun.totals['cut_total'] | number:'1.2-2' }}</td>
+                </tr>
+                <!-- Station rows -->
+                @for (s of mun.stations; track s.id) {
+                  <tr class="rain-tr-station">
+                    <td class="rain-td-station-name">{{ s.station_name }}</td>
+                    @for (h of cutHours; track h) {
+                      <td class="rain-td-val" [class]="getIntensityClass(getHourValue(s, h))">
+                        {{ getHourValue(s, h) > 0 ? (getHourValue(s, h) | number:'1.0-2') : '0' }}
+                      </td>
+                    }
+                    <td class="rain-td-total">{{ s.cut_total | number:'1.2-2' }}</td>
+                  </tr>
+                }
+              } @empty {
+                <tr><td [attr.colspan]="cutHours.length + 2" class="rain-empty">Sin datos para esta fecha</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Tab: Historico -->
+  @if (activeTab() === 'historico') {
+    <div class="rain-historico">
+      <div class="rain-historico-placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+        </svg>
+        <h3>Historico de Isoyetas</h3>
+        <p>Las isoyetas (mapas de calor de lluvia) se generaran automaticamente cuando los sensores pluviometricos esten instalados y transmitiendo datos.</p>
+        <p>Interpolacion de Kriging + Poligonos de Thiessen disponibles con datos reales.</p>
+      </div>
+    </div>
+  }
+</div>
+
+<app-sidebar-nav></app-sidebar-nav>

@@ -5,19 +5,29 @@
 
 .shell {
   font-family: 'Inter', system-ui, sans-serif;
-  min-height: 100vh;
+  height: calc(100dvh - var(--chrome-height));
   background: var(--bg-app);
-  padding-bottom: 74px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.page { padding: 16px 16px 0; max-width: 1440px; margin: 0 auto; }
+.page {
+  padding: 12px 16px 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
 
 /* ===== KPI STRIP ===== */
 .kpi-strip {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
 .kpi-card {
@@ -74,6 +84,10 @@
   border-radius: 12px;
   overflow: hidden;
   box-shadow: var(--shadow-sm);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* ===== TOOLBAR ===== */
@@ -222,6 +236,9 @@
   display: grid;
   grid-template-columns: 220px 1fr;
   gap: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* ===== TREE ===== */
@@ -253,7 +270,7 @@
   gap: 2px;
   flex: 1;
   overflow-y: auto;
-  max-height: 600px;
+  min-height: 0;
 }
 
 .tree-item {
@@ -319,13 +336,19 @@
 }
 
 /* ===== TABLES ===== */
-.tables { display: flex; flex-direction: column; gap: 0; min-width: 0; }
+.tables { display: flex; flex-direction: column; gap: 0; min-width: 0; min-height: 0; overflow: hidden; }
 
 .table-wrap {
   border-bottom: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.table-wrap:last-child { border-bottom: none; }
+.table-wrap:first-child { flex: 1; }
+
+.table-wrap:last-child { border-bottom: none; max-height: 35%; flex-shrink: 0; }
 
 .table-header {
   padding: 10px 16px;
@@ -336,6 +359,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .table-wrap:first-child .table-header {
@@ -367,8 +391,8 @@
   border: 1px solid rgba(109, 0, 43, 0.12);
 }
 
-.table-scroll { overflow: auto; max-height: 420px; }
-.table-scroll--short { max-height: 260px; }
+.table-scroll { overflow: auto; flex: 1; min-height: 0; }
+.table-scroll--short { flex: 1; min-height: 0; }
 
 .table { width: 100%; border-collapse: collapse; }
 

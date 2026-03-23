@@ -41,8 +41,9 @@ export class Token implements OnInit {
 
     this.authService.verifyTOTP(tempToken, code).subscribe({
       next: () => {
+        const returnUrl = this.getReturnUrl();
         this.limpiarSession();
-        this.router.navigate(['/dashboard']);
+        this.router.navigateByUrl(returnUrl);
       },
       error: (err) => {
         this.errorMsg = err.error?.error || 'Codigo TOTP invalido o expirado';
@@ -61,12 +62,13 @@ export class Token implements OnInit {
 
     this.authService.verify2FA(tempToken, code).subscribe({
       next: (res) => {
+        const returnUrl = this.getReturnUrl();
         this.limpiarSession();
         // Check if TOTP setup is needed
         if (res.user && res.user.is_2fa_enabled && !res.user.totp_enabled) {
           this.router.navigate(['/auth/setup-totp']);
         } else {
-          this.router.navigate(['/dashboard']);
+          this.router.navigateByUrl(returnUrl);
         }
       },
       error: (err) => {
@@ -98,5 +100,10 @@ export class Token implements OnInit {
     sessionStorage.removeItem('pending_email');
     sessionStorage.removeItem('2fa_method');
     sessionStorage.removeItem('2fa_temp_token');
+    sessionStorage.removeItem('returnUrl');
+  }
+
+  private getReturnUrl(): string {
+    return sessionStorage.getItem('returnUrl') || '/dashboard';
   }
 }

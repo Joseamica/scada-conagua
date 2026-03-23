@@ -9,7 +9,7 @@ export const authGuard: CanActivateFn = (route, state) => {
     return true;
   }
 
-  // Token ausente o expirado — limpiar y redirigir
-  authService.clearSessionAndRedirect();
+  // Token ausente o expirado — limpiar y redirigir, preservando returnUrl
+  authService.clearSessionAndRedirect(state.url);
   return false;
 };

@@ -219,6 +219,20 @@ export const routes: Routes = [
     data: { title: 'Alarmas Activas' },
   },
   {
+    path: 'lluvias',
+    canActivate: [authGuard, totpSetupGuard],
+    loadComponent: () =>
+      import('./pages/lluvias/lluvias').then((m) => m.LluviasComponent),
+    data: { title: 'Monitoreo de Lluvias' },
+  },
+  {
+    path: 'analiticas',
+    canActivate: [authGuard, totpSetupGuard],
+    loadComponent: () =>
+      import('./pages/analiticas/analiticas').then((m) => m.AnaliticasComponent),
+    data: { title: 'Analiticas' },
+  },
+  {
     path: 'alarmas/configuracion',
     canActivate: [authGuard, totpSetupGuard],
     loadComponent: () =>

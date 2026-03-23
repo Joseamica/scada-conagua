@@ -6,6 +6,9 @@
    ========================================= */
 
 :root {
+  /* Layout chrome */
+  --sidebar-width: 48px;
+
   /* Surface */
   --bg-app: #f1f5f9;
   --bg-card: #ffffff;
@@ -51,6 +54,11 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  /* Layout chrome heights — single source of truth */
+  --header-height: 56px;
+  --footer-height: 60px;
+  --chrome-height: calc(var(--header-height) + var(--footer-height));
 
   /* Specific UI */
   --header-bg: #ffffff;
@@ -123,6 +131,17 @@ html[data-theme="dark"] {
   --table-header-bg: #1a2536;
   --scrollbar-thumb: #475569;
   --scrollbar-track: #0f172a;
+}
+
+/* Layout chrome responsive overrides */
+@media (min-width: 769px) {
+  :root { --footer-height: 56px; }
+}
+@media (max-width: 768px) {
+  :root { --header-height: 50px; --footer-height: 60px; }
+}
+@media (max-width: 480px) {
+  :root { --footer-height: 58px; }
 }
 
 /* ===== GLOBAL TRANSITIONS ===== */

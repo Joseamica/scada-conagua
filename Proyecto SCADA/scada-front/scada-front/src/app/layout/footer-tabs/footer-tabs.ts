@@ -70,11 +70,17 @@ export class FooterTabsComponent {
     { label: 'Inicio', icon: 'heroHome', route: '/dashboard', exact: true },
     { label: 'Telemetria', icon: 'heroChartBarSquare', route: '/telemetria', exact: false },
     { label: 'Mapa SIG', icon: 'heroMapPin', route: '/modulo-gis', exact: false },
-    { label: 'Sinopticos', icon: 'heroRectangleGroup', route: '/sinopticos', exact: false },
+    { label: 'Lluvias', icon: 'heroVariable', route: '/lluvias', exact: false },
     { label: 'Alarmas', icon: 'heroBellAlert', route: '/alarmas', exact: false },
   ];
 
   private allMoreItems: MoreItem[] = [
+    {
+      label: 'Sinopticos',
+      icon: 'heroRectangleGroup',
+      route: '/sinopticos',
+      description: 'Dashboards configurables',
+    },
     {
       label: 'Proyectos',
       icon: 'heroBriefcase',

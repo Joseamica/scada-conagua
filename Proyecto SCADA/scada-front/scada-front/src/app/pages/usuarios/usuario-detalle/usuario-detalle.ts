@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators } 
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
-import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../../layout/sidebar-nav/sidebar-nav';
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
 import {
   heroUser, heroLockClosed, heroShieldCheck, heroKey,
@@ -32,7 +32,7 @@ type MunicipioValue = string | 'Todos';
     FormsModule,
     ReactiveFormsModule,
     HeaderBarComponent,
-    FooterTabsComponent,
+    SidebarNavComponent,
     NgIconComponent
   ],
   providers: [

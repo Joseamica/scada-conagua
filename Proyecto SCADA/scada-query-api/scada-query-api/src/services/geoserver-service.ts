@@ -44,33 +44,106 @@ export async function ensureWorkspace(): Promise<boolean> {
 
 /**
  * Upload a zipped shapefile to GeoServer and publish as a layer.
- * The zip must contain .shp, .shx, .dbf, and .prj files.
+ * Handles ZIPs with multiple shapefiles or subdirectories:
+ * - Extracts the ZIP, finds all .shp files
+ * - Re-zips each shapefile individually (with .shx, .dbf, .prj)
+ * - Publishes each as a separate layer
  */
 export async function publishShapefile(
     layerName: string,
     zipFilePath: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; layers?: string[] }> {
+    const AdmZip = require('adm-zip');
     try {
         await ensureWorkspace();
 
-        const fileBuffer = fs.readFileSync(zipFilePath);
+        const zip = new AdmZip(zipFilePath);
+        const entries = zip.getEntries();
 
-        // Upload shapefile to create datastore + layer in one step
-        const res = await geoFetch(
-            `/workspaces/${WORKSPACE}/datastores/${layerName}/file.shp`,
-            {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/zip' },
-                body: fileBuffer,
-            }
-        );
+        // Find all .shp files in the ZIP
+        const shpEntries = entries.filter((e: any) => e.entryName.toLowerCase().endsWith('.shp'));
 
-        if (res.ok || res.status === 201) {
-            return { success: true };
+        if (shpEntries.length === 0) {
+            return { success: false, error: 'El ZIP no contiene archivos .shp' };
         }
 
-        const text = await res.text();
-        return { success: false, error: `GeoServer responded ${res.status}: ${text}` };
+        // If ZIP has exactly one shapefile set at root level, upload directly
+        if (shpEntries.length === 1 && !shpEntries[0].entryName.includes('/')) {
+            const fileBuffer = fs.readFileSync(zipFilePath);
+            const res = await geoFetch(
+                `/workspaces/${WORKSPACE}/datastores/${layerName}/file.shp`,
+                {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/zip' },
+                    body: fileBuffer,
+                }
+            );
+            if (res.ok || res.status === 201) {
+                return { success: true, layers: [layerName] };
+            }
+            const text = await res.text();
+            return { success: false, error: `GeoServer: ${res.status} — ${text}` };
+        }
+
+        // Multiple shapefiles or in subdirectories — re-zip each individually
+        const published: string[] = [];
+        const errors: string[] = [];
+
+        for (const shpEntry of shpEntries) {
+            const baseName = shpEntry.entryName.replace(/\.shp$/i, '');
+            const dir = baseName.includes('/') ? baseName.substring(0, baseName.lastIndexOf('/') + 1) : '';
+            const stem = baseName.includes('/') ? baseName.substring(baseName.lastIndexOf('/') + 1) : baseName;
+
+            // Collect related files (.shx, .dbf, .prj, .cpg)
+            const relatedExts = ['.shp', '.shx', '.dbf', '.prj', '.cpg'];
+            const newZip = new AdmZip();
+
+            for (const ext of relatedExts) {
+                const relatedName = baseName + ext;
+                const relatedNameUpper = baseName + ext.toUpperCase();
+                const entry = entries.find((e: any) =>
+                    e.entryName === relatedName || e.entryName === relatedNameUpper
+                );
+                if (entry) {
+                    // Add at root level (no subdirectory) with the stem name
+                    newZip.addFile(stem + ext, entry.getData());
+                }
+            }
+
+            const singleLayerName = stem.toLowerCase().replace(/[^a-z0-9_-]/g, '_').substring(0, 64);
+            const tempZipPath = zipFilePath + `_${singleLayerName}.zip`;
+            newZip.writeZip(tempZipPath);
+
+            const fileBuffer = fs.readFileSync(tempZipPath);
+            try {
+                const res = await geoFetch(
+                    `/workspaces/${WORKSPACE}/datastores/${singleLayerName}/file.shp`,
+                    {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/zip' },
+                        body: fileBuffer,
+                    }
+                );
+
+                if (res.ok || res.status === 201) {
+                    published.push(singleLayerName);
+                } else {
+                    const text = await res.text();
+                    errors.push(`${singleLayerName}: ${res.status} — ${text}`);
+                }
+            } finally {
+                if (fs.existsSync(tempZipPath)) fs.unlinkSync(tempZipPath);
+            }
+        }
+
+        if (published.length > 0) {
+            return {
+                success: true,
+                layers: published,
+                error: errors.length > 0 ? `Algunas capas fallaron: ${errors.join('; ')}` : undefined,
+            };
+        }
+        return { success: false, error: errors.join('; ') || 'No se pudo publicar ninguna capa.' };
     } catch (error: any) {
         return { success: false, error: error.message };
     }

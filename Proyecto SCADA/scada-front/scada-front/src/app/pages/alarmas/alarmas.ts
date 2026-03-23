@@ -15,12 +15,12 @@ import {
 import { AlarmService, ActiveAlarm } from '../../core/services/alarm.service';
 import { AuthService } from '../../core/services/auth.service';
 import { HeaderBarComponent } from '../../layout/header-bar/header-bar';
-import { FooterTabsComponent } from '../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../layout/sidebar-nav/sidebar-nav';
 
 @Component({
   selector: 'app-alarmas',
   standalone: true,
-  imports: [CommonModule, NgIconComponent, HeaderBarComponent, FooterTabsComponent],
+  imports: [CommonModule, NgIconComponent, HeaderBarComponent, SidebarNavComponent],
   templateUrl: './alarmas.html',
   styleUrl: './alarmas.css',
   providers: [

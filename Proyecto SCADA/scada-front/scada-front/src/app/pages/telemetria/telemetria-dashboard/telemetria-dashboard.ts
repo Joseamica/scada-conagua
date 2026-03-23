@@ -1,11 +1,11 @@
-import { Component, signal, computed, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, signal, computed, OnInit, OnDestroy, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { HeaderBarComponent } from '../../../layout/header-bar/header-bar';
-import { FooterTabsComponent } from '../../../layout/footer-tabs/footer-tabs';
+import { SidebarNavComponent } from '../../../layout/sidebar-nav/sidebar-nav';
 
 import { NgIconComponent, provideIcons } from '@ng-icons/core';
 import {
@@ -69,7 +69,7 @@ interface DashboardSite {
   imports: [
     CommonModule,
     HeaderBarComponent,
-    FooterTabsComponent,
+    SidebarNavComponent,
     NgIconComponent,
     LoadingSpinnerComponent
   ],
@@ -179,10 +179,15 @@ export class TelemetriaDashboard implements OnInit, OnDestroy {
     return count;
   });
 
+  // Status priority for sorting: problems first, then active, then pending
+  private readonly STATUS_ORDER: Record<string, number> = {
+    'no-signal': 0, 'no-flow': 1, 'ok': 2, 'obra': 3, 'pending': 4
+  };
+
   sitesFiltrados = computed(() => {
     const q = this.busqueda().toLowerCase().trim();
 
-    return this.sites().filter(site => {
+    const filtered = this.sites().filter(site => {
       if (this.estadoSel() && site.estado !== this.estadoSel()) return false;
       if (this.municipioSel() && site.municipio !== this.municipioSel()) return false;
       if (this.tipoSel() && site.type !== this.tipoSel()) return false;
@@ -193,6 +198,13 @@ export class TelemetriaDashboard implements OnInit, OnDestroy {
       }
 
       return true;
+    });
+
+    // Sort: problems first (no-signal → no-flow → ok → obra → pending)
+    return filtered.sort((a, b) => {
+      const oa = this.STATUS_ORDER[a.status] ?? 9;
+      const ob = this.STATUS_ORDER[b.status] ?? 9;
+      return oa - ob;
     });
   });
 
@@ -225,17 +237,29 @@ export class TelemetriaDashboard implements OnInit, OnDestroy {
   // =========================
   // LAST UPDATED
   // =========================
-  lastUpdated = signal(this.formatNow());
+  lastUpdated = signal('Cargando...');
+  lastUpdatedStale = signal(false);
+  private lastLoadTime = 0;
 
-  private formatNow(): string {
-    const now = new Date();
-    const h = now.getHours().toString().padStart(2, '0');
-    const m = now.getMinutes().toString().padStart(2, '0');
-    return `${h}:${m}`;
+  private updateRelativeTime() {
+    if (!this.lastLoadTime) return;
+    const elapsed = Math.floor((Date.now() - this.lastLoadTime) / 1000);
+    if (elapsed < 5) {
+      this.lastUpdated.set('Justo ahora');
+    } else if (elapsed < 60) {
+      this.lastUpdated.set(`Hace ${elapsed}s`);
+    } else {
+      const mins = Math.floor(elapsed / 60);
+      this.lastUpdated.set(`Hace ${mins}m`);
+    }
+    this.lastUpdatedStale.set(elapsed > 120); // stale after 2 min
   }
 
   embed = signal(false);
   private refreshInterval: ReturnType<typeof setInterval> | null = null;
+  private timeInterval: ReturnType<typeof setInterval> | null = null;
+
+  private skipParamSync = true; // prevent effect from firing on initial read
 
   constructor(
     private route: ActivatedRoute,
@@ -244,18 +268,56 @@ export class TelemetriaDashboard implements OnInit, OnDestroy {
     private authService: AuthService
   ) {
     this.embed.set(this.route.snapshot.queryParamMap.get('embed') === '1');
+
+    // Read filters from URL on init
+    const qp = this.route.snapshot.queryParamMap;
+    if (qp.get('estado')) this.estadoSel.set(qp.get('estado')!);
+    if (qp.get('municipio')) this.municipioSel.set(qp.get('municipio')!);
+    if (qp.get('tipo')) this.tipoSel.set(qp.get('tipo')!);
+    if (qp.get('status')) this.statusSel.set(qp.get('status')!);
+    if (qp.get('q')) this.busqueda.set(qp.get('q')!);
+    // Sync filters → URL (replaceUrl so no extra history entries)
+    effect(() => {
+      const estado = this.estadoSel();
+      const municipio = this.municipioSel();
+      const tipo = this.tipoSel();
+      const status = this.statusSel();
+      const q = this.busqueda();
+
+      if (this.skipParamSync) return;
+
+      const params: Record<string, string> = {};
+      if (estado) params['estado'] = estado;
+      if (municipio) params['municipio'] = municipio;
+      if (tipo) params['tipo'] = tipo;
+      if (status) params['status'] = status;
+      if (q) params['q'] = q;
+
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: params,
+        replaceUrl: true,
+      });
+    });
   }
 
   ngOnInit(): void {
     this.loadSites();
+    this.skipParamSync = false; // enable param sync after init
     // Auto-refresh every 60 seconds
     this.refreshInterval = setInterval(() => this.loadSites(), 60_000);
+    // Update relative time every 5 seconds
+    this.timeInterval = setInterval(() => this.updateRelativeTime(), 5_000);
   }
 
   ngOnDestroy(): void {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
       this.refreshInterval = null;
+    }
+    if (this.timeInterval) {
+      clearInterval(this.timeInterval);
+      this.timeInterval = null;
     }
   }
 
@@ -303,12 +365,13 @@ export class TelemetriaDashboard implements OnInit, OnDestroy {
             status,
             rssi: s.rssi ?? null,
             signalPct: this.rssiToPercent(s.rssi),
-            timestamp: hasTelemetry ? this.formatTimestamp(s.last_updated_at!) : 'Sin lectura',
+            timestamp: hasTelemetry ? this.formatTimestamp(s.last_updated_at!) : '—',
           };
         });
 
         this.sites.set(mapped);
-        this.lastUpdated.set(this.formatNow());
+        this.lastLoadTime = Date.now();
+        this.updateRelativeTime();
         this.loading.set(false);
       },
       error: (err) => {
